@@ -25,11 +25,11 @@ JOBS = [
         ),
     },
     {
-        "nome": "piscina_natural",
+        "nome": "piscina_praia",
         "prompt": (
-            "RAW photograph, natural swimming pool with biological filtration, "
-            "crystal clear turquoise water, tropical garden, natural stone beach "
-            "entry, premium residential, Phase One IQ4"
+            "RAW photograph, premium beach entry pool with shallow sandy gradient "
+            "sloping into crystal clear turquoise water, tropical garden, lush "
+            "landscaping, natural stone deck, luxury residential, Phase One IQ4"
         ),
     },
     {
