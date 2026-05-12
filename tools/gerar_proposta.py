@@ -23,61 +23,72 @@ OUT = OUT_DIR / "proposta.pdf"
 # DADOS DO CLIENTE — editar para cada orçamento
 # ====================================================================
 PROJETO = {
-    "cliente":  "Otávio — Empresa Exemplo",
+    "cliente":  "Mauricio",
     "data":     "Maio 2026",
     "tipo":     "Lago Ornamental",     # "Lago Ornamental" ou "Piscina Praia"
-    "volume":   "150.000 Litros",
+    "volume":   "50.000 Litros",
 }
 
 # Cada produto alimenta simultaneamente:
 #   - pág "Equipamentos Especificados" (icon + nome_card + desc_card)
 #   - tabela "Investimento" (nome_tabela + qtd + unit + desc_pct)
+# Campo "is_eng": True para itens da linha ENG Soluções (entram na comparação
+# "Direto na ENG vs Com Thiago Nicezio"). False para itens externos (filtro de
+# fibra personalizado etc) que não fazem parte do desconto parceiro.
 PRODUTOS = [
     {
         "icon": "bolt",
-        "nome_card": "Ozone Fish<br/>Power — Inox",
-        "desc_card": "Gerador de ozônio industrial para tratamento de alto volume",
-        "nome_tabela": "Ozone Fish Power — Inox",
-        "qtd": 1, "unit": 15339.00, "desc_pct": 20,
-    },
-    {
-        "icon": "wind",
-        "nome_card": "Concentrador<br/>10 LPM",
-        "desc_card": "Pureza 95%, aumenta em +300% a potência do ozônio",
-        "nome_tabela": "Concentrador de Oxigênio 10 LPM",
-        "qtd": 1, "unit": 9800.00, "desc_pct": None,
-    },
-    {
-        "icon": "waves",
-        "nome_card": "ENG MIX",
-        "desc_card": "Microbolhas que potencializam a transferência de ozônio",
-        "nome_tabela": "ENG MIX",
-        "qtd": 1, "unit": 1890.00, "desc_pct": None,
+        "nome_card": "Ozone Fish<br/>60.000",
+        "desc_card": "Gerador de ozônio industrial dimensionado para 50.000 litros",
+        "nome_tabela": "Ozone Fish 60.000",
+        "qtd": 1, "unit": 4084.50, "desc_pct": 20, "is_eng": True,
     },
     {
         "icon": "sun",
         "nome_card": "Filtro UV Inox<br/>380W",
         "desc_card": "Esterilização UV-C industrial, corpo em aço inox 304",
         "nome_tabela": "Filtro UV Inox 380W — 220V",
-        "qtd": 2, "unit": 9943.50, "desc_pct": 20,
+        "qtd": 1, "unit": 9943.50, "desc_pct": 20, "is_eng": True,
     },
     {
         "icon": "drop",
-        "nome_card": "AquaMax<br/>50.000 L/h",
-        "desc_card": "Bombas de alta vazão para circulação completa",
+        "nome_card": "Bomba AquaMax<br/>50.000 L/h",
+        "desc_card": "Alta vazão — uma para o ozônio, outra para o UV",
         "nome_tabela": "Bomba AquaMax 50.000 L/h",
-        "qtd": 5, "unit": 2730.00, "desc_pct": None,
+        "qtd": 2, "unit": 2730.00, "desc_pct": 20, "is_eng": True,
+    },
+    {
+        "icon": "waves",
+        "nome_card": "ENG MIX",
+        "desc_card": "Microbolhas que potencializam a transferência de ozônio",
+        "nome_tabela": "ENG MIX",
+        "qtd": 1, "unit": 1890.00, "desc_pct": 20, "is_eng": True,
     },
     {
         "icon": "arrows",
-        "nome_card": "Sistema de<br/>Injeção de Ozônio",
-        "desc_card": "Bypass personalizado para injeção eficiente na água",
+        "nome_card": "Bypass<br/>de Injeção",
+        "desc_card": "Sistema personalizado para injeção eficiente do ozônio na água",
         "nome_tabela": "Bypass",
-        "qtd": 1, "unit": 924.00, "desc_pct": None,
+        "qtd": 1, "unit": 924.00, "desc_pct": 20, "is_eng": True,
+    },
+    {
+        "icon": "wind",
+        "nome_card": "Filtro<br/>de Sílica",
+        "desc_card": "Filtragem mecânica complementar do sistema",
+        "nome_tabela": "Filtro de Sílica",
+        "qtd": 1, "unit": 241.50, "desc_pct": 20, "is_eng": True,
+    },
+    {
+        "icon": "shield",
+        "nome_card": "Filtro de Fibra<br/>Personalizado",
+        "desc_card": "Filtro de fibra dimensionado e fabricado sob medida para este projeto",
+        "nome_tabela": "Filtro de Fibra Personalizado",
+        "qtd": 1, "unit": 4600.00, "desc_pct": None, "is_eng": False,
     },
 ]
 
-VALOR_PROJETO_EXECUTIVO = 8000.00
+VALOR_PROJETO_EXECUTIVO = 4000.00
+PROJETO_EH_CORTESIA     = True   # se True: mostra "CORTESIA" no lugar do valor (riscado em cinza)
 DESCONTO_PARCEIRO_PCT   = 20
 
 
@@ -109,15 +120,24 @@ def icon_html(name: str, size_mm: float = 10) -> str:
 
 def calc_totais():
     subtotal = 0.0
+    eng_cheio = 0.0
+    eng_com_desc = 0.0
     for p in PRODUTOS:
         bruto = p["qtd"] * p["unit"]
         if p["desc_pct"]:
-            bruto *= (1 - p["desc_pct"]/100)
-        subtotal += bruto
-    return subtotal, subtotal + VALOR_PROJETO_EXECUTIVO
+            valor = bruto * (1 - p["desc_pct"]/100)
+        else:
+            valor = bruto
+        subtotal += valor
+        if p.get("is_eng"):
+            eng_cheio    += bruto
+            eng_com_desc += valor
+    valor_projeto = 0.0 if PROJETO_EH_CORTESIA else VALOR_PROJETO_EXECUTIVO
+    return subtotal, subtotal + valor_projeto, eng_cheio, eng_com_desc
 
 
-SUBTOTAL_EQUIP, TOTAL_GERAL = calc_totais()
+SUBTOTAL_EQUIP, TOTAL_GERAL, ENG_CHEIO, ENG_COM_DESC = calc_totais()
+ECONOMIA_PARCEIRO = ENG_CHEIO - ENG_COM_DESC
 
 
 # ====================================================================
@@ -240,12 +260,12 @@ h1 {
 
 .cards-eq td { width: 33.333%; vertical-align: top; }
 .cards-eq .card { text-align: center; padding: 0 3mm; }
-.cards-eq .icon-wrap { display: block; margin: 0 auto 3mm auto; width: 9mm; height: 9mm; }
+.cards-eq .icon-wrap { display: block; margin: 0 auto 2mm auto; width: 8mm; height: 8mm; }
 .cards-eq .title-inline {
-    display: block; margin-left: 0; font-size: 13.5pt;
+    display: block; margin-left: 0; font-size: 12pt;
     color: #E5DCC8; font-weight: 600; line-height: 1.2;
 }
-.cards-eq .desc { margin: 4mm 0 0 0; text-align: center; border: 0; padding-top: 0; }
+.cards-eq .desc { margin: 2.5mm 0 0 0; text-align: center; border: 0; padding-top: 0; font-size: 9pt; }
 
 .quote {
     position: relative; text-align: center;
@@ -272,7 +292,7 @@ h1 {
 .inv-table thead th.r { text-align: right; }
 .inv-table thead th.c { text-align: center; }
 .inv-table tbody td {
-    padding: 2.5mm 4mm; font-size: 10pt; color: #E5DCC8;
+    padding: 1.8mm 4mm; font-size: 9.5pt; color: #E5DCC8;
     border-bottom: 1px solid rgba(201,165,110,.10);
 }
 .inv-table tbody td.r { text-align: right; font-variant-numeric: tabular-nums; }
@@ -280,26 +300,65 @@ h1 {
 .inv-table .green { color: #52C75E; font-weight: 600; }
 .inv-table .dash { color: #6a6253; }
 
-.totals-rows { width: 100%; margin-top: 6mm; font-size: 11pt; }
+.totals-rows { width: 100%; margin-top: 3mm; font-size: 10.5pt; }
 .totals-rows td {
-    padding: 3mm 4mm; font-weight: 600;
+    padding: 2mm 4mm; font-weight: 600;
     border-top: 1px solid rgba(201,165,110,.18);
     color: #E5DCC8;
 }
 .totals-rows td.r { text-align: right; font-variant-numeric: tabular-nums; }
 .totals-rows tr.grand td {
-    padding: 5mm 4mm 3mm 4mm;
+    padding: 3mm 4mm 2mm 4mm;
     color: #C9A56E;
     font-family: 'Cormorant Garamond', serif;
-    font-weight: 600; font-size: 22pt;
+    font-weight: 600; font-size: 20pt;
     border-top: 1px solid rgba(201,165,110,.4);
 }
 .totals-rows tr.grand td.r {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 32pt;
+    font-size: 28pt;
 }
 .footnote {
     margin-top: 4mm; font-style: italic; font-size: 8.5pt; color: #8a7f6a;
+}
+
+/* Bloco de comparação ENG cheia vs Com Thiago */
+.comparison {
+    width: 100%; margin-top: 4mm;
+    border-collapse: collapse;
+    background: rgba(201,165,110,.05);
+}
+.comparison td {
+    padding: 2mm 5mm; font-size: 10pt; color: #E5DCC8;
+    border-bottom: 1px solid rgba(201,165,110,.10);
+}
+.comparison td.lbl { color: #B5AB94; }
+.comparison td.r { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.comparison .strike-soft {
+    text-decoration: line-through;
+    text-decoration-color: rgba(201,165,110,.5);
+    color: #8a7f6a; font-weight: 400;
+}
+.comparison tr.econ td {
+    background: rgba(82,199,94,.08);
+    border-bottom: 0;
+    border-top: 1px solid rgba(82,199,94,.30);
+    color: #52C75E;
+    font-weight: 700; font-size: 11pt;
+    padding: 2.5mm 5mm;
+}
+.comparison tr.econ td.lbl { color: #52C75E; }
+
+/* Linha do projeto executivo: valor riscado + tag CORTESIA */
+.strike {
+    text-decoration: line-through;
+    text-decoration-color: rgba(201,165,110,.6);
+    color: #8a7f6a; font-weight: 400; margin-right: 5mm;
+    font-variant-numeric: tabular-nums;
+}
+.cortesia {
+    color: #52C75E; font-weight: 700;
+    letter-spacing: .06em; font-size: 11pt;
 }
 
 /* EXCLUSÕES */
@@ -521,10 +580,14 @@ def page_investimento():
         </tr>
         """
 
+    if PROJETO_EH_CORTESIA:
+        projeto_cell = f'<span class="strike">{fmt(VALOR_PROJETO_EXECUTIVO)}</span><span class="cortesia">CORTESIA</span>'
+    else:
+        projeto_cell = fmt(VALOR_PROJETO_EXECUTIVO)
     return f"""
     <div class="page">
         <h1>Investimento</h1>
-        <div class="sub-italic">Valores com Condição de Parceiro ENG Soluções — {DESCONTO_PARCEIRO_PCT}% de desconto nas linhas Ozone Fish e Filtro UV</div>
+        <div class="sub-italic">Valores com Condição de Parceiro ENG Soluções — {DESCONTO_PARCEIRO_PCT}% de desconto em toda a linha ENG</div>
         <table class="inv-table">
             <thead><tr>
                 <th>Equipamento</th>
@@ -535,21 +598,25 @@ def page_investimento():
             </tr></thead>
             <tbody>{rows}</tbody>
         </table>
+        <table class="comparison">
+            <tr><td class="lbl">Direto na ENG Soluções (lista cheia):</td><td class="r strike-soft">{fmt(ENG_CHEIO)}</td></tr>
+            <tr><td class="lbl">Com Thiago Nicezio — parceiro ENG (-{DESCONTO_PARCEIRO_PCT}%):</td><td class="r">{fmt(ENG_COM_DESC)}</td></tr>
+            <tr class="econ"><td class="lbl">Sua economia exclusiva como parceiro:</td><td class="r">{fmt(ECONOMIA_PARCEIRO)}</td></tr>
+        </table>
         <table class="totals-rows">
             <tr>
-                <td>Subtotal Equipamentos (com desconto parceiro {DESCONTO_PARCEIRO_PCT}%):</td>
+                <td>Subtotal Equipamentos:</td>
                 <td class="r">{fmt(SUBTOTAL_EQUIP)}</td>
             </tr>
             <tr>
                 <td>Projeto Executivo + Visita Técnica + Start do Sistema:</td>
-                <td class="r">{fmt(VALOR_PROJETO_EXECUTIVO)}</td>
+                <td class="r">{projeto_cell}</td>
             </tr>
             <tr class="grand">
                 <td>TOTAL GERAL:</td>
                 <td class="r">{fmt(TOTAL_GERAL)}</td>
             </tr>
         </table>
-        <div class="footnote">* Valores com contrato de parceiro ENG Soluções assinado. Desconto de {DESCONTO_PARCEIRO_PCT}% aplicado nas linhas Ozone Fish e Filtro UV.</div>
         {footer_html()}
     </div>
     """
