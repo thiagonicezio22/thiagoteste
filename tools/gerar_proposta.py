@@ -23,73 +23,106 @@ OUT = OUT_DIR / "proposta.pdf"
 # DADOS DO CLIENTE — editar para cada orçamento
 # ====================================================================
 PROJETO = {
-    "cliente":  "Mauricio",
+    "cliente":  "Eugenio",
     "data":     "Maio 2026",
     "tipo":     "Lago Ornamental",     # "Lago Ornamental" ou "Piscina Praia"
-    "volume":   "50.000 Litros",
+    "volume":   "300.000 Litros",
 }
 
-# Cada produto alimenta simultaneamente:
-#   - pág "Equipamentos Especificados" (icon + nome_card + desc_card)
-#   - tabela "Investimento" (nome_tabela + qtd + unit + desc_pct)
-# Campo "is_eng": True para itens da linha ENG Soluções (entram na comparação
-# "Direto na ENG vs Com Thiago Nicezio"). False para itens externos (filtro de
-# fibra personalizado etc) que não fazem parte do desconto parceiro.
+# Cada produto pode aparecer na pág "Equipamentos Especificados" (cards) e/ou na
+# tabela "Investimento". Use show_in_card / show_in_table para controlar.
+# Útil quando se quer agrupar vários itens num único card (ex: "Sistema de
+# Bombeamento" combinando 3 bombas diferentes que vão separadas na tabela).
 PRODUTOS = [
+    # 1 — Ozone Fish Power Max
     {
         "icon": "bolt",
-        "nome_card": "Ozone Fish<br/>60.000",
-        "desc_card": "Gerador de ozônio industrial dimensionado para 50.000 litros",
-        "nome_tabela": "Ozone Fish 60.000",
-        "qtd": 1, "unit": 4084.50, "desc_pct": 20, "is_eng": True,
+        "nome_card": "Ozone Fish<br/>Power Max",
+        "desc_card": "Gerador de ozônio industrial — até 500.000 litros",
+        "nome_tabela": "Ozone Fish Power Max — Até 500.000L",
+        "qtd": 1, "unit": 27300.00, "desc_pct": 30, "is_eng": True,
+        "show_in_card": True, "show_in_table": True,
     },
+    # 2 — Concentrador
+    {
+        "icon": "wind",
+        "nome_card": "Concentrador<br/>10 LPM",
+        "desc_card": "Pureza 95% — aumenta +300% a potência do ozônio",
+        "nome_tabela": "Concentrador 10 LPM — 220V",
+        "qtd": 1, "unit": 12000.00, "desc_pct": 30, "is_eng": True,
+        "show_in_card": True, "show_in_table": True,
+    },
+    # 3 — ENG MIX
+    {
+        "icon": "waves",
+        "nome_card": "ENG<br/>MIX",
+        "desc_card": "Microbolhas que potencializam a transferência de ozônio",
+        "nome_tabela": "ENG MIX",
+        "qtd": 1, "unit": 1890.00, "desc_pct": 30, "is_eng": True,
+        "show_in_card": True, "show_in_table": True,
+    },
+    # 4 — Filtro UV Inox 380W (principal)
     {
         "icon": "sun",
         "nome_card": "Filtro UV Inox<br/>380W",
-        "desc_card": "Esterilização UV-C industrial, corpo em aço inox 304",
+        "desc_card": "Esterilização UV-C industrial principal",
         "nome_tabela": "Filtro UV Inox 380W — 220V",
-        "qtd": 1, "unit": 9943.50, "desc_pct": 20, "is_eng": True,
+        "qtd": 1, "unit": 9943.50, "desc_pct": 30, "is_eng": True,
+        "show_in_card": True, "show_in_table": True,
     },
+    # 5 — Filtro UV 95W (auxiliar)
     {
-        "icon": "drop",
-        "nome_card": "Bomba AquaMax<br/>50.000 L/h",
-        "desc_card": "Alta vazão — uma para o ozônio, outra para o UV",
-        "nome_tabela": "Bomba AquaMax 50.000 L/h",
-        "qtd": 2, "unit": 2730.00, "desc_pct": 20, "is_eng": True,
+        "icon": "eye",
+        "nome_card": "Filtro UV<br/>95W",
+        "desc_card": "Esterilização UV-C auxiliar complementar",
+        "nome_tabela": "Filtro UV 95W — 220V",
+        "qtd": 1, "unit": 2205.00, "desc_pct": 30, "is_eng": True,
+        "show_in_card": True, "show_in_table": True,
     },
-    {
-        "icon": "waves",
-        "nome_card": "ENG MIX",
-        "desc_card": "Microbolhas que potencializam a transferência de ozônio",
-        "nome_tabela": "ENG MIX",
-        "qtd": 1, "unit": 1890.00, "desc_pct": 20, "is_eng": True,
-    },
+    # 6 — Bypass
     {
         "icon": "arrows",
         "nome_card": "Bypass<br/>de Injeção",
         "desc_card": "Sistema personalizado para injeção eficiente do ozônio na água",
         "nome_tabela": "Bypass",
-        "qtd": 1, "unit": 924.00, "desc_pct": 20, "is_eng": True,
+        "qtd": 1, "unit": 924.00, "desc_pct": 30, "is_eng": True,
+        "show_in_card": True, "show_in_table": True,
     },
+    # 7 — Card agrupado: Sistema de Bombeamento (não vai pra tabela)
     {
-        "icon": "wind",
-        "nome_card": "Filtro<br/>de Sílica",
-        "desc_card": "Filtragem mecânica complementar do sistema",
-        "nome_tabela": "Filtro de Sílica",
-        "qtd": 1, "unit": 241.50, "desc_pct": 20, "is_eng": True,
+        "icon": "drop",
+        "nome_card": "Sistema de<br/>Bombeamento",
+        "desc_card": "1× 35.000 L/h (UV 380W) + 1× 20.000 L/h (UV 95W) + 4× 50.000 L/h (circulação)",
+        "nome_tabela": None,
+        "qtd": None, "unit": None, "desc_pct": None, "is_eng": False,
+        "show_in_card": True, "show_in_table": False,
     },
+    # 8 — Bomba 35.000 L/h (só na tabela)
     {
-        "icon": "shield",
-        "nome_card": "Filtro de Fibra<br/>Personalizado",
-        "desc_card": "Filtro de fibra dimensionado e fabricado sob medida para este projeto",
-        "nome_tabela": "Filtro de Fibra Personalizado",
-        "qtd": 1, "unit": 4600.00, "desc_pct": None, "is_eng": False,
+        "icon": None, "nome_card": None, "desc_card": None,
+        "nome_tabela": "Bomba 35.000 L/h ENG — para UV 380W",
+        "qtd": 1, "unit": 1837.50, "desc_pct": 30, "is_eng": True,
+        "show_in_card": False, "show_in_table": True,
+    },
+    # 9 — Bomba 20.000 L/h (só na tabela)
+    {
+        "icon": None, "nome_card": None, "desc_card": None,
+        "nome_tabela": "Bomba 20.000 L/h ENG — para UV 95W",
+        "qtd": 1, "unit": 1593.90, "desc_pct": 30, "is_eng": True,
+        "show_in_card": False, "show_in_table": True,
+    },
+    # 10 — 4× Bomba 50.000 L/h (só na tabela — adicionada manualmente)
+    {
+        "icon": None, "nome_card": None, "desc_card": None,
+        "nome_tabela": "Bomba 50.000 L/h ENG — circulação geral",
+        "qtd": 4, "unit": 2730.00, "desc_pct": 30, "is_eng": True,
+        "show_in_card": False, "show_in_table": True,
     },
 ]
 
 VALOR_PROJETO_EXECUTIVO = 4000.00
-PROJETO_EH_CORTESIA     = True   # se True: mostra "CORTESIA" no lugar do valor (riscado em cinza)
-DESCONTO_PARCEIRO_PCT   = 20
+PROJETO_EH_CORTESIA     = False  # se True: mostra "CORTESIA" no lugar do valor (riscado em cinza)
+DESCONTO_PARCEIRO_PCT   = 30
 
 
 # ====================================================================
@@ -123,6 +156,8 @@ def calc_totais():
     eng_cheio = 0.0
     eng_com_desc = 0.0
     for p in PRODUTOS:
+        if not p.get("show_in_table", True):
+            continue
         bruto = p["qtd"] * p["unit"]
         if p["desc_pct"]:
             valor = bruto * (1 - p["desc_pct"]/100)
@@ -260,12 +295,27 @@ h1 {
 
 .cards-eq td { width: 33.333%; vertical-align: top; }
 .cards-eq .card { text-align: center; padding: 0 3mm; }
-.cards-eq .icon-wrap { display: block; margin: 0 auto 2mm auto; width: 8mm; height: 8mm; }
-.cards-eq .title-inline {
-    display: block; margin-left: 0; font-size: 12pt;
-    color: #E5DCC8; font-weight: 600; line-height: 1.2;
+/* Wrapper do ícone com altura fixa garante que TODOS os ícones se alinham
+   horizontalmente entre cards, independente da proporção do PNG (alguns são
+   altos, outros largos). object-fit:contain centraliza dentro do quadrado. */
+.cards-eq .icon-wrap {
+    display: block; margin: 0 auto 3mm auto;
+    width: 9mm; height: 9mm;
 }
-.cards-eq .desc { margin: 2.5mm 0 0 0; text-align: center; border: 0; padding-top: 0; font-size: 9pt; }
+.cards-eq .icon-wrap img { object-fit: contain; }
+/* min-height: 10mm = ~2 linhas de título a 12pt × 1.2. Garante que mesmo títulos
+   de 1 linha ocupam o mesmo espaço vertical, alinhando o início da descrição
+   em todos os cards. */
+.cards-eq .title-inline {
+    display: block; margin-left: 0;
+    font-size: 12pt; line-height: 1.2;
+    color: #E5DCC8; font-weight: 600;
+    min-height: 10mm;
+}
+.cards-eq .desc {
+    margin: 2mm 0 0 0; text-align: center; border: 0;
+    padding-top: 0; font-size: 9pt; line-height: 1.4;
+}
 
 .quote {
     position: relative; text-align: center;
@@ -286,13 +336,13 @@ h1 {
 .inv-table { width: 100%; border-collapse: collapse; margin-top: 5mm; }
 .inv-table thead th {
     background: #C9A56E; color: #04140F;
-    font-size: 10pt; font-weight: 700; padding: 3mm 4mm;
+    font-size: 10pt; font-weight: 700; padding: 2.2mm 4mm;
     text-align: left; letter-spacing: .02em;
 }
 .inv-table thead th.r { text-align: right; }
 .inv-table thead th.c { text-align: center; }
 .inv-table tbody td {
-    padding: 1.8mm 4mm; font-size: 9.5pt; color: #E5DCC8;
+    padding: 1.4mm 4mm; font-size: 9.5pt; color: #E5DCC8;
     border-bottom: 1px solid rgba(201,165,110,.10);
 }
 .inv-table tbody td.r { text-align: right; font-variant-numeric: tabular-nums; }
@@ -300,23 +350,23 @@ h1 {
 .inv-table .green { color: #52C75E; font-weight: 600; }
 .inv-table .dash { color: #6a6253; }
 
-.totals-rows { width: 100%; margin-top: 3mm; font-size: 10.5pt; }
+.totals-rows { width: 100%; margin-top: 2mm; font-size: 10pt; }
 .totals-rows td {
-    padding: 2mm 4mm; font-weight: 600;
+    padding: 1.5mm 4mm; font-weight: 600;
     border-top: 1px solid rgba(201,165,110,.18);
     color: #E5DCC8;
 }
 .totals-rows td.r { text-align: right; font-variant-numeric: tabular-nums; }
 .totals-rows tr.grand td {
-    padding: 3mm 4mm 2mm 4mm;
+    padding: 2.5mm 4mm 1.5mm 4mm;
     color: #C9A56E;
     font-family: 'Cormorant Garamond', serif;
-    font-weight: 600; font-size: 20pt;
+    font-weight: 600; font-size: 18pt;
     border-top: 1px solid rgba(201,165,110,.4);
 }
 .totals-rows tr.grand td.r {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 28pt;
+    font-size: 24pt;
 }
 .footnote {
     margin-top: 4mm; font-style: italic; font-size: 8.5pt; color: #8a7f6a;
@@ -324,12 +374,12 @@ h1 {
 
 /* Bloco de comparação ENG cheia vs Com Thiago */
 .comparison {
-    width: 100%; margin-top: 4mm;
+    width: 100%; margin-top: 3mm;
     border-collapse: collapse;
     background: rgba(201,165,110,.05);
 }
 .comparison td {
-    padding: 2mm 5mm; font-size: 10pt; color: #E5DCC8;
+    padding: 1.5mm 5mm; font-size: 10pt; color: #E5DCC8;
     border-bottom: 1px solid rgba(201,165,110,.10);
 }
 .comparison td.lbl { color: #B5AB94; }
@@ -344,8 +394,8 @@ h1 {
     border-bottom: 0;
     border-top: 1px solid rgba(82,199,94,.30);
     color: #52C75E;
-    font-weight: 700; font-size: 11pt;
-    padding: 2.5mm 5mm;
+    font-weight: 700; font-size: 10.5pt;
+    padding: 2mm 5mm;
 }
 .comparison tr.econ td.lbl { color: #52C75E; }
 
@@ -540,8 +590,9 @@ def page_escopo():
 
 
 def page_equipamentos():
+    cards_data = [p for p in PRODUTOS if p.get("show_in_card", True)]
     rows = ""
-    chunks = [PRODUTOS[i:i+3] for i in range(0, len(PRODUTOS), 3)]
+    chunks = [cards_data[i:i+3] for i in range(0, len(cards_data), 3)]
     for chunk in chunks:
         rows += "<tr>"
         for p in chunk:
@@ -562,6 +613,8 @@ def page_equipamentos():
 def page_investimento():
     rows = ""
     for p in PRODUTOS:
+        if not p.get("show_in_table", True):
+            continue
         q, vu = p["qtd"], p["unit"]
         bruto = q * vu
         if p["desc_pct"]:
