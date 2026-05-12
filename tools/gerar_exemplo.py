@@ -108,8 +108,31 @@ body { font-family: 'Manrope', sans-serif; color: #f5f1e8; background: #06090F; 
     padding-bottom: 4mm; margin-bottom: 5mm;
 }
 .brand-logo {
-    display: inline-block; height: 22mm; width: auto;
-    filter: drop-shadow(0 4px 12px rgba(0,0,0,.5));
+    display: inline-block; height: 24mm; width: auto;
+    filter: drop-shadow(0 4px 16px rgba(251,191,36,.15)) drop-shadow(0 2px 8px rgba(0,0,0,.6));
+}
+.brand-logo-sm { height: 16mm; }
+
+/* Stats bar (pág 2) */
+.stats-bar {
+    width: 100%; border-collapse: separate; border-spacing: 2mm;
+    margin: 4mm 0 7mm 0;
+}
+.stats-bar td {
+    width: 25%; vertical-align: middle; text-align: center;
+    padding: 4mm 3mm;
+    background: linear-gradient(135deg, rgba(245,158,11,.05), rgba(245,158,11,.01));
+    border: 1px solid rgba(251,191,36,.12);
+    border-radius: 2mm;
+}
+.stat-num {
+    font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 500;
+    color: #fbbf24; font-size: 22pt; line-height: 1;
+}
+.stat-lbl {
+    font-family: 'Manrope', sans-serif; font-size: 6.5pt;
+    color: rgba(245,241,232,.65); letter-spacing: .14em;
+    text-transform: uppercase; margin-top: 2mm;
 }
 
 /* Gold line */
@@ -378,6 +401,15 @@ def page2():
     <div class="page">
         {header()}
         <div class="p2-content">
+            <table class="stats-bar">
+                <tr>
+                    <td><div class="stat-num">+15</div><div class="stat-lbl">Anos de atuação</div></td>
+                    <td><div class="stat-num">+200</div><div class="stat-lbl">Projetos entregues</div></td>
+                    <td><div class="stat-num">3</div><div class="stat-lbl">Continentes</div></td>
+                    <td><div class="stat-num">ABLP</div><div class="stat-lbl">Presidente</div></td>
+                </tr>
+            </table>
+
             <div class="sec-sub">Tecnologia &amp; Metodologia</div>
             <div class="sec-title">Por que projetos Thiago Nicézio entregam mais</div>
 
@@ -411,7 +443,11 @@ def page3():
 
     return f"""
     <div class="page">
-        <div style="text-align:center; padding-top: 3mm;">
+        <div class="brand-header">
+            <img class="brand-logo brand-logo-sm" src="data:image/png;base64,{logo_b64}" />
+        </div>
+
+        <div style="text-align:center; padding-top: 1mm;">
             <div class="orc-title">Orçamento</div>
             <div class="orc-sub">Equipamentos ENG · Tratamento de Água</div>
             <div class="gold-line"></div>
