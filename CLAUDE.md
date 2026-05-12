@@ -1,14 +1,26 @@
-# Gerador de Orçamentos Premium — Thiago Nicézio
+# Proposta de Parceria Técnica — Thiago Nicézio
 
 ## Quem sou eu
 
-Thiago Nicézio Santos. Sócio da ENG Soluções (referência nacional em ozônio e UV para tratamento de água) e presidente da ABLP. Especialista em lagos ornamentais e piscinas praia.
+Thiago Nicézio Santos. Sócio da ENG Soluções (referência nacional em ozônio e UV para tratamento de água) e Presidente da ABLP. Especialista em lagos ornamentais e piscinas praia com atuação no Brasil, Europa e EUA. **Não executo obras — projeto, especifico e garanto qualidade e resultado.**
 
-### Credenciais (4 cards usados na seção Institucional)
-1. **Experiência de Campo** — Anos de atuação prática em lagos ornamentais e piscinas praia no Brasil
-2. **ENG Soluções** — Sócio da empresa referência nacional em tratamento de água
-3. **Liderança Setorial** — Presidente da ABLP, liderando padronização e profissionalização do mercado
-4. **Domínio Técnico Completo** — Concepção, hidráulica, circulação, filtragem, UV, ozônio, automação, comissionamento
+### Posicionamento canônico (5 credenciais — pág 2 da proposta)
+
+| # | Título | Subtítulo |
+|---|---|---|
+| 1 | Padrão Internacional | Projetos no Brasil, Europa e EUA |
+| 2 | Presidente da ABLP | Normatiza o setor no Brasil |
+| 3 | Sócio ENG Soluções | Domina a tecnologia por dentro |
+| 4 | Especialista Técnico | Dimensionamento preciso, zero improviso |
+| 5 | Garantia de Resultado | Compromisso com água cristalina |
+
+### Frase-âncora (quote no rodapé da pág 2)
+
+> *"Percorreu o mundo em busca das melhores tecnologias em tratamento aquático e as aplicou nos projetos mais exigentes do país."*
+
+### Frase de encerramento (pág 11)
+
+> *"Água cristalina não é promessa. É compromisso técnico."*
 
 ---
 
@@ -16,85 +28,122 @@ Thiago Nicézio Santos. Sócio da ENG Soluções (referência nacional em ozôni
 
 ```bash
 pip install weasyprint --break-system-packages
+apt-get install -y poppler-utils  # pra pdftoppm gerar previews
 ```
 
-### Fontes — Google Fonts via @import no CSS
+### Fontes — Google Fonts via @import
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Manrope:wght@200;300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Manrope:wght@300;400;500;600;700&display=swap');
 ```
-- **Cormorant Garamond** — títulos serif
-- **Manrope** — corpo sans
 
-### Logo
-- `assets/logo_thiago_nicezio.png` — embutir via base64 no HTML
-- Se não existir, procurar em `pptx_images/slide1_img3.png` ou extrair de qualquer PPTX
+### Assets obrigatórios
 
-### Imagens de Ambientação
-- `assets/renders/lago_ornamental.jpg` — hero pra orçamentos de execução
-- `assets/renders/piscina_praia.jpg` — hero pra piscina praia
-- `assets/renders/casa_de_maquinas/*` — renders 3D técnicos do Thiago (sala de máquinas, biofiltro, skimmer, comissionamento)
+```
+assets/
+├── logo_thiago_nicezio.png        # logo oficial (extraída do pptx Gramopool)
+├── icons/                          # 14 PNG bronze + 3 inline SVG
+│   ├── target.png       (especialista)
+│   ├── drop.png         (água/AquaMax)
+│   ├── lock.png         (confidencialidade)
+│   ├── sitemap.png      (projeto técnico)
+│   ├── handshake.png    (parceria)
+│   ├── wrench.png       (visita técnica + start)
+│   ├── document.png     (contrato)
+│   ├── bolt.png         (Ozone Fish Power)
+│   ├── wind.png         (Concentrador)
+│   ├── waves.png        (ENG MIX)
+│   ├── sun.png          (Filtro UV)
+│   ├── arrows.png       (Sistema de Injeção)
+│   ├── shield.png       (Domínio Técnico)
+│   └── eye.png          (Compromisso)
+└── renders/
+    ├── projeto_aerea_full.png      # hero principal (vista aérea)
+    ├── projeto_deck_close.png      # close do deck
+    ├── projeto_aerea_sunset.png    # vista sunset
+    └── lago_ornamental.jpg         # fallback genérico
+```
+
+Os 3 ícones que não estão em PNG (**globe**, **medal**, **gears**) são SVG inline em `tools/gerar_proposta.py` — funções `svg_globe()` / `svg_medal()` / `svg_gears()`, todos preenchidos em `#C9A56E`.
 
 ---
 
-## Fluxo do PDF Integrado (Padrão)
+## Template Canônico: Proposta de Parceria Técnica — 11 páginas landscape
 
-PDF único de 3 páginas A4, gerado UMA VEZ por cliente:
+**Este é o ÚNICO modelo a ser usado pra todo orçamento.** Posicionamos sempre como "proposta de parceria técnica", cativa o cliente desde o primeiro contato.
 
-1. **Página 1 — Apresentação Institucional**
-   - Header (logo + nome) + tagline
-   - "Quem sou" (parágrafo curto)
-   - 4 cards de credenciais
-   - Imagem hero
-2. **Página 2 — Tecnologia & Diferenciais**
-   - 3 diferenciais (UV+Ozônio sem químicos / Engenharia hidráulica / Acompanhamento integral)
-   - Grid de 4 renders técnicos (casa de máquinas, biofiltro, isométrica, comissionamento)
-3. **Página 3 — Orçamento**
-   - Equipamentos ENG **ou** Execução de Lago (escolher template)
+Formato: **landscape PowerPoint-size** (338.67mm × 190.5mm). NÃO é A4 portrait.
 
-Se o cliente já recebeu a institucional antes, gerar só a Página 3 (orçamento standalone).
+### Estrutura das 11 páginas
+
+| # | Nome | Conteúdo |
+|---|---|---|
+| 1 | **Capa** | Logo grande + linha dourada + "Proposta de Parceria Técnica" + subtítulo (sistema/volume) + diagonal + Cliente: NOME + Data |
+| 2 | **Quem é Thiago Nicezio** | H1 + logo small top-right + parágrafo intro + 5 cards 2-col (com ícones) + quote dourada com diagonal cruzando |
+| 3 | **A Parceria** | H1 + subtítulo italic + parágrafo + 3 cards centralizados (Confidencialidade / Projeto Técnico / Parceria Longo Prazo) |
+| 4 | **Visualização do Projeto** | H1 + subtítulo italic + mosaico (1 grande à esquerda + 2 pequenas empilhadas à direita) |
+| 5 | **Escopo do Primeiro Projeto** | H1 + subtítulo italic + 4 cards 2x2 (Projeto Executivo / Fornecimento / Visita+Start / Confidencialidade) + quote "Objetivo Central" |
+| 6 | **Equipamentos Especificados** | H1 + subtítulo italic + 6 cards 3x2 com ícones bronze (sem preços, só nome+descrição) |
+| 7 | **Investimento** | H1 + subtítulo italic com condição parceiro + tabela 5 col (Equip/Qtd/Unit/Desc/Total) + descontos `-20%` em verde + subtotal + valor projeto + TOTAL GERAL Cormorant grande + footnote italic |
+| 8 | **Itens Não Inclusos** | H1 + subtítulo italic "Transparência Total" + 8 items em 2 colunas + nota de explicação com diagonal |
+| 9 | **Condições** | H1 + esquerda: "Investimento Total R$X" grande Cormorant + Pagamento à vista PIX + direita: 4 cards (Contrato / Pagamento / Entrega / Visita) + nota "Incluso" |
+| 10 | **Por que Thiago Nicezio** | H1 + 5 cards 2-col (Padrão Internacional / Domínio Técnico / Autoridade no Setor / Compromisso / Parceiro Não Fornecedor) |
+| 11 | **Encerramento** | Logo centralizada grande + linha dourada + quote italic "Água cristalina não é promessa..." + contato + "Obrigado pela confiança." |
+
+### O que muda entre clientes
+
+Apenas: **nome do cliente, mês, volume do lago, lista de produtos com qtd/valor/desconto, valor do projeto executivo**. Estrutura visual, copy fixa, layout e elementos: **idênticos sempre**.
 
 ---
 
-## Como Gerar um Orçamento
+## Como Gerar uma Proposta
 
-Perguntar:
+Perguntar ao Thiago:
 
-1. **Tipo**: Equipamentos ENG ou Execução de Lago?
-2. **Cliente**: Nome da empresa, CNPJ, cidade/estado, telefone, email
-3. **Local da obra** (se execução): nome do local, cidade/estado
-4. **Produtos** (se equipamentos): lista com descrição, quantidade, valor unitário
-5. **Valores**: total, área (se execução), prazo em dias
-6. **Desconto?**: percentual, condição, quais produtos
-7. **Exclusões**: o que NÃO está contemplado
-8. **Condições de pagamento**: PIX, parcelamento, validade
-9. **Email do footer**: `contato@filtrosuvc.com.br` (ENG) ou `contato@thiagonicezio.com` (pessoal)
-10. **Apresentação institucional incluída?** (sim por padrão; não se cliente já recebeu)
+1. **Cliente** — Nome (ex: "Marcio — Gramopool" ou "Otávio — Empresa X")
+2. **Data** — Mês/Ano (ex: "Maio 2026")
+3. **Volume do lago** — em litros (ex: "150.000 Litros")
+4. **Equipamentos** — Lista de itens, cada um com:
+   - Nome (ex: "Ozone Fish Power — Inox")
+   - Quantidade
+   - Valor unitário tabela ENG
+   - Desconto parceiro? (geralmente 20% em Ozone Fish e Filtro UV)
+5. **Valor do Projeto Executivo + Visita Técnica + Start** (ex: R$ 8.000)
+6. **Condição de pagamento** — Padrão: "PIX / Transferência Bancária" à vista
 
-Depois gerar o script Python e rodar para criar o PDF.
+Daí editar `tools/gerar_proposta.py` (variáveis `CLIENTE`, `DATA`, `VOLUME`, `PRECOS`, `VALOR_PROJETO`) e rodar:
+
+```bash
+python3 tools/gerar_proposta.py
+```
+
+O PDF sai em `output/proposta.pdf`.
 
 ---
 
 ## Regras CRÍTICAS
 
-- **NUNCA inventar modelos de equipamento** que não existem. Modelos válidos:
+- **SEMPRE 11 páginas** — não reduzir, não pular seções
+- **SEMPRE "Proposta de Parceria Técnica"** no título — não usar "Orçamento"
+- **NUNCA inventar modelos de equipamento**. Modelos válidos:
   - Ozone Fish: 3000, 8000, 15000, 30000, 60000, 80000, 120000, Power
   - Filtro UV: 60W, 95W, 190W, 380W, Power
   - AquaMax: 35000, 50000
   - Acessórios: ENG MIX, ENG Protect, OzoneUP, Bypass da ENG, Filtro de Sílica, Concentrador de Oxigênio
-- **Cada página em A4** — se não couber, reduzir paddings e font-sizes
-- **WeasyPrint NÃO suporta bem flexbox** — usar `<table>` para grids/layouts lado a lado
+- **WeasyPrint NÃO suporta flexbox** — usar `<table>` para grids/layouts lado a lado
 - **Logo SEMPRE em base64** embutido no HTML (não path externo)
-- **Moeda BRL**: `R$ 1.000,00` (ponto para milhares, vírgula para decimais)
+- **Moeda BRL**: `R$ 1.000,00` (ponto milhares, vírgula decimais) — usar a função `fmt(v)`
 - **NUNCA enviar preços no chat** — somente no PDF
 - **Todos os equipamentos operam em 220V**
+- **Desconto parceiro 20%** padrão se aplica APENAS às linhas Ozone Fish e Filtro UV
+- **Footnote sempre** na pág 7: "Valores com contrato de parceiro ENG Soluções assinado..."
+- **Email do footer**: `contato@filtrosuvc.com.br`
 
 ---
 
 ## Formatador de Moeda BR
 
 ```python
-def fmt(v):
-    """Formata valor como Real brasileiro."""
+def fmt(v: float) -> str:
     int_part = int(v)
     dec_part = int(round((v - int_part) * 100))
     int_str = f"{int_part:,}".replace(",", ".")
@@ -103,289 +152,151 @@ def fmt(v):
 
 ---
 
-## Design System — Marinho Profundo + Amber
+## Design System — Verde-Preto + Bronze Fosco
 
-Identidade alinhada ao site thiagonicezio.com.
+Identidade visual alinhada ao modelo aprovado (Otávio/Gramopool).
 
 ### Cores
+
 | Uso | Hex |
 |---|---|
-| Fundo página (marinho profundo) | `#06090F` |
-| Fundo secundário (gradiente sutil) | `#0a1224` → `#0f172a` |
-| Bordas/superfícies | `#1e293b` |
-| Texto principal (creme quente) | `#f5f1e8` |
-| Texto secundário | `#94a3b8` |
-| Texto terciário/labels | `rgba(245,241,232,.72)` |
-| **Amber primário** (títulos, linhas, labels) | `#fbbf24` |
-| **Amber profundo** (header tabela, destaques) | `#f59e0b` |
-| Amber luminoso (hover/glow) | `#fcd34d` |
-| Amber translúcido (bg cards) | `rgba(245,158,11,.08)` |
-| Total Box (dourado luxo) | `#f59e0b` → `#fbbf24` → `#fcd34d` |
-| Total Box texto (sobre dourado) | `#06090F` |
-| Exclusões borda/título | `#dc2626` / `#fca5a5` |
-| WhatsApp | `#25D366` |
+| **Fundo página** (verde-preto profundo) | `#04140F` |
+| Fundo gradiente sutil (top-left) | `#0a2218` → `#04140F` |
+| **Bronze primário** (títulos, ícones, linhas) | `#C9A56E` |
+| Bronze translúcido (decoração diagonal) | `rgba(201,165,110,.08-.18)` |
+| Texto principal (cream) | `#E5DCC8` |
+| Texto secundário (cream-muted) | `#B5AB94` |
+| Texto terciário/footer | `#8a7f6a` |
+| **Verde positivo** (descontos e totais na tabela) | `#52C75E` |
+| Verde escuro (variação) | `#3CC03C` |
+| Fundo header tabela | `#C9A56E` (mesmo bronze) |
 
 ### Tipografia
+
 | Elemento | Fonte | Peso | Tamanho |
 |---|---|---|---|
-| Título principal ("ORÇAMENTO", "THIAGO NICÉZIO") | Cormorant Garamond | 500 italic | 22-26pt |
-| Section titles | Cormorant Garamond | 500 | 11-13pt |
-| Nome do cliente | Manrope | 600 | 11pt |
-| Labels uppercase | Manrope | 700 (letter-spacing .12em) | 6.5pt |
-| Corpo / detalhes | Manrope | 400 | 7.5-8.5pt |
-| Total (valor grande) | Manrope | 700 | 26pt |
-| Footer principal | Manrope | 400 | 7pt |
-| Footer secundário | Manrope | 300 | 6pt |
+| H1 (título de página) | Cormorant Garamond | 500 | 38pt (44pt na capa) |
+| Subtitle italic (cinza) | Manrope | 400 italic | 11.5pt |
+| Body parágrafo | Manrope | 400 | 10.5pt, line-height 1.6 |
+| Card title (com ícone) | Cormorant Garamond | 600 | 16pt (14pt em cards-3col) |
+| Card description | Manrope | 400 | 9.5pt, cream-muted |
+| Tabela header | Manrope | 700 | 10pt, sobre bronze |
+| Tabela body | Manrope | 400 | 10pt, cream |
+| Total Geral (valor) | Cormorant Garamond | 600 | 32pt bronze |
+| Footer | Manrope | 400 | 8.5pt, muted |
 
-### Componentes (WeasyPrint)
+### Decoração assinatura — Linhas diagonais douradas
 
-**Página base com gradiente marinho:**
+Cada página tem ~5 linhas finas em ângulo 115° / -65° com opacidade variável (.08 a .18). Implementação CSS via `background` com gradientes lineares múltiplos. Quote em cards usa uma linha diagonal de bronze mais visível CRUZANDO o texto (efeito "manuscrito riscado" estilizado).
+
+---
+
+## Componentes principais (snippets WeasyPrint)
+
+**@page e .page (landscape 16:9):**
 ```css
-@page { size: A4; margin: 0; background: #06090F; }
-body { font-family: 'Manrope', sans-serif; color: #f5f1e8; background: #06090F; margin: 0; }
+@page { size: 338.67mm 190.5mm; margin: 0; background: #04140F; }
 .page {
-    background: radial-gradient(ellipse at top, #0f172a 0%, #06090F 60%);
-    position: relative; padding: 22mm 24mm 18mm 24mm;
-    page-break-after: always;
-    width: 210mm; min-height: 297mm; box-sizing: border-box;
+    width: 338.67mm; height: 190.5mm;
+    background: radial-gradient(ellipse at top left, #0a2218 0%, #04140F 65%);
+    position: relative; padding: 16mm 22mm 14mm 22mm;
+    page-break-after: always; overflow: hidden;
 }
-.page:last-of-type { page-break-after: auto; }
-```
-
-**Textura de fundo (grid amber sutil):**
-```css
 .page::before {
     content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
     background:
-        repeating-linear-gradient(0deg, transparent 0 14px, rgba(245,158,11,.02) 14px 15px),
-        repeating-linear-gradient(90deg, transparent 0 14px, rgba(245,158,11,.02) 14px 15px);
-}
-.page > * { position: relative; z-index: 1; }
-```
-
-**Gold line decorativa:**
-```css
-.gold-line {
-    width: 50mm; height: 1.2px;
-    background: linear-gradient(90deg, transparent, #fbbf24, transparent);
-    margin: 0 auto;
-    box-shadow: 0 0 8px rgba(251,191,36,.4);
+        linear-gradient(115deg, transparent 18%, rgba(201,165,110,.16) 18.05%, rgba(201,165,110,.16) 18.18%, transparent 18.23%),
+        linear-gradient(115deg, transparent 62%, rgba(201,165,110,.12) 62.05%, rgba(201,165,110,.12) 62.18%, transparent 62.23%),
+        linear-gradient(115deg, transparent 88%, rgba(201,165,110,.08) 88.05%, rgba(201,165,110,.08) 88.15%, transparent 88.2%),
+        linear-gradient(-65deg, transparent 35%, rgba(201,165,110,.10) 35.05%, rgba(201,165,110,.10) 35.18%, transparent 35.23%),
+        linear-gradient(-65deg, transparent 78%, rgba(201,165,110,.13) 78.05%, rgba(201,165,110,.13) 78.18%, transparent 78.23%);
 }
 ```
 
-**Client Card:**
+**H1 e subtitle italic (padrão de toda página de conteúdo):**
 ```css
-.client-card {
-    background: linear-gradient(135deg, rgba(245,158,11,.08) 0%, rgba(245,158,11,.02) 100%);
-    border: 1px solid rgba(251,191,36,.18);
-    border-radius: 3mm; padding: 3mm 5mm;
-}
-```
-
-**Credencial Card (4 cards na institucional):**
-```css
-.cred-card {
-    background: linear-gradient(135deg, rgba(245,158,11,.06), rgba(245,158,11,.01));
-    border: 1px solid rgba(251,191,36,.15);
-    border-left: 2px solid #fbbf24;
-    border-radius: 2mm; padding: 4mm 5mm;
-}
-.cred-card .num {
+h1 {
     font-family: 'Cormorant Garamond', serif;
-    color: #fbbf24; font-size: 18pt; font-weight: 500;
-    line-height: 1; opacity: .7;
+    font-weight: 500; font-size: 38pt;
+    color: #C9A56E; line-height: 1.1; letter-spacing: .005em;
 }
-.cred-card .title {
-    font-family: 'Manrope', sans-serif;
-    color: #f5f1e8; font-size: 9pt; font-weight: 700;
-    letter-spacing: .04em; margin-top: 1mm;
-}
-.cred-card .desc {
-    color: rgba(245,241,232,.7); font-size: 7.5pt; line-height: 1.4; margin-top: 1.5mm;
+.sub-italic {
+    font-family: 'Manrope', sans-serif; font-style: italic;
+    font-weight: 400; font-size: 11.5pt;
+    color: #B5AB94; margin-top: 1mm;
 }
 ```
 
-**Table header dourado luminoso:**
+**Card 2-col (com ícone à esquerda):**
 ```css
-.equip-table thead th {
-    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-    color: #06090F; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; font-size: 6.5pt;
-    padding: 2mm 3mm; text-align: left;
+.card .icon-wrap { display: inline-block; width: 11mm; height: 11mm; vertical-align: middle; }
+.card .title-inline {
+    display: inline-block; vertical-align: middle; margin-left: 4mm;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600; font-size: 16pt; color: #E5DCC8;
 }
-.equip-table tbody td {
-    padding: 2mm 3mm; border-bottom: 1px solid rgba(251,191,36,.08);
-    font-size: 8pt; color: #f5f1e8;
+.card .desc {
+    margin-top: 2mm; margin-left: 15mm;
+    font-size: 9.5pt; color: #B5AB94; line-height: 1.5;
+    padding-bottom: 2mm;
+    border-bottom: 1px dashed rgba(201,165,110,.18);
 }
 ```
 
-**Total Box (dourado luxo):**
+**Tabela de Investimento:**
 ```css
-.total-box {
-    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
-    border: 1.5px solid rgba(251,191,36,.85);
-    border-radius: 3mm; padding: 4.5mm 6mm; text-align: center;
-    box-shadow: 0 4px 24px rgba(245,158,11,.35);
-    color: #06090F;
+.inv-table thead th {
+    background: #C9A56E; color: #04140F;
+    font-weight: 700; font-size: 10pt; padding: 3mm 4mm;
 }
-.total-box .label { font-size: 7pt; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; opacity: .85; }
-.total-box .value { font-family: 'Manrope', sans-serif; font-size: 26pt; font-weight: 700; line-height: 1; margin-top: 1.5mm; }
+.inv-table tbody td {
+    padding: 2.5mm 4mm; font-size: 10pt; color: #E5DCC8;
+    border-bottom: 1px solid rgba(201,165,110,.10);
+}
+.inv-table .green { color: #52C75E; font-weight: 600; }
 ```
 
-**Exclusions Box (vermelho):**
+**Total Geral (linha grande):**
 ```css
-.excl-box {
-    background: rgba(220,38,38,.06);
-    border: 1px solid rgba(220,38,38,.25);
-    border-left: 3px solid #dc2626;
-    border-radius: 2.5mm; padding: 2.5mm 5mm;
+.totals-rows tr.grand td {
+    color: #C9A56E;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600; font-size: 22pt;
+    border-top: 1px solid rgba(201,165,110,.4);
 }
-.excl-box .title { color: #fca5a5; font-size: 8pt; font-weight: 700; }
+.totals-rows tr.grand td.r { font-size: 32pt; }
 ```
 
-**Transparency Box (dourado glow):**
+**Quote dourada com diagonal cruzando:**
 ```css
-.transp-box {
-    background: linear-gradient(135deg, rgba(245,158,11,.08), rgba(245,158,11,.02));
-    border: 1px solid rgba(251,191,36,.2);
-    border-left: 3px solid #fbbf24;
-    border-radius: 2.5mm; padding: 2.5mm 5mm;
+.quote { position: relative; text-align: center; margin: 6mm auto 0 auto; padding: 4mm 8mm; }
+.quote-text { font-family: 'Manrope', sans-serif; font-style: italic; font-size: 11.5pt; color: #C9A56E; }
+.quote::before {
+    content: ''; position: absolute;
+    top: 50%; left: -10mm; right: -10mm; height: 0;
+    border-top: 1px solid rgba(201,165,110,.65);
+    transform: rotate(-2deg);
 }
 ```
 
-**Discount Badge:**
+**Footer global:**
 ```css
-.discount-badge {
-    display: inline-block; background: #fbbf24; color: #06090F;
-    font-size: 6pt; font-weight: 700; padding: 0.8mm 2mm;
-    border-radius: 1.5mm; margin-left: 2mm; letter-spacing: .05em;
+.foot {
+    position: absolute; bottom: 5mm; left: 0; right: 0;
+    text-align: center; font-size: 8.5pt; color: #8a7f6a;
+    letter-spacing: .04em;
+    border-top: 1px solid rgba(201,165,110,.18);
+    padding-top: 3mm; margin: 0 22mm;
 }
 ```
 
-**Condition Items (bullet amber glow):**
-```css
-.condition-item {
-    font-size: 7.5pt; color: rgba(245,241,232,.8); margin-bottom: 1.2mm;
-    padding-left: 4mm; position: relative;
-}
-.condition-item::before {
-    content: ''; position: absolute; left: 0; top: 2.2px;
-    width: 4px; height: 4px; border-radius: 50%;
-    background: #fbbf24; box-shadow: 0 0 4px rgba(251,191,36,.6);
-}
-```
-
-**Footer (absoluto no bottom):**
-```css
-.footer {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    padding: 3mm 22mm; text-align: center;
-    border-top: 1px solid rgba(251,191,36,.12);
-    background: rgba(6,9,15,0.95);
-    font-size: 7pt; color: rgba(245,241,232,.6);
-}
-```
-
-**Imagem hero (institucional):**
-```css
-.hero-img {
-    width: 100%; height: 55mm; object-fit: cover;
-    border-radius: 3mm; border: 1px solid rgba(251,191,36,.15);
-    box-shadow: 0 6px 24px rgba(0,0,0,0.5);
-}
-```
-
-**Grid de renders técnicos (2x2):**
-```css
-.renders-grid { width: 100%; border-collapse: separate; border-spacing: 2mm; }
-.renders-grid td {
-    width: 50%; height: 50mm;
-    background: #0a1224; border: 1px solid rgba(251,191,36,.12);
-    border-radius: 2mm; padding: 0; overflow: hidden;
-}
-.renders-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.renders-grid .cap {
-    background: linear-gradient(180deg, transparent, rgba(6,9,15,.85));
-    color: #fbbf24; font-size: 7pt; padding: 1.5mm 2mm;
-    position: absolute; bottom: 0; left: 0; right: 0;
-}
-```
-
----
-
-## Template Página 1 — Apresentação Institucional
-
-Seções (top → bottom):
-1. **Header** — Logo (40mm largura) à esquerda, "THIAGO NICÉZIO" em Cormorant 18pt à direita, "Lagos Ornamentais & Piscinas Naturais" em Manrope 8pt cinza
-2. **Gold line decorativa**
-3. **Hero image** (lago_ornamental.jpg) — 55mm de altura, full-width
-4. **"QUEM SOU"** — section title amber + 1 parágrafo de 3-4 linhas
-5. **Grid 2x2 de credenciais** (os 4 cards, usando `.cred-card`)
-6. **Footer** — telefone, email, site
-
-## Template Página 2 — Tecnologia & Diferenciais
-
-1. **Header reduzido** (só "TECNOLOGIA & METODOLOGIA" em Cormorant)
-2. **3 diferenciais** (tabela 3 colunas):
-   - Tratamento UV + Ozônio (sem cloro/químicos agressivos)
-   - Engenharia Hidráulica de Ponta (dimensionamento, automação)
-   - Acompanhamento Integral (concepção → comissionamento)
-3. **Grid 2x2 de renders técnicos**:
-   - Top-down sala de máquinas (4 grupos de filtros)
-   - Isométrica completa (biofiltro + casa de máquinas)
-   - Calha/skimmer com bicos
-   - Comissionamento (operário inspecionando bombas)
-4. **Footer**
-
-## Template Página 3 — Orçamento
-
-Usar o template apropriado (Equipamentos ENG ou Execução de Lago — abaixo).
-
----
-
-## Template: Orçamento de Equipamentos ENG
-
-Usar quando o orçamento listar produtos ENG com quantidades e valores unitários.
-
-Seções do PDF:
-1. Header (logo + "ORÇAMENTO" + subtítulo)
-2. Client Card (nome, CNPJ, cidade, tel, email, data, vendedor)
-3. Tabela de Equipamentos (descrição, qtd, valor unit., total) com header dourado
-4. [Opcional] Box de desconto condicional (verde)
-5. Totals block (subtotal, desconto, projeto) alinhado à direita
-6. Total Box dourado grande
-7. Condições (bullets dourados)
-8. Footer
-
-Email footer para ENG: `contato@filtrosuvc.com.br`
-Padding: `22mm 24mm 18mm 24mm` (mais espaçoso pois tem menos seções)
-
----
-
-## Template: Orçamento de Execução de Lago
-
-Usar quando o orçamento for para construção/execução de lago ornamental.
-
-Seções do PDF:
-1. Header (logo + "ORÇAMENTO" + "Execução de Lago Ornamental")
-2. Client Card
-3. Local da Obra (box centralizado)
-4. Escopo da Execução (grid 2x2 com table: Execução / Área / Prazo / Margem)
-5. Total Box dourado (com valor por m² abaixo)
-6. [Opcional] Nota de margem (ex: "20% de margem já inclusos")
-7. [Opcional] Exclusões Box (vermelho)
-8. Transparência entre Parceiros Box (dourado)
-9. Condições
-10. Footer
-
-Email footer pessoal: `contato@thiagonicezio.com`
-Padding: `10mm 22mm 12mm 22mm` (mais compacto pois tem mais seções)
+Texto fixo do footer: `Thiago Nicezio  |  contato@filtrosuvc.com.br  |  thiagonicezio.com`
 
 ---
 
 ## Higgsfield AI — Imagens de Ambientação
 
-Para gerar imagens de lagos/piscinas e inserir nos orçamentos via base64.
+Para gerar imagens de lagos/piscinas quando não houver foto real do cliente.
 
 ### Credenciais
 ```
@@ -398,9 +309,6 @@ BASE=https://platform.higgsfield.ai
 ```python
 import requests, time
 
-API_KEY = "937398b8-1456-4a49-ba6d-bf3fb0414e64"
-SECRET = "d8afc9f9e7df6b7c9854310b7463ec4821a4752c3f84a618449d5ac453f8787d"
-BASE = "https://platform.higgsfield.ai"
 HEADERS = {"Authorization": f"Key {API_KEY}:{SECRET}", "Content-Type": "application/json"}
 
 def gerar_imagem(prompt, aspect="16:9", resolution="1080p"):
@@ -413,73 +321,21 @@ def gerar_imagem(prompt, aspect="16:9", resolution="1080p"):
         time.sleep(5)
         s = requests.get(f"{BASE}/requests/{rid}/status", headers=HEADERS).json()
         if s.get("status") == "completed":
-            # IMPORTANTE: a API retorna em images[0].url (NÃO em result.outputs[0].url)
+            # IMPORTANTE: API retorna em images[0].url (NÃO em result.outputs[0].url)
             imgs = s.get("images", [])
             return imgs[0].get("url") if imgs else None
         elif s.get("status") == "failed":
             return None
     return None
-
-def baixar(url, path):
-    with open(path, "wb") as f: f.write(requests.get(url).content)
 ```
 
-Script pronto disponível em `tools/gerar_imagens.py`.
+Script pronto em `tools/gerar_imagens.py`.
 
 ### Prompts Prontos
 ```python
 PROMPT_LAGO = "RAW photograph, luxury ornamental pond in premium residential garden, crystal clear water with koi fish, natural stone edges, lush tropical landscaping, golden hour, Hasselblad H6D, 8K"
-
 PROMPT_PISCINA = "RAW photograph, premium beach entry pool with shallow sandy gradient sloping into crystal clear turquoise water, tropical garden, lush landscaping, natural stone deck, luxury residential, Phase One IQ4"
-
 PROMPT_TECNICO = "RAW photograph, professional pool equipment room, stainless steel UV filters and ozone generators, clean organized piping, premium installation, studio lighting"
-```
-
-### Inserir no HTML
-```python
-img_b64 = base64.b64encode(open("imagem.jpg","rb").read()).decode()
-# <img src="data:image/jpeg;base64,{img_b64}" class="hero-img" />
-```
-
-### Image-to-Video (Higgsfield DOP)
-```python
-def upload_url(filepath):
-    r = requests.post("https://litterbox.catbox.moe/resources/internals/api.php",
-        data={"reqtype": "fileupload", "time": "24h"},
-        files={"fileToUpload": open(filepath, "rb")})
-    return r.text.strip()
-
-def gerar_video(prompt, image_url, turbo=True):
-    endpoint = "dop/turbo" if turbo else "dop/standard"
-    r = requests.post(f"{BASE}/higgsfield-ai/{endpoint}", headers=HEADERS, json={
-        "prompt": prompt, "image_url": image_url, "enhance_prompt": True
-    })
-    rid = r.json().get("request_id")
-    # mesmo polling da imagem...
-```
-
----
-
-## Renders 3D dos Produtos ENG
-
-Turntable 360° com ~125 frames PNG (fundo verde chroma key):
-- Ozone Fish 120.000L, 80.000L, 60.000L, Power
-
-Workflow para usar frame no orçamento:
-```python
-from PIL import Image
-import numpy as np
-
-def remover_verde(img_path, out_path):
-    img = Image.open(img_path).convert("RGBA")
-    data = np.array(img)
-    r, g, b, a = data[:,:,0], data[:,:,1], data[:,:,2], data[:,:,3]
-    green_mask = (g > 80) & (g > r * 1.3) & (g > b * 1.3)
-    data[green_mask] = [0, 0, 0, 0]
-    from scipy.ndimage import binary_dilation
-    border = binary_dilation(green_mask, iterations=2) & ~green_mask
-    data[border, 1] = (data[border, 1] * 0.7).astype(np.uint8)
-    Image.fromarray(data).save(out_path)
 ```
 
 ---
@@ -487,16 +343,16 @@ def remover_verde(img_path, out_path):
 ## Lições Aprendidas
 
 1. **WeasyPrint > ReportLab** para PDFs visuais
-2. **Total box dourado** com texto escuro (#06090F) sobre gradiente amber — alto contraste e luxo
-3. **Overflow**: se não cabe na página, reduzir paddings e font-sizes iterativamente
-4. **Flex no WeasyPrint**: NÃO FUNCIONA BEM — usar `<table>` para layouts lado a lado
-5. **Nunca inventar modelos** de equipamento que não existem na tabela ENG
-6. **Margem de segurança**: quando o cliente diz "20% incluso", já está no valor total, não é adicional
-7. **Arredondar valores** quando o cliente pedir (ex: R$ 395.043 → R$ 396.000)
-8. **Preço riscado + desconto**: mostrar preço original `<s>` com badge amber `-15%` e preço novo
-9. **API Higgsfield**: retorna em `images[0].url`, NÃO em `result.outputs[0].url`
-10. **Page break**: usar `page-break-after: always` em `.page` para garantir 1 seção por A4
-11. **Fontes via Google @import** funcionam no WeasyPrint mas precisam de internet no momento do render
+2. **Sempre 16:9 landscape** — o modelo de Thiago aprovou esse formato, não A4 portrait
+3. **Cormorant REGULAR (não italic) para títulos H1** — italic só nos subtítulos e quotes
+4. **Bronze fosco `#C9A56E` (não amber brilhante)** — paleta calma e premium
+5. **Flex no WeasyPrint não funciona** — usar `<table>` para qualquer layout grid
+6. **Page size em `@page` size:** definir em mm explícitos, não em named (a4-landscape, etc) — controle exato
+7. **Diagonal lines** via `linear-gradient` empilhados — não usa SVG-background (mais lento)
+8. **Quote com diagonal cruzando**: usar `position:absolute` + `transform:rotate` no `::before`, não tachado CSS
+9. **Ícones em mix PNG+SVG inline**: PNG quando existe no pptx oficial, SVG inline quando precisa criar
+10. **API Higgsfield**: retorna em `images[0].url` (NÃO em `result.outputs[0].url`)
+11. **Nunca inventar modelos** de equipamento que não estão na tabela ENG
 
 ---
 
@@ -512,10 +368,10 @@ def remover_verde(img_path, out_path):
 | 30.001-60.000 | Ozone Fish 60000 |
 | 60.001-80.000 | Ozone Fish 80000 |
 | 80.001-120.000 | Ozone Fish 120000 |
-| 120.001-300.000 | 1x Ozone Fish Power |
-| 300.001-600.000 | 2x Ozone Fish Power |
-| 600.001-900.000 | 3x Ozone Fish Power |
-| 900.001-1.000.000 | 4x Ozone Fish Power |
+| 120.001-300.000 | 1× Ozone Fish Power |
+| 300.001-600.000 | 2× Ozone Fish Power |
+| 600.001-900.000 | 3× Ozone Fish Power |
+| 900.001-1.000.000 | 4× Ozone Fish Power |
 | Acima de 1.000.000 | NÃO DIMENSIONAR — engenharia |
 
 ### Filtro UV (por volume)
