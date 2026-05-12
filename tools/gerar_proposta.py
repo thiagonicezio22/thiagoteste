@@ -129,10 +129,11 @@ DESCONTO_PARCEIRO_PCT   = 30
 # Helpers
 # ====================================================================
 def fmt(v: float) -> str:
-    int_part = int(v)
-    dec_part = int(round((v - int_part) * 100))
-    int_str = f"{int_part:,}".replace(",", ".")
-    return f"R$ {int_str},{dec_part:02d}"
+    # f"{v:,.2f}" arredonda corretamente e formata em padrão US (1,234.56);
+    # depois trocamos os separadores para padrão BR (1.234,56) usando X como
+    # placeholder temporário pra evitar conflito entre . e ,.
+    s = f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {s}"
 
 
 def b64(path: Path) -> str:

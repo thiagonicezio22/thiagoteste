@@ -66,7 +66,62 @@ Todos os 17 ícones são PNG bronze sólido (256×256, RGBA) com mesmo estilo vi
 
 ---
 
-## Template Canônico: Proposta de Parceria Técnica — 10 páginas landscape
+## Dois Templates Disponíveis
+
+| Tipo de proposta | Script | Páginas | Quando usar |
+|---|---|---|---|
+| **Single-cliente** (1 lago) | `tools/gerar_proposta.py` | 10 | Orçamento individual de 1 lago/piscina — desconto parceiro padrão, projeto cobrado ou cortesia |
+| **Multi-lago / Parceria** | `tools/gerar_parceria.py` | 12 | Quando 2+ lagos vão na mesma proposta como condição de parceria — projeto executivo único, máquinas personalizadas, condições especiais |
+
+Ambos geram em `output/proposta.pdf` (sobrescrevem). Ambos compartilham o mesmo design system (verde-preto + bronze fosco, Cormorant Garamond + Manrope, ícones PNG do pptx oficial).
+
+---
+
+## Template Multi-Lago / Parceria — 12 páginas
+
+Estrutura:
+
+| # | Página | Conteúdo |
+|---|---|---|
+| 1 | Capa | "Proposta de Parceria Técnica — N Primeiros Projetos — X Litros" + Parceiro: NOME + Data |
+| 2 | Quem é Thiago Nicezio | (igual ao single-cliente) |
+| 3 | A Parceria | Destaque máquinas PERSONALIZADAS + 3 cards (Personalização / Trabalho Conjunto / Condição de Parceria) |
+| 4 | **Os N Lagos** | Cards 2x2 com nome de cada cliente, volume, tipo, e mini-comparativo (lista ENG → com Thiago) |
+| 5 → 4+N | **Lago N** (uma página por lago) | H1: nome do cliente + "Lago 0X" em italic + tabela completa de equipamentos + bloco summary (ENG cheia / com Thiago / economia) |
+| -2 | **Resumo Geral** | Tabela consolidada dos N lagos + subtotal + projeto único + TOTAL GERAL DA PARCERIA |
+| -1 | Filtro de Fibra | Box destacado: R$ 4.600/un, dimensionamento pós-projeto, fora do total |
+| -1 | Condições da Parceria | Quote principal + 6 cards 3x2 (Máquinas Personalizadas / Projeto Único / Desconto / Confidencialidade / Trabalho Conjunto / Longo Prazo) |
+| Última | Encerramento | Logo + quote "água cristalina não é promessa" + contato + "Obrigado pela confiança — vamos construir juntos" |
+
+### Como editar (no topo de `gerar_parceria.py`)
+
+```python
+PARCEIRO = {"nome": "Forte Ecossistemas", "data": "Maio 2026"}
+
+LAGOS = [
+    {
+        "cliente": "Mauricio",
+        "tipo":    "Lago Ornamental",
+        "volume":  "50.000 Litros",
+        "produtos": [
+            {"nome": "Ozone Fish 60.000",          "qtd": 1, "unit": 4084.50},
+            {"nome": "Filtro UV Inox 380W — 220V", "qtd": 1, "unit": 9943.50},
+            ...
+        ],
+    },
+    # ... mais lagos
+]
+
+DESCONTO_PCT          = 30
+VALOR_PROJETO_UNICO   = 40000.00
+FILTRO_FIBRA_UNIT     = 4600.00
+```
+
+Note: no template multi-lago **não tem cards de equipamentos por lago** — a página de cada lago é apenas tabela + summary, mais limpo. O desconto se aplica a TODOS os itens (sem campo `desc_pct` por produto — usa `DESCONTO_PCT` global).
+
+---
+
+## Template Single-Cliente: Proposta de Parceria Técnica — 10 páginas landscape
 
 **Este é o ÚNICO modelo a ser usado pra todo orçamento.** Posicionamos sempre como "proposta de parceria técnica", cativa o cliente desde o primeiro contato.
 
