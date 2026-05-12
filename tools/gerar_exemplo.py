@@ -22,7 +22,9 @@ def b64(path: Path) -> str:
     return base64.b64encode(path.read_bytes()).decode()
 
 
-hero_b64 = b64(ROOT / "assets" / "renders" / "lago_ornamental.jpg")
+hero_b64 = b64(ROOT / "assets" / "renders" / "projeto_aerea_full.png")
+hero_mime = "image/png"
+logo_b64 = b64(ROOT / "assets" / "logo_thiago_nicezio.png")
 
 CLIENTE = dict(
     nome="Aquaverde Engenharia Ltda",
@@ -99,29 +101,15 @@ body { font-family: 'Manrope', sans-serif; color: #f5f1e8; background: #06090F; 
 }
 .page > * { position: relative; z-index: 1; }
 
-/* Header com nome */
+/* Header com logo */
 .brand-header {
-    display: table; width: 100%; border-bottom: 1px solid rgba(251,191,36,.15);
+    width: 100%; text-align: center;
+    border-bottom: 1px solid rgba(251,191,36,.15);
     padding-bottom: 4mm; margin-bottom: 5mm;
 }
-.brand-header .left, .brand-header .right { display: table-cell; vertical-align: middle; }
-.brand-header .right { text-align: right; }
-.brand-name {
-    font-family: 'Cormorant Garamond', serif; font-weight: 500; font-style: italic;
-    font-size: 22pt; color: #f5f1e8; letter-spacing: .02em;
-}
-.brand-tag {
-    font-family: 'Manrope', sans-serif; font-size: 7.5pt; color: rgba(245,241,232,.55);
-    letter-spacing: .18em; text-transform: uppercase; margin-top: 1mm;
-}
-.brand-h-mark {
-    font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600;
-    font-size: 32pt; color: #fbbf24; line-height: 1;
-}
-.brand-h-mark small {
-    display: block; font-family: 'Manrope', sans-serif; font-style: normal; font-weight: 600;
-    font-size: 6.5pt; color: rgba(251,191,36,.7); letter-spacing: .2em;
-    text-transform: uppercase; margin-top: 1mm;
+.brand-logo {
+    display: inline-block; height: 22mm; width: auto;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,.5));
 }
 
 /* Gold line */
@@ -309,13 +297,7 @@ body { font-family: 'Manrope', sans-serif; color: #f5f1e8; background: #06090F; 
 def header(page="institucional"):
     return f"""
     <div class="brand-header">
-        <div class="left">
-            <div class="brand-name">Thiago Nicézio</div>
-            <div class="brand-tag">Lagos ornamentais &amp; Piscinas praia</div>
-        </div>
-        <div class="right">
-            <div class="brand-h-mark">TN<small>Premium</small></div>
-        </div>
+        <img class="brand-logo" src="data:image/png;base64,{logo_b64}" />
     </div>
     """
 
@@ -339,7 +321,7 @@ def page1():
     <div class="page">
         {header()}
         <div class="p1-content">
-            <img class="hero" src="data:image/jpeg;base64,{hero_b64}" />
+            <img class="hero" src="data:image/png;base64,{hero_b64}" />
 
             <div class="sec-sub">Quem sou</div>
             <p class="quem-p">
