@@ -23,6 +23,8 @@ def b64(path: Path) -> str:
 
 
 hero_b64 = b64(ROOT / "assets" / "renders" / "projeto_aerea_full.png")
+hero2_b64 = b64(ROOT / "assets" / "renders" / "projeto_deck_close.png")
+hero3_b64 = b64(ROOT / "assets" / "renders" / "projeto_aerea_sunset.png")
 hero_mime = "image/png"
 logo_b64 = b64(ROOT / "assets" / "logo_thiago_nicezio.png")
 
@@ -62,8 +64,8 @@ CRED = [
 DIFS = [
     ("Tratamento UV + Ozônio",
      "Água cristalina sem cloro ou químicos agressivos. Sistemas dimensionados para volume e carga biológica."),
-    ("Engenharia Hidráulica de Ponta",
-     "Dimensionamento de bombas, tubulação e biofiltros com base em volume, carga orgânica e padrão estético."),
+    ("Cálculo Hidráulico",
+     "Dimensionamento preciso de bombas, tubulação e biofiltros para garantir um sistema com água totalmente tratada."),
     ("Acompanhamento Integral",
      "Concepção → projeto técnico → execução → comissionamento → pós-venda. Um único interlocutor do início ao fim."),
 ]
@@ -144,6 +146,37 @@ body { font-family: 'Manrope', sans-serif; color: #f5f1e8; background: #06090F; 
     width: 100%; height: 60mm; object-fit: cover; display: block;
     border-radius: 3mm; border: 1px solid rgba(251,191,36,.15);
     box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+}
+
+/* Hero mosaic — 3 projetos no mesmo espaço (1 grande + 2 pequenas) */
+.hero-mosaic {
+    width: 100%; border-collapse: separate; border-spacing: 2mm;
+    margin-bottom: 2mm;
+}
+.hero-mosaic td {
+    position: relative; overflow: hidden;
+    border: 1px solid rgba(251,191,36,.15);
+    border-radius: 3mm;
+    box-shadow: 0 4px 18px rgba(0,0,0,.5);
+    padding: 0;
+}
+.hero-mosaic td.big {
+    width: 60%; height: 70mm;
+    vertical-align: top;
+}
+.hero-mosaic td.sm {
+    width: 40%; height: 34mm;
+}
+.hero-mosaic img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.hero-mosaic .cap {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(180deg, transparent, rgba(6,9,15,.88));
+    color: #fbbf24; font-family: 'Manrope', sans-serif;
+    font-size: 6pt; font-weight: 700;
+    letter-spacing: .15em; text-transform: uppercase;
+    padding: 4mm 3mm 1.8mm 3mm;
 }
 
 /* Section title */
@@ -344,7 +377,24 @@ def page1():
     <div class="page">
         {header()}
         <div class="p1-content">
-            <img class="hero" src="data:image/png;base64,{hero_b64}" />
+            <table class="hero-mosaic">
+                <tr>
+                    <td class="big" rowspan="2">
+                        <img src="data:image/png;base64,{hero_b64}" />
+                        <div class="cap">PROJETO 01 · Residencial Premium</div>
+                    </td>
+                    <td class="sm">
+                        <img src="data:image/png;base64,{hero2_b64}" />
+                        <div class="cap">PROJETO 02 · Deck &amp; Piscina Praia</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="sm">
+                        <img src="data:image/png;base64,{hero3_b64}" />
+                        <div class="cap">PROJETO 03 · Vista Sunset</div>
+                    </td>
+                </tr>
+            </table>
 
             <div class="sec-sub">Quem sou</div>
             <p class="quem-p">
@@ -368,7 +418,7 @@ def page1():
 
 def page2():
     difs_html = "<tr>"
-    icons = ["UV", "H₂O", "✓"]
+    icons = ["01", "02", "03"]
     for (t, d), ic in zip(DIFS, icons):
         difs_html += f"""
         <td><div class="dif-card">
