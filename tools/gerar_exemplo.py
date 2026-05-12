@@ -453,10 +453,10 @@ def page2():
         <div class="p2-content">
             <table class="stats-bar">
                 <tr>
-                    <td><div class="stat-num">+15</div><div class="stat-lbl">Anos de atuação</div></td>
-                    <td><div class="stat-num">+200</div><div class="stat-lbl">Projetos entregues</div></td>
-                    <td><div class="stat-num">3</div><div class="stat-lbl">Continentes</div></td>
+                    <td><div class="stat-num">3</div><div class="stat-lbl">Continentes pesquisados</div></td>
                     <td><div class="stat-num">ABLP</div><div class="stat-lbl">Presidente</div></td>
+                    <td><div class="stat-num">ENG</div><div class="stat-lbl">Sócio · Ozônio &amp; UV</div></td>
+                    <td><div class="stat-num">Único</div><div class="stat-lbl">Cada projeto sob medida</div></td>
                 </tr>
             </table>
 
