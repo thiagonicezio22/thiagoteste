@@ -40,12 +40,15 @@ apt-get install -y poppler-utils  # pra pdftoppm gerar previews
 
 ```
 assets/
-├── logo_thiago_nicezio.png        # logo oficial (extraída do pptx Gramopool)
-├── icons/                          # 14 PNG bronze + 3 inline SVG
-│   ├── target.png       (especialista)
-│   ├── drop.png         (água/AquaMax)
+├── logo_thiago_nicezio.png        # logo oficial (extraída do pptx oficial)
+├── icons/                          # 17 PNGs bronze sólido (extraídos do pptx Otávio)
+│   ├── globe.png        (padrão internacional)
+│   ├── medal.png        (presidente ABLP / autoridade no setor)
+│   ├── gears.png        (sócio ENG / fornecimento de equipamentos)
+│   ├── target.png       (especialista técnico)
+│   ├── drop.png         (garantia de resultado / AquaMax)
 │   ├── lock.png         (confidencialidade)
-│   ├── sitemap.png      (projeto técnico)
+│   ├── sitemap.png      (projeto técnico / executivo)
 │   ├── handshake.png    (parceria)
 │   ├── wrench.png       (visita técnica + start)
 │   ├── document.png     (contrato)
@@ -54,44 +57,41 @@ assets/
 │   ├── waves.png        (ENG MIX)
 │   ├── sun.png          (Filtro UV)
 │   ├── arrows.png       (Sistema de Injeção)
-│   ├── shield.png       (Domínio Técnico)
-│   └── eye.png          (Compromisso)
-└── renders/
-    ├── projeto_aerea_full.png      # hero principal (vista aérea)
-    ├── projeto_deck_close.png      # close do deck
-    ├── projeto_aerea_sunset.png    # vista sunset
-    └── lago_ornamental.jpg         # fallback genérico
+│   ├── shield.png       (Domínio Técnico Absoluto)
+│   └── eye.png          (Compromisso com Resultado)
+└── renders/                        # fotos opcionais (atualmente não usadas no template)
 ```
 
-Os 3 ícones que não estão em PNG (**globe**, **medal**, **gears**) são SVG inline em `tools/gerar_proposta.py` — funções `svg_globe()` / `svg_medal()` / `svg_gears()`, todos preenchidos em `#C9A56E`.
+Todos os 17 ícones são PNG bronze sólido (256×256, RGBA) com mesmo estilo visual — extraídos diretamente do pptx oficial.
 
 ---
 
-## Template Canônico: Proposta de Parceria Técnica — 11 páginas landscape
+## Template Canônico: Proposta de Parceria Técnica — 10 páginas landscape
 
 **Este é o ÚNICO modelo a ser usado pra todo orçamento.** Posicionamos sempre como "proposta de parceria técnica", cativa o cliente desde o primeiro contato.
 
 Formato: **landscape PowerPoint-size** (338.67mm × 190.5mm). NÃO é A4 portrait.
 
-### Estrutura das 11 páginas
+### Estrutura das 10 páginas
 
 | # | Nome | Conteúdo |
 |---|---|---|
-| 1 | **Capa** | Logo grande + linha dourada + "Proposta de Parceria Técnica" + subtítulo (sistema/volume) + diagonal + Cliente: NOME + Data |
+| 1 | **Capa** | Logo grande + linha dourada + "Proposta de Parceria Técnica" + subtítulo `Sistema de Filtragem para {TIPO} — {VOLUME}` + diagonal + Cliente: NOME + Data |
 | 2 | **Quem é Thiago Nicezio** | H1 + logo small top-right + parágrafo intro + 5 cards 2-col (com ícones) + quote dourada com diagonal cruzando |
 | 3 | **A Parceria** | H1 + subtítulo italic + parágrafo + 3 cards centralizados (Confidencialidade / Projeto Técnico / Parceria Longo Prazo) |
-| 4 | **Visualização do Projeto** | H1 + subtítulo italic + mosaico (1 grande à esquerda + 2 pequenas empilhadas à direita) |
-| 5 | **Escopo do Primeiro Projeto** | H1 + subtítulo italic + 4 cards 2x2 (Projeto Executivo / Fornecimento / Visita+Start / Confidencialidade) + quote "Objetivo Central" |
-| 6 | **Equipamentos Especificados** | H1 + subtítulo italic + 6 cards 3x2 com ícones bronze (sem preços, só nome+descrição) |
-| 7 | **Investimento** | H1 + subtítulo italic com condição parceiro + tabela 5 col (Equip/Qtd/Unit/Desc/Total) + descontos `-20%` em verde + subtotal + valor projeto + TOTAL GERAL Cormorant grande + footnote italic |
-| 8 | **Itens Não Inclusos** | H1 + subtítulo italic "Transparência Total" + 8 items em 2 colunas + nota de explicação com diagonal |
-| 9 | **Condições** | H1 + esquerda: "Investimento Total R$X" grande Cormorant + Pagamento à vista PIX + direita: 4 cards (Contrato / Pagamento / Entrega / Visita) + nota "Incluso" |
-| 10 | **Por que Thiago Nicezio** | H1 + 5 cards 2-col (Padrão Internacional / Domínio Técnico / Autoridade no Setor / Compromisso / Parceiro Não Fornecedor) |
-| 11 | **Encerramento** | Logo centralizada grande + linha dourada + quote italic "Água cristalina não é promessa..." + contato + "Obrigado pela confiança." |
+| 4 | **Escopo do Primeiro Projeto** | H1 + subtítulo italic `Solução Integrada para {TIPO} — {VOLUME}` + 4 cards 2x2 (Projeto Executivo / Fornecimento / Visita+Start / Confidencialidade) + quote "Objetivo Central" |
+| 5 | **Equipamentos Especificados** | H1 + subtítulo italic `Sistema Personalizado para {VOLUME}` + cards 3xN com ícones bronze de cada produto (sem preços, só nome+descrição) |
+| 6 | **Investimento** | H1 + subtítulo italic com condição parceiro + tabela 5 col (Equip/Qtd/Unit/Desc/Total) + descontos `-20%` em verde + subtotal + valor projeto + TOTAL GERAL Cormorant grande + footnote italic |
+| 7 | **Itens Não Inclusos** | H1 + subtítulo italic "Transparência Total" + 8 items em 2 colunas + nota de explicação com diagonal |
+| 8 | **Condições** | H1 + esquerda: "Investimento Total R$X" grande Cormorant + Pagamento à vista PIX + direita: 4 cards (Contrato / Pagamento / Entrega / Visita) + nota "Incluso" |
+| 9 | **Por que Thiago Nicezio** | H1 + 5 cards 2-col (Padrão Internacional / Domínio Técnico / Autoridade no Setor / Compromisso / Parceiro Não Fornecedor) |
+| 10 | **Encerramento** | Logo centralizada grande + linha dourada + quote italic "Água cristalina não é promessa..." + contato + "Obrigado pela confiança." |
+
+A "página de Visualização do Projeto" (fotos da residência) foi REMOVIDA — o template não usa mais fotos reais de propriedades.
 
 ### O que muda entre clientes
 
-Apenas: **nome do cliente, mês, volume do lago, lista de produtos com qtd/valor/desconto, valor do projeto executivo**. Estrutura visual, copy fixa, layout e elementos: **idênticos sempre**.
+Apenas: **`PROJETO` (cliente, data, tipo, volume)** + **`PRODUTOS` (lista de equipamentos)** + **`VALOR_PROJETO_EXECUTIVO`** no topo de `tools/gerar_proposta.py`. Estrutura visual, copy fixa, layout: **idênticos sempre**.
 
 ---
 
@@ -101,16 +101,25 @@ Perguntar ao Thiago:
 
 1. **Cliente** — Nome (ex: "Marcio — Gramopool" ou "Otávio — Empresa X")
 2. **Data** — Mês/Ano (ex: "Maio 2026")
-3. **Volume do lago** — em litros (ex: "150.000 Litros")
-4. **Equipamentos** — Lista de itens, cada um com:
-   - Nome (ex: "Ozone Fish Power — Inox")
+3. **Tipo de projeto** — `"Lago Ornamental"` OU `"Piscina Praia"`
+4. **Volume** — em litros (ex: "150.000 Litros")
+5. **Equipamentos** — Lista de itens, cada um com:
+   - Ícone (de `assets/icons/`)
+   - Nome para card (multi-linha com `<br/>`)
+   - Descrição para card
+   - Nome para tabela (single-line)
    - Quantidade
    - Valor unitário tabela ENG
    - Desconto parceiro? (geralmente 20% em Ozone Fish e Filtro UV)
-5. **Valor do Projeto Executivo + Visita Técnica + Start** (ex: R$ 8.000)
-6. **Condição de pagamento** — Padrão: "PIX / Transferência Bancária" à vista
+6. **Valor do Projeto Executivo + Visita Técnica + Start** (ex: R$ 8.000)
 
-Daí editar `tools/gerar_proposta.py` (variáveis `CLIENTE`, `DATA`, `VOLUME`, `PRECOS`, `VALOR_PROJETO`) e rodar:
+Daí editar `tools/gerar_proposta.py`, blocos:
+- `PROJETO`: dict com `cliente`, `data`, `tipo`, `volume`
+- `PRODUTOS`: lista de dicts (cada um com `icon`, `nome_card`, `desc_card`, `nome_tabela`, `qtd`, `unit`, `desc_pct`)
+- `VALOR_PROJETO_EXECUTIVO`: float
+- `DESCONTO_PARCEIRO_PCT`: int (geralmente 20)
+
+E rodar:
 
 ```bash
 python3 tools/gerar_proposta.py
@@ -118,12 +127,27 @@ python3 tools/gerar_proposta.py
 
 O PDF sai em `output/proposta.pdf`.
 
+### Exemplo de produto no `PRODUTOS`:
+
+```python
+{
+    "icon": "bolt",                              # nome do arquivo em assets/icons/ (sem extensão)
+    "nome_card": "Ozone Fish<br/>Power — Inox",  # quebra em 2 linhas no card
+    "desc_card": "Gerador de ozônio industrial para tratamento de alto volume",
+    "nome_tabela": "Ozone Fish Power — Inox",    # single-line para tabela
+    "qtd": 1,
+    "unit": 15339.00,
+    "desc_pct": 20,                              # ou None se não tiver desconto
+},
+```
+
 ---
 
 ## Regras CRÍTICAS
 
-- **SEMPRE 11 páginas** — não reduzir, não pular seções
+- **SEMPRE 10 páginas** — não reduzir, não pular seções, não reintroduzir página de "Visualização do Projeto"
 - **SEMPRE "Proposta de Parceria Técnica"** no título — não usar "Orçamento"
+- **Tipo de projeto sempre presente na capa** — "Lago Ornamental" ou "Piscina Praia"
 - **NUNCA inventar modelos de equipamento**. Modelos válidos:
   - Ozone Fish: 3000, 8000, 15000, 30000, 60000, 80000, 120000, Power
   - Filtro UV: 60W, 95W, 190W, 380W, Power
