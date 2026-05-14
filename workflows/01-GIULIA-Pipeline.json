@@ -1,0 +1,293 @@
+{
+  "name": "GIULIA - 01 Pipeline Assistente Pessoal",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-msg",
+        "responseMode": "onReceived",
+        "responseData": "ok",
+        "options": {}
+      },
+      "id": "wh-giulia",
+      "name": "Webhook Giulia",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400],
+      "webhookId": "giulia-msg-wh"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida payload UAZAPI e extrai dados da msg do Thiago\n// Numero do Thiago hardcoded (so ele fala com a Giulia por enquanto)\nconst THIAGO_NUMERO = '5511964486564';\n\nconst body = items[0].json.body || items[0].json;\nconst msg = body.message || body.data || body;\n\n// Ignorar mensagens enviadas POR Giulia (fromMe)\nconst fromMe = msg.fromMe === true || msg.key?.fromMe === true;\nif (fromMe) return [];\n\n// Ignorar grupos\nconst chatId = String(msg.chatid || msg.chatId || msg.key?.remoteJid || '');\nif (chatId.includes('@g.us') || chatId.includes('-')) return [];\n\n// Extrair numero do remetente\nconst senderNumero = chatId.replace(/@.*$/, '').replace(/[^0-9]/g, '');\n\n// Por enquanto so o Thiago pode usar a Giulia\nif (senderNumero !== THIAGO_NUMERO) {\n  return [];\n}\n\n// Extrair texto - varios formatos UAZAPI possiveis\nconst texto = msg.text\n  || msg.body\n  || msg.message?.conversation\n  || msg.message?.extendedTextMessage?.text\n  || msg.content\n  || '';\n\nif (!texto || !String(texto).trim()) return [];\n\n// Timestamp atual em Brasilia (UTC-3) - server roda UTC-4\nconst agora = new Date(Date.now() + (1 * 60 * 60 * 1000)); // +1h pra Brasilia\nconst agoraISO = agora.toISOString().replace('T', ' ').substring(0, 19);\n\nreturn [{\n  json: {\n    valido: true,\n    sender_numero: senderNumero,\n    texto: String(texto).trim(),\n    timestamp_agora_brasilia: agoraISO,\n    message_id: msg.id || msg.messageid || msg.key?.id || ''\n  }\n}];"
+      },
+      "id": "code-extrair",
+      "name": "Validar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, content, created_at\nFROM giulia_memoria\nWHERE created_at >= NOW() - INTERVAL '24 hours'\nORDER BY created_at DESC\nLIMIT 20;",
+        "options": {}
+      },
+      "id": "pg-mem",
+      "name": "Carregar Memoria 24h",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [640, 320],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT nome, apelidos, numero, observacoes FROM giulia_contatos ORDER BY nome;",
+        "options": {}
+      },
+      "id": "pg-contatos",
+      "name": "Carregar Contatos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [640, 480],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Junta msg atual + memoria + contatos e monta o prompt pra Gemini\nconst msgAtual = $('Validar Mensagem').first().json;\nconst memoria = $('Carregar Memoria 24h').all().map(i => i.json);\nconst contatos = $('Carregar Contatos').all().map(i => i.json);\n\n// Formatar contatos pra prompt\nconst contatosTxt = contatos.map(c => {\n  const apelidos = Array.isArray(c.apelidos) ? c.apelidos.join(', ') : (c.apelidos || '');\n  return `- ${c.nome} (apelidos: ${apelidos}) numero=${c.numero}${c.observacoes ? ' obs: '+c.observacoes : ''}`;\n}).join('\\n');\n\n// Formatar memoria (mais antiga primeiro)\nconst memOrdenada = memoria.slice().reverse();\nconst memTxt = memOrdenada.map(m => `[${m.role}] ${m.content}`).join('\\n') || '(sem historico recente)';\n\nconst systemPrompt = `Voce e a Giulia, secretaria pessoal do Thiago Nicezio (dono ENG Solucoes).\nFala PT-BR direto, sem rodeio, sem hifens em listas, sem emojis a menos que ele use.\n\nVoce recebe uma mensagem do Thiago e decide UMA acao a tomar.\n\nACOES disponiveis:\n1. salvar_ideia - guardar uma ideia/anotacao que ele teve\n2. criar_lembrete - voce mesma vai lembrar ele em data/hora especifica\n3. agendar_mensagem - mandar mensagem pra OUTRA pessoa em data/hora futura\n4. enviar_agora - mandar mensagem pra OUTRA pessoa agora\n5. listar_ideias - mostrar ideias que ele salvou (com filtro opcional por tag)\n6. listar_lembretes - mostrar lembretes pendentes\n7. apenas_responder - so conversar, sem acao no banco\n\nCONTATOS conhecidos (use o numero exato ao mandar mensagem):\n${contatosTxt}\n\nHISTORICO RECENTE (24h):\n${memTxt}\n\nMENSAGEM ATUAL DO THIAGO: \"${msgAtual.texto}\"\nTIMESTAMP ATUAL (Brasilia): ${msgAtual.timestamp_agora_brasilia}\n\nResponda SOMENTE JSON valido sem markdown, no formato:\n{\n  \"acao\": \"salvar_ideia\"|\"criar_lembrete\"|\"agendar_mensagem\"|\"enviar_agora\"|\"listar_ideias\"|\"listar_lembretes\"|\"apenas_responder\",\n  \"parametros\": {\n    \"conteudo\": \"texto da ideia\",\n    \"tags\": [\"tag1\",\"tag2\"],\n    \"descricao\": \"o que lembrar\",\n    \"disparar_em\": \"YYYY-MM-DD HH:MM:SS\",\n    \"recorrencia\": null,\n    \"destinatario_numero\": \"55...\",\n    \"destinatario_nome\": \"nome\",\n    \"texto\": \"mensagem pra mandar\",\n    \"filtro_tag\": \"opcional\"\n  },\n  \"resposta_pro_thiago\": \"texto curto confirmando o que voce fez ou perguntando o que falta\"\n}\n\nRegras:\n- Se ele falar \"daqui a X horas/minutos\", calcula a partir do timestamp atual.\n- Se ele falar \"amanha as 9h\", interpreta como amanha 09:00:00 Brasilia.\n- Se nao identificar o destinatario nos contatos, use apenas_responder e peca o numero.\n- Para listas vazias de parametros, use null ou string vazia, mas mantenha as chaves.\n- Datas SEMPRE em horario Brasilia.\n- Se a mensagem nao se encaixa em nenhuma acao concreta, use apenas_responder.`;\n\nreturn [{\n  json: {\n    sender_numero: msgAtual.sender_numero,\n    texto_original: msgAtual.texto,\n    timestamp_brasilia: msgAtual.timestamp_agora_brasilia,\n    gemini_body: {\n      contents: [{ parts: [{ text: msgAtual.texto }] }],\n      systemInstruction: { parts: [{ text: systemPrompt }] },\n      generationConfig: { temperature: 0.3, maxOutputTokens: 1500, responseMimeType: 'application/json' }\n    }\n  }\n}];"
+      },
+      "id": "code-prompt",
+      "name": "Montar Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyBO9-61UyVl7ZDKU8mdAsBhRCTRhAlEe58",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "http-gemini",
+      "name": "IA Giulia (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parseia resposta Gemini, decide acao, monta SQL/HTTP params\nconst prev = $('Montar Prompt').first().json;\nconst geminiResp = items[0].json;\n\nlet rawText = '';\ntry {\n  rawText = geminiResp.candidates?.[0]?.content?.parts?.[0]?.text || '';\n} catch(e) { rawText = ''; }\n\n// Parse JSON defensivo\nfunction parseJson(s) {\n  if (!s) return null;\n  let t = String(s).trim().replace(/^```json\\s*/i, '').replace(/```$/g, '').trim();\n  const i = t.indexOf('{'); const j = t.lastIndexOf('}');\n  if (i >= 0 && j > i) t = t.substring(i, j+1);\n  try { return JSON.parse(t); } catch(e) { return null; }\n}\n\nconst decisao = parseJson(rawText) || {\n  acao: 'apenas_responder',\n  parametros: {},\n  resposta_pro_thiago: 'Desculpa, tive um problema processando aqui. Pode repetir?'\n};\n\nconst acao = decisao.acao || 'apenas_responder';\nconst p = decisao.parametros || {};\nconst esc = s => String(s || '').replace(/'/g, \"''\");\n\n// Monta SQL OR HTTP params dependendo da acao\nlet acao_tipo = 'REPLY_ONLY';\nlet sql_query = '';\nlet send_to_number = '';\nlet send_text = '';\n\nif (acao === 'salvar_ideia') {\n  acao_tipo = 'DB_OP';\n  const tagsArr = Array.isArray(p.tags) ? p.tags.filter(Boolean) : [];\n  const tagsSql = tagsArr.length ? `ARRAY[${tagsArr.map(t=>`'${esc(t)}'`).join(',')}]::TEXT[]` : 'NULL';\n  sql_query = `INSERT INTO giulia_ideias (conteudo, tags) VALUES ('${esc(p.conteudo)}', ${tagsSql}) RETURNING id, conteudo;`;\n} else if (acao === 'criar_lembrete') {\n  acao_tipo = 'DB_OP';\n  const rec = p.recorrencia ? `'${esc(p.recorrencia)}'` : 'NULL';\n  sql_query = `INSERT INTO giulia_lembretes (descricao, disparar_em, recorrencia) VALUES ('${esc(p.descricao)}', '${esc(p.disparar_em)}'::TIMESTAMP, ${rec}) RETURNING id, descricao, disparar_em;`;\n} else if (acao === 'agendar_mensagem') {\n  acao_tipo = 'DB_OP';\n  sql_query = `INSERT INTO giulia_mensagens_agendadas (destinatario_numero, destinatario_nome, conteudo, agendado_para) VALUES ('${esc(p.destinatario_numero)}', '${esc(p.destinatario_nome)}', '${esc(p.texto)}', '${esc(p.disparar_em || p.agendado_para)}'::TIMESTAMP) RETURNING id, destinatario_nome, agendado_para;`;\n} else if (acao === 'enviar_agora') {\n  acao_tipo = 'SEND_NOW';\n  send_to_number = String(p.destinatario_numero || '').replace(/[^0-9]/g,'');\n  send_text = String(p.texto || '');\n} else if (acao === 'listar_ideias') {\n  acao_tipo = 'DB_OP';\n  const tag = p.filtro_tag ? esc(p.filtro_tag) : null;\n  sql_query = tag\n    ? `SELECT id, conteudo, tags, created_at FROM giulia_ideias WHERE '${tag}' = ANY(tags) ORDER BY created_at DESC LIMIT 20;`\n    : `SELECT id, conteudo, tags, created_at FROM giulia_ideias ORDER BY created_at DESC LIMIT 20;`;\n} else if (acao === 'listar_lembretes') {\n  acao_tipo = 'DB_OP';\n  sql_query = `SELECT id, descricao, disparar_em, recorrencia, status FROM giulia_lembretes WHERE status = 'pendente' ORDER BY disparar_em ASC LIMIT 20;`;\n}\n\nreturn [{\n  json: {\n    sender_numero: prev.sender_numero,\n    texto_original: prev.texto_original,\n    acao,\n    acao_tipo,\n    sql_query,\n    send_to_number,\n    send_text,\n    resposta_pro_thiago: decisao.resposta_pro_thiago || 'Feito.',\n    gemini_raw: rawText.substring(0, 500)\n  }\n}];"
+      },
+      "id": "code-decidir",
+      "name": "Decidir Acao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 400]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [
+                  { "leftValue": "={{ $json.acao_tipo }}", "rightValue": "DB_OP", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "db_op"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [
+                  { "leftValue": "={{ $json.acao_tipo }}", "rightValue": "SEND_NOW", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "send_now"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra", "renameFallbackOutput": "reply_only" }
+      },
+      "id": "switch-rotear",
+      "name": "Roteador Acao",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1520, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql_query }}",
+        "options": {}
+      },
+      "id": "pg-db-op",
+      "name": "Executar DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1740, 280],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.send_to_number, text: $json.send_text }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-send-third",
+      "name": "Enviar Pra Terceiro UAZAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1740, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Converge as 3 branches num so output\n// $input.all() pega tudo que chegar aqui\nconst all = $input.all();\nreturn all;"
+      },
+      "id": "code-merge",
+      "name": "Merge Branches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formata resposta final pro Thiago baseado na acao executada\n// Vem da Decidir Acao + resultado da branch (DB ou HTTP)\nconst dec = $('Decidir Acao').first().json;\nconst acao = dec.acao;\nlet textoResposta = dec.resposta_pro_thiago || 'Feito.';\n\n// Pra listas, formatar a saida do Postgres\nif (acao === 'listar_ideias') {\n  const rows = $input.all().map(i => i.json).filter(r => r && r.conteudo);\n  if (!rows.length) {\n    textoResposta = 'Nenhuma ideia salva ainda.';\n  } else {\n    const linhas = rows.map((r, i) => {\n      const tags = Array.isArray(r.tags) && r.tags.length ? ` [${r.tags.join(', ')}]` : '';\n      return `${i+1}. ${r.conteudo}${tags}`;\n    });\n    textoResposta = `Tuas ideias salvas:\\n${linhas.join('\\n')}`;\n  }\n}\nif (acao === 'listar_lembretes') {\n  const rows = $input.all().map(i => i.json).filter(r => r && r.descricao);\n  if (!rows.length) {\n    textoResposta = 'Nenhum lembrete pendente.';\n  } else {\n    const linhas = rows.map((r, i) => {\n      const dt = new Date(r.disparar_em);\n      const dtFmt = dt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });\n      const rec = r.recorrencia ? ` (${r.recorrencia})` : '';\n      return `${i+1}. ${dtFmt} - ${r.descricao}${rec}`;\n    });\n    textoResposta = `Lembretes pendentes:\\n${linhas.join('\\n')}`;\n  }\n}\nif (acao === 'enviar_agora') {\n  const status = $input.first()?.json?.status || $input.first()?.json?.statusCode;\n  if (status && String(status).match(/^[45]/)) {\n    textoResposta = `Tive problema ao mandar: ${status}. Tenta de novo?`;\n  }\n}\n\nreturn [{\n  json: {\n    sender_numero: dec.sender_numero,\n    texto_original: dec.texto_original,\n    resposta_final: textoResposta\n  }\n}];"
+      },
+      "id": "code-format",
+      "name": "Formatar Resposta Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2180, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.sender_numero, text: $json.resposta_final }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-reply",
+      "name": "Responder Thiago UAZAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2400, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO giulia_memoria (role, content, metadata) VALUES\n  ('user', '{{ ($json.texto_original || '').replace(/'/g, \"''\") }}', NULL),\n  ('assistant', '{{ ($json.resposta_final || '').replace(/'/g, \"''\") }}', NULL);",
+        "options": {}
+      },
+      "id": "pg-mem-save",
+      "name": "Salvar Memoria",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2620, 400],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Giulia": {
+      "main": [[{ "node": "Validar Mensagem", "type": "main", "index": 0 }]]
+    },
+    "Validar Mensagem": {
+      "main": [[{ "node": "Carregar Memoria 24h", "type": "main", "index": 0 }]]
+    },
+    "Carregar Memoria 24h": {
+      "main": [[{ "node": "Carregar Contatos", "type": "main", "index": 0 }]]
+    },
+    "Carregar Contatos": {
+      "main": [[{ "node": "Montar Prompt", "type": "main", "index": 0 }]]
+    },
+    "Montar Prompt": {
+      "main": [[{ "node": "IA Giulia (Gemini)", "type": "main", "index": 0 }]]
+    },
+    "IA Giulia (Gemini)": {
+      "main": [[{ "node": "Decidir Acao", "type": "main", "index": 0 }]]
+    },
+    "Decidir Acao": {
+      "main": [[{ "node": "Roteador Acao", "type": "main", "index": 0 }]]
+    },
+    "Roteador Acao": {
+      "main": [
+        [{ "node": "Executar DB", "type": "main", "index": 0 }],
+        [{ "node": "Enviar Pra Terceiro UAZAPI", "type": "main", "index": 0 }],
+        [{ "node": "Merge Branches", "type": "main", "index": 0 }]
+      ]
+    },
+    "Executar DB": {
+      "main": [[{ "node": "Merge Branches", "type": "main", "index": 0 }]]
+    },
+    "Enviar Pra Terceiro UAZAPI": {
+      "main": [[{ "node": "Merge Branches", "type": "main", "index": 0 }]]
+    },
+    "Merge Branches": {
+      "main": [[{ "node": "Formatar Resposta Final", "type": "main", "index": 0 }]]
+    },
+    "Formatar Resposta Final": {
+      "main": [[{ "node": "Responder Thiago UAZAPI", "type": "main", "index": 0 }]]
+    },
+    "Responder Thiago UAZAPI": {
+      "main": [[{ "node": "Salvar Memoria", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

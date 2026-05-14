@@ -1,0 +1,220 @@
+{
+  "name": "GIULIA - 02 Scheduler Lembretes",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 1 }]
+        }
+      },
+      "id": "cron-1min",
+      "name": "Cron 1min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-scheduler-tick",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-tick",
+      "name": "Webhook Test (manual)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 480],
+      "webhookId": "giulia-scheduler-tick-wh"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH claimed AS (\n  UPDATE giulia_lembretes\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT id FROM giulia_lembretes\n    WHERE status = 'pendente'\n      AND disparar_em <= NOW() AT TIME ZONE 'America/Sao_Paulo'\n    FOR UPDATE SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, descricao, disparar_em, recorrencia\n)\nSELECT id, descricao, disparar_em, recorrencia FROM claimed;",
+        "options": {}
+      },
+      "id": "pg-claim-lembretes",
+      "name": "Claim Lembretes Devidos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [420, 220],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH claimed AS (\n  UPDATE giulia_mensagens_agendadas\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT id FROM giulia_mensagens_agendadas\n    WHERE status = 'pendente'\n      AND agendado_para <= NOW() AT TIME ZONE 'America/Sao_Paulo'\n    FOR UPDATE SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, destinatario_numero, destinatario_nome, conteudo\n)\nSELECT id, destinatario_numero, destinatario_nome, conteudo FROM claimed;",
+        "options": {}
+      },
+      "id": "pg-claim-msgs",
+      "name": "Claim Msgs Agendadas Devidas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [420, 580],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pra cada lembrete claimed, monta payload pro Thiago e SQL de finalizacao\nconst THIAGO_NUMERO = '5511964486564';\nconst lembretes = items.filter(i => i.json && i.json.id);\n\nreturn lembretes.map(l => {\n  const j = l.json;\n  const isRec = j.recorrencia && ['diaria','semanal','mensal'].includes(j.recorrencia);\n  const interval = j.recorrencia === 'diaria' ? '1 day' : j.recorrencia === 'semanal' ? '7 days' : '1 month';\n  const recSql = isRec\n    ? `INSERT INTO giulia_lembretes (descricao, disparar_em, recorrencia) VALUES ('${String(j.descricao).replace(/'/g,\"''\")}', ('${j.disparar_em}'::TIMESTAMP + INTERVAL '${interval}'), '${j.recorrencia}');`\n    : '';\n  const finalizeSql = `UPDATE giulia_lembretes SET status = 'enviado', enviado_em = NOW() WHERE id = ${j.id};${recSql}`;\n  return {\n    json: {\n      tipo: 'lembrete',\n      lembrete_id: j.id,\n      send_to: THIAGO_NUMERO,\n      send_text: `Lembrete: ${j.descricao}`,\n      finalize_sql: finalizeSql\n    }\n  };\n});"
+      },
+      "id": "code-prep-lembretes",
+      "name": "Preparar Lembretes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 220]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pra cada msg agendada, monta payload pro destinatario\nconst msgs = items.filter(i => i.json && i.json.id);\n\nreturn msgs.map(m => {\n  const j = m.json;\n  const numero = String(j.destinatario_numero || '').replace(/[^0-9]/g,'');\n  return {\n    json: {\n      tipo: 'mensagem',\n      msg_id: j.id,\n      send_to: numero,\n      send_text: j.conteudo,\n      destinatario_nome: j.destinatario_nome,\n      finalize_sql: `UPDATE giulia_mensagens_agendadas SET status = 'enviado', enviado_em = NOW() WHERE id = ${j.id};`\n    }\n  };\n});"
+      },
+      "id": "code-prep-msgs",
+      "name": "Preparar Msgs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 580]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-send-lembrete",
+      "name": "Enviar Lembrete UAZAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-send-msg",
+      "name": "Enviar Msg UAZAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 580]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-30s",
+      "name": "Wait 30s Anti-spam",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1080, 580]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.finalize_sql }}",
+        "options": {}
+      },
+      "id": "pg-finalize-lembrete",
+      "name": "Finalizar Lembrete",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1080, 220],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.finalize_sql }}",
+        "options": {}
+      },
+      "id": "pg-finalize-msg",
+      "name": "Finalizar Msg",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1300, 580],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 1min": {
+      "main": [
+        [
+          { "node": "Claim Lembretes Devidos", "type": "main", "index": 0 },
+          { "node": "Claim Msgs Agendadas Devidas", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Webhook Test (manual)": {
+      "main": [
+        [
+          { "node": "Claim Lembretes Devidos", "type": "main", "index": 0 },
+          { "node": "Claim Msgs Agendadas Devidas", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Claim Lembretes Devidos": {
+      "main": [[{ "node": "Preparar Lembretes", "type": "main", "index": 0 }]]
+    },
+    "Claim Msgs Agendadas Devidas": {
+      "main": [[{ "node": "Preparar Msgs", "type": "main", "index": 0 }]]
+    },
+    "Preparar Lembretes": {
+      "main": [[{ "node": "Enviar Lembrete UAZAPI", "type": "main", "index": 0 }]]
+    },
+    "Preparar Msgs": {
+      "main": [[{ "node": "Enviar Msg UAZAPI", "type": "main", "index": 0 }]]
+    },
+    "Enviar Lembrete UAZAPI": {
+      "main": [[{ "node": "Finalizar Lembrete", "type": "main", "index": 0 }]]
+    },
+    "Enviar Msg UAZAPI": {
+      "main": [[{ "node": "Wait 30s Anti-spam", "type": "main", "index": 0 }]]
+    },
+    "Wait 30s Anti-spam": {
+      "main": [[{ "node": "Finalizar Msg", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
