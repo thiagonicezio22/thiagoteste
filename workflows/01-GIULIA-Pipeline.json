@@ -58,21 +58,36 @@
         "jsonBody": "={{ JSON.stringify({ id: $json.audio_id }) }}",
         "options": { "timeout": 45000, "response": { "response": { "neverError": true } } }
       },
-      "id": "http-baixar-audio",
+      "id": "http-baixar-audio-url",
       "name": "Baixar Audio UAZAPI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [820, 280]
+      "position": [780, 280]
     },
     {
       "parameters": {
-        "jsCode": "// Combina resposta do download com o estado anterior\nconst prev = $('Validar Mensagem').first().json;\nconst resp = items[0].json || {};\n\n// Tenta varios campos comuns onde UAZAPI pode entregar base64\nconst base64 = resp.base64\n  || resp.data\n  || resp.fileBase64\n  || resp.audio?.base64\n  || resp.media?.base64\n  || resp.body?.base64\n  || '';\n\nconst mime = resp.mimetype || resp.mime || prev.audio_mime || 'audio/ogg';\n\nreturn [{\n  json: {\n    ...prev,\n    audio_base64: base64,\n    audio_mime: mime,\n    audio_download_falhou: !base64,\n    audio_download_raw_keys: Object.keys(resp).slice(0, 10).join(',')\n  }\n}];"
+        "method": "GET",
+        "url": "={{ $json.fileURL }}",
+        "options": {
+          "timeout": 60000,
+          "response": { "response": { "responseFormat": "file", "neverError": true } }
+        }
+      },
+      "id": "http-baixar-audio-file",
+      "name": "Baixar Audio File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega o binario do file download e converte pra base64\nconst prev = $('Validar Mensagem').first().json;\nconst urlResp = $('Baixar Audio UAZAPI').first().json || {};\n\n// Tentar pegar base64 do binary data\nlet base64 = '';\nlet mime = urlResp.mimetype || urlResp.mime || prev.audio_mime || 'audio/ogg';\nlet falhou = true;\n\ntry {\n  const bin = $input.first().binary;\n  if (bin) {\n    // pega o primeiro campo binario disponivel\n    const firstKey = Object.keys(bin)[0];\n    if (firstKey) {\n      const b = bin[firstKey];\n      base64 = b.data || '';\n      if (b.mimeType) mime = b.mimeType;\n      falhou = !base64;\n    }\n  }\n} catch(e) {}\n\nreturn [{\n  json: {\n    ...prev,\n    audio_base64: base64,\n    audio_mime: mime,\n    audio_download_falhou: falhou,\n    audio_url: urlResp.fileURL || '',\n    audio_b64_len: base64.length\n  }\n}];"
       },
       "id": "code-combinar-audio",
       "name": "Combinar Audio",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1020, 280]
+      "position": [1180, 280]
     },
     {
       "parameters": {
@@ -322,6 +337,9 @@
       ]
     },
     "Baixar Audio UAZAPI": {
+      "main": [[{ "node": "Baixar Audio File", "type": "main", "index": 0 }]]
+    },
+    "Baixar Audio File": {
       "main": [[{ "node": "Combinar Audio", "type": "main", "index": 0 }]]
     },
     "Combinar Audio": {
