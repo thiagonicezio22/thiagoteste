@@ -77,6 +77,7 @@ PYEOF
 
 deploy "Tm1Ec80tegOqWS4N" "workflows/01-GIULIA-Pipeline.json" "GIULIA - 01 Pipeline"
 deploy "sl6gOYuAIwvCRvOP" "workflows/02-GIULIA-Scheduler.json" "GIULIA - 02 Scheduler"
+deploy "AEVYq2LMB608RnU8" "workflows/03-GIULIA-Sync-Gastos-Sheets.json" "GIULIA - 03 Sync Gastos Sheets"
 
 echo ""
 echo "Workflows deployados com secrets injetados."

@@ -1,0 +1,117 @@
+{
+  "name": "GIULIA - 03 Sync Gastos Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      },
+      "id": "cron-5min",
+      "name": "Cron 5min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-sync-gastos-tick",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-tick",
+      "name": "Webhook Test (manual)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 460],
+      "webhookId": "giulia-sync-gastos-tick-wh"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, descricao, valor, categoria, forma_pagamento, COALESCE(array_to_string(tags, ', '), '') AS tags, data_gasto, COALESCE(observacoes, '') AS observacoes, criado_em\nFROM giulia_gastos\nWHERE sheets_synced = FALSE\nORDER BY criado_em ASC\nLIMIT 100;",
+        "options": {}
+      },
+      "id": "pg-pending",
+      "name": "Gastos Pendentes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [420, 380],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formata cada gasto pra uma linha da planilha\n// Colunas esperadas na planilha: ID, Data, Descricao, Valor, Categoria, Forma Pagamento, Tags, Observacoes, Registrado em\nconst gastos = items.filter(i => i.json && i.json.id);\nif (!gastos.length) return [];\n\nfunction fmtDate(d){\n  if (!d) return '';\n  const s = String(d);\n  const m = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);\n  return m ? `${m[3]}/${m[2]}/${m[1]}` : s;\n}\nfunction fmtDateTime(d){\n  if (!d) return '';\n  return new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n}\n\nreturn gastos.map(g => {\n  const j = g.json;\n  return {\n    json: {\n      id: j.id,\n      ID: String(j.id),\n      Data: fmtDate(j.data_gasto),\n      Descricao: j.descricao || '',\n      Valor: Number(j.valor || 0),\n      Categoria: j.categoria || '',\n      'Forma Pagamento': j.forma_pagamento || '',\n      Tags: j.tags || '',\n      Observacoes: j.observacoes || '',\n      'Registrado em': fmtDateTime(j.criado_em)\n    }\n  };\n});"
+      },
+      "id": "code-prep",
+      "name": "Formatar Linhas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 380]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "append",
+        "documentId": "__GIULIA_SHEETS_DOC_ID__",
+        "sheetName": "__GIULIA_SHEETS_TAB__",
+        "options": { "valueInputMode": "USER_ENTERED" }
+      },
+      "id": "sheets-append",
+      "name": "Append Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [860, 380],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "__GIULIA_SHEETS_CRED_ID__",
+          "name": "Google Sheets Giulia"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE giulia_gastos\nSET sheets_synced = TRUE, sheets_synced_em = NOW()\nWHERE id = {{ $json.id }}\nRETURNING id;",
+        "options": {}
+      },
+      "id": "pg-mark",
+      "name": "Marcar Sincronizado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1080, 380],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 5min": {
+      "main": [[{ "node": "Gastos Pendentes", "type": "main", "index": 0 }]]
+    },
+    "Webhook Test (manual)": {
+      "main": [[{ "node": "Gastos Pendentes", "type": "main", "index": 0 }]]
+    },
+    "Gastos Pendentes": {
+      "main": [[{ "node": "Formatar Linhas", "type": "main", "index": 0 }]]
+    },
+    "Formatar Linhas": {
+      "main": [[{ "node": "Append Sheets", "type": "main", "index": 0 }]]
+    },
+    "Append Sheets": {
+      "main": [[{ "node": "Marcar Sincronizado", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
