@@ -8,6 +8,10 @@
 #   N8N_URL                   ex: https://whats-n8n.ghikuu.easypanel.host
 #   GIULIA_UAZAPI_TOKEN       token da instancia UAZAPI da Giulia
 #   GIULIA_GEMINI_API_KEY     chave Gemini dedicada da Giulia
+#   GIULIA_SHEETS_DOC_ID      (opcional) id da planilha de gastos no Google Drive
+#   GIULIA_SHEETS_TAB         (opcional) nome da aba (default 'Gastos')
+#   GIULIA_SHEETS_CRED_ID     (opcional) id da credencial Google Sheets no n8n
+#   GIULIA_SHEETS_CRED_NAME   (opcional) nome da credencial (visual)
 
 set -euo pipefail
 
@@ -15,6 +19,10 @@ set -euo pipefail
 : "${N8N_URL:?defina N8N_URL}"
 : "${GIULIA_UAZAPI_TOKEN:?defina GIULIA_UAZAPI_TOKEN}"
 : "${GIULIA_GEMINI_API_KEY:?defina GIULIA_GEMINI_API_KEY}"
+GIULIA_SHEETS_DOC_ID="${GIULIA_SHEETS_DOC_ID:-}"
+GIULIA_SHEETS_TAB="${GIULIA_SHEETS_TAB:-Gastos}"
+GIULIA_SHEETS_CRED_ID="${GIULIA_SHEETS_CRED_ID:-}"
+GIULIA_SHEETS_CRED_NAME="${GIULIA_SHEETS_CRED_NAME:-Google Sheets Giulia}"
 
 deploy() {
   local wf_id="$1"
@@ -33,14 +41,32 @@ deploy() {
   fi
 
   # Le JSON, substitui placeholders, monta payload minimo
-  UAZAPI_TOKEN="$GIULIA_UAZAPI_TOKEN" GEMINI_KEY="$GIULIA_GEMINI_API_KEY" python3 << PYEOF > /tmp/wf_put.json
+  UAZAPI_TOKEN="$GIULIA_UAZAPI_TOKEN" \
+  GEMINI_KEY="$GIULIA_GEMINI_API_KEY" \
+  SHEETS_DOC="$GIULIA_SHEETS_DOC_ID" \
+  SHEETS_TAB="$GIULIA_SHEETS_TAB" \
+  SHEETS_CRED_ID="$GIULIA_SHEETS_CRED_ID" \
+  SHEETS_CRED_NAME="$GIULIA_SHEETS_CRED_NAME" \
+  python3 << PYEOF > /tmp/wf_put.json
 import json, os
 with open('$local_file') as f:
     d = json.load(f)
 raw = json.dumps(d)
 raw = raw.replace('__GIULIA_UAZAPI_TOKEN__', os.environ['UAZAPI_TOKEN'])
 raw = raw.replace('__GIULIA_GEMINI_API_KEY__', os.environ['GEMINI_KEY'])
+if os.environ['SHEETS_DOC']:
+    raw = raw.replace('__GIULIA_SHEETS_DOC_ID__', os.environ['SHEETS_DOC'])
+if os.environ['SHEETS_TAB']:
+    raw = raw.replace('__GIULIA_SHEETS_TAB__', os.environ['SHEETS_TAB'])
+if os.environ['SHEETS_CRED_ID']:
+    raw = raw.replace('__GIULIA_SHEETS_CRED_ID__', os.environ['SHEETS_CRED_ID'])
 new = json.loads(raw)
+# atualizar nome visual da credencial se foi informado
+if os.environ['SHEETS_CRED_ID']:
+    for n in new['nodes']:
+        creds = n.get('credentials', {})
+        if 'googleSheetsOAuth2Api' in creds:
+            creds['googleSheetsOAuth2Api']['name'] = os.environ['SHEETS_CRED_NAME']
 payload = {
     'name': new['name'],
     'nodes': new['nodes'],

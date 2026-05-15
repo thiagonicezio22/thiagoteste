@@ -58,9 +58,24 @@
     {
       "parameters": {
         "authentication": "oAuth2",
+        "resource": "sheet",
         "operation": "append",
-        "documentId": "__GIULIA_SHEETS_DOC_ID__",
-        "sheetName": "__GIULIA_SHEETS_TAB__",
+        "documentId": {
+          "__rl": true,
+          "value": "__GIULIA_SHEETS_DOC_ID__",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "__GIULIA_SHEETS_TAB__",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
         "options": { "valueInputMode": "USER_ENTERED" }
       },
       "id": "sheets-append",
