@@ -35,7 +35,14 @@ Nenhuma tabela existente foi alterada. `julian_memory`, `monitoramento_vendedor`
 
 Nenhum workflow ENG foi tocado (Pipeline Julian, WF18, WF19, WF20 etc. seguem rodando).
 
-## ⚠️ Setup que falta (manual) — 4 passos
+## ⚠️ Setup que falta (manual)
+
+Credenciais ficam **fora do Git**, num arquivo `.env` local. Comece copiando o template:
+
+```bash
+cp .env.example .env
+# edite .env com os valores reais (N8N_API_KEY, GIULIA_GEMINI_API_KEY, GIULIA_UAZAPI_TOKEN)
+```
 
 ### 1. Criar nova instância UAZAPI pra Giulia
 
@@ -43,25 +50,9 @@ No painel UAZAPI (`https://uazapi.dev/interno?p=conecte`):
 
 1. **Criar instância nova** com nome `Giulia`
 2. **Conectar um chip novo** via QR Code (precisa de um número de WhatsApp dedicado pra Giulia — chip novo de preferência)
-3. **Copiar o token** da instância recém-criada
+3. **Copiar o token** da instância e colar em `GIULIA_UAZAPI_TOKEN` no `.env`
 
-### 2. Substituir o token nos workflows
-
-O placeholder `__GIULIA_UAZAPI_TOKEN__` aparece **3 vezes** distribuído entre os 2 workflows:
-
-- Workflow `Tm1Ec80tegOqWS4N` → nodes `Enviar Pra Terceiro UAZAPI` e `Responder Thiago UAZAPI`
-- Workflow `sl6gOYuAIwvCRvOP` → nodes `Enviar Lembrete UAZAPI` e `Enviar Msg UAZAPI`
-
-Use o script helper:
-
-```bash
-cd /home/user/thiagoteste
-GIULIA_TOKEN="seu-token-uazapi-novo-aqui" ./scripts/deploy-token.sh
-```
-
-Ou faça pelo painel n8n editando cada node manualmente.
-
-### 3. Configurar webhook UAZAPI pra Giulia
+### 2. Configurar webhook UAZAPI pra Giulia
 
 Na instância Giulia no UAZAPI, configure o webhook de mensagens:
 
@@ -71,7 +62,16 @@ Na instância Giulia no UAZAPI, configure o webhook de mensagens:
 - **Excluir:** `isGroupYes` (não capturar grupos)
 - **Excluir:** `fromMe` (não capturar mensagens enviadas pela própria Giulia)
 
-### 4. Ativar os 2 workflows
+### 3. Aplicar secrets nos workflows do n8n
+
+```bash
+set -a; source .env; set +a
+./scripts/deploy-secrets.sh
+```
+
+Isso substitui `__GIULIA_GEMINI_API_KEY__` e `__GIULIA_UAZAPI_TOKEN__` dentro dos workflows do n8n. Os JSONs do repo permanecem com placeholders (nunca commitar credenciais).
+
+### 4. Ativar
 
 ```bash
 ./scripts/activate-giulia.sh

@@ -39,14 +39,20 @@ Ainda no painel UAZAPI, na instância Giulia:
 
 3. Salve
 
-## Passo 4 — Deploy do token nos workflows
+## Passo 4 — Deploy dos secrets nos workflows
 
 Volte pro shell na pasta `/home/user/thiagoteste`:
 
 ```bash
 cd /home/user/thiagoteste
 chmod +x scripts/*.sh
-GIULIA_TOKEN="cole-aqui-o-token-da-instancia-giulia" ./scripts/deploy-token.sh
+
+# Se for a primeira vez:
+cp .env.example .env
+# Edite .env e preencha N8N_API_KEY, GIULIA_UAZAPI_TOKEN (que voce acabou de copiar) e GIULIA_GEMINI_API_KEY
+
+set -a; source .env; set +a
+./scripts/deploy-secrets.sh
 ```
 
 Saída esperada:
@@ -55,7 +61,7 @@ Atualizando GIULIA - 01 Pipeline (Tm1Ec80tegOqWS4N)...
   OK
 Atualizando GIULIA - 02 Scheduler (sl6gOYuAIwvCRvOP)...
   OK
-Token aplicado nos 2 workflows. Proximo passo: ./scripts/activate-giulia.sh
+Secrets aplicados nos 2 workflows. Proximo: ./scripts/activate-giulia.sh
 ```
 
 ## Passo 5 — Ativar
@@ -77,7 +83,7 @@ Do seu WhatsApp pessoal (5511964486564) manda pro número da Giulia:
 
 - **Não responde nada:** verifica logs em n8n `https://whats-n8n.ghikuu.easypanel.host` → Executions do workflow `GIULIA - 01 Pipeline Assistente Pessoal`
 - **Webhook não dispara:** confere se o webhook tá ativo no UAZAPI e se URL bate certinho
-- **Erro 401 ao enviar:** token errado no workflow, rodar `deploy-token.sh` de novo
+- **Erro 401 ao enviar:** token errado no workflow, rodar `deploy-secrets.sh` de novo
 - **Lembrete não chega:** confere `GIULIA - 02 Scheduler` está ativo. Executa pelo painel n8n manualmente uma vez pra testar.
 
 ## Como pausar a Giulia
