@@ -1,0 +1,131 @@
+{
+  "name": "GIULIA - 04 Sumarizar Memoria Antiga",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 4 * * 0" }]
+        }
+      },
+      "id": "cron-domingo",
+      "name": "Cron Domingo 4h UTC-4 (1h Brasilia)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-sumarizar-tick",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-tick",
+      "name": "Webhook manual",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 460],
+      "webhookId": "giulia-sumarizar-tick-wh"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH counts AS (\n  SELECT from_numero, COUNT(*) AS total\n  FROM giulia_memoria\n  WHERE from_numero IS NOT NULL AND from_numero != ''\n  GROUP BY from_numero\n  HAVING COUNT(*) > 50\n),\nold_msgs AS (\n  SELECT m.from_numero,\n         array_agg(m.role || ': ' || m.content ORDER BY m.created_at ASC) AS msgs,\n         MIN(m.created_at) AS periodo_inicio,\n         MAX(m.created_at) AS periodo_fim,\n         COUNT(*) AS msg_count,\n         array_agg(m.id ORDER BY m.created_at ASC) AS ids\n  FROM giulia_memoria m\n  JOIN counts c ON c.from_numero = m.from_numero\n  WHERE m.id NOT IN (\n    SELECT id FROM giulia_memoria mm\n    WHERE mm.from_numero = m.from_numero\n    ORDER BY mm.created_at DESC\n    LIMIT 30\n  )\n  GROUP BY m.from_numero\n)\nSELECT from_numero, array_to_string(msgs, E'\\n') AS texto_conversas, periodo_inicio, periodo_fim, msg_count, ids\nFROM old_msgs\nLIMIT 10;",
+        "options": {}
+      },
+      "id": "pg-fetch",
+      "name": "Buscar Conversas Antigas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [420, 380],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pra cada from_numero com >50 msgs, monta prompt de sumarizacao\nconst items_in = items.filter(i => i.json && i.json.from_numero);\nif (!items_in.length) return [];\n\nreturn items_in.map(it => {\n  const j = it.json;\n  const systemPrompt = `Voce vai resumir uma conversa de WhatsApp entre o Thiago Nicezio (\\\"user\\\") e a Giulia Mascarenhas (\\\"assistant\\\", a secretaria virtual dele). Retorne um resumo curto e factual em PT-BR, capturando:\\n- Tipos de coisas que ele pediu (gastos, lembretes, contatos, msgs pra terceiros, etc)\\n- Pessoas mencionadas (com numero se aparecer)\\n- Decisoes ou agendamentos importantes\\n- Preferencias ou padroes que voce notou\\n\\nMaximo 800 caracteres. Linguagem direta. Sem hifens em listas.`;\n  return {\n    json: {\n      from_numero: j.from_numero,\n      msg_count: j.msg_count,\n      ids: j.ids,\n      periodo_inicio: j.periodo_inicio,\n      periodo_fim: j.periodo_fim,\n      gemini_body: {\n        contents: [{ parts: [{ text: 'Conversa:\\n' + (j.texto_conversas || '').substring(0, 50000) }] }],\n        systemInstruction: { parts: [{ text: systemPrompt }] },\n        generationConfig: { temperature: 0.3, maxOutputTokens: 1200 }\n      }\n    }\n  };\n});"
+      },
+      "id": "code-prep",
+      "name": "Preparar Prompts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=__GIULIA_GEMINI_API_KEY__",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "http-gemini",
+      "name": "Gemini Sumarizar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega resumo do Gemini e monta SQL pra inserir resumo + deletar msgs antigas\nconst input = items[0].json;\nconst prep = $('Preparar Prompts').first().json;\nlet resumo = '';\ntry { resumo = input.candidates?.[0]?.content?.parts?.[0]?.text || ''; } catch(e) {}\nresumo = (resumo || '').trim().substring(0, 2000);\nif (!resumo) return [];\nconst esc = s => String(s || '').replace(/'/g, \"''\");\n\n// SQL: insere resumo + deleta msgs antigas\nconst ids = Array.isArray(prep.ids) ? prep.ids.filter(Boolean) : [];\nif (!ids.length) return [];\nconst idsSql = ids.join(',');\nconst sql = `INSERT INTO giulia_memoria_resumos (from_numero, resumo, periodo_inicio, periodo_fim, msg_count) VALUES ('${esc(prep.from_numero)}', '${esc(resumo)}', '${prep.periodo_inicio}'::TIMESTAMP, '${prep.periodo_fim}'::TIMESTAMP, ${prep.msg_count}) RETURNING id;\\nDELETE FROM giulia_memoria WHERE id IN (${idsSql}) RETURNING id;`;\nreturn [{ json: { sql, from_numero: prep.from_numero, msg_count: prep.msg_count, resumo_len: resumo.length } }];"
+      },
+      "id": "code-build-sql",
+      "name": "Montar SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 380]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql }}",
+        "options": {}
+      },
+      "id": "pg-exec",
+      "name": "Salvar Resumo + Apagar Antigas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1300, 380],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron Domingo 4h UTC-4 (1h Brasilia)": {
+      "main": [[{ "node": "Buscar Conversas Antigas", "type": "main", "index": 0 }]]
+    },
+    "Webhook manual": {
+      "main": [[{ "node": "Buscar Conversas Antigas", "type": "main", "index": 0 }]]
+    },
+    "Buscar Conversas Antigas": {
+      "main": [[{ "node": "Preparar Prompts", "type": "main", "index": 0 }]]
+    },
+    "Preparar Prompts": {
+      "main": [[{ "node": "Gemini Sumarizar", "type": "main", "index": 0 }]]
+    },
+    "Gemini Sumarizar": {
+      "main": [[{ "node": "Montar SQL", "type": "main", "index": 0 }]]
+    },
+    "Montar SQL": {
+      "main": [[{ "node": "Salvar Resumo + Apagar Antigas", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
