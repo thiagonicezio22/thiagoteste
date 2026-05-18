@@ -1,0 +1,157 @@
+{
+  "name": "GIULIA - 05 Rotina Diaria",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
+        }
+      },
+      "id": "cron-aviso",
+      "name": "Cron 7h Brasilia (aviso)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 220]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 11 * * *" }]
+        }
+      },
+      "id": "cron-reforco",
+      "name": "Cron 12h Brasilia (reforco)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 380]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-rotina-aviso",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-aviso",
+      "name": "Webhook Aviso (manual)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 540],
+      "webhookId": "giulia-rotina-aviso-wh"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-rotina-reforco",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-reforco",
+      "name": "Webhook Reforco (manual)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 700],
+      "webhookId": "giulia-rotina-reforco-wh"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { tipo: 'aviso' } }];"
+      },
+      "id": "set-aviso",
+      "name": "Set tipo=aviso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { tipo: 'reforco' } }];"
+      },
+      "id": "set-reforco",
+      "name": "Set tipo=reforco",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 700]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, dia_semana, tarefa, hora_aviso, hora_reforco\nFROM giulia_rotina\nWHERE ativa = TRUE\n  AND dia_semana = EXTRACT(DOW FROM (NOW() AT TIME ZONE 'America/Sao_Paulo'))::INT\nORDER BY id;",
+        "options": {}
+      },
+      "id": "pg-tarefas",
+      "name": "Tarefas do Dia",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [640, 540],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Monta mensagem aviso (manha) ou reforco (tarde) pro Thiago\nconst THIAGO_NUMERO = '5511910441709';\nconst tarefas = items.filter(i => i.json && i.json.tarefa);\n\nlet tipo = 'aviso';\ntry { tipo = $('Set tipo=aviso').first().json.tipo; } catch(e) {}\nif (!tipo || tipo === undefined) {\n  try { tipo = $('Set tipo=reforco').first().json.tipo; } catch(e) {}\n}\n\nlet textoFinal = '';\nif (!tarefas.length) {\n  // dia livre - so manda no aviso\n  if (tipo === 'aviso') textoFinal = 'Bom dia. Hoje voce ta livre, sem tarefas na rotina.';\n  else return [];\n} else {\n  const lista = tarefas.map(t => `- ${t.json.tarefa}`).join('\\n');\n  if (tipo === 'aviso') {\n    textoFinal = `Bom dia. Hoje tem na rotina:\\n${lista}\\n\\nVou te lembrar de novo ao meio dia pra ver como ficou.`;\n  } else {\n    textoFinal = `Como foi a rotina de hoje? Lembra:\\n${lista}\\n\\nJa fez tudo? Falta alguma coisa?`;\n  }\n}\n\nif (!textoFinal) return [];\nreturn [{ json: { send_to: THIAGO_NUMERO, send_text: textoFinal, tipo } }];"
+      },
+      "id": "code-build",
+      "name": "Montar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 540]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-send",
+      "name": "Enviar UAZAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 540]
+    }
+  ],
+  "connections": {
+    "Cron 7h Brasilia (aviso)": {
+      "main": [[{ "node": "Set tipo=aviso", "type": "main", "index": 0 }]]
+    },
+    "Webhook Aviso (manual)": {
+      "main": [[{ "node": "Set tipo=aviso", "type": "main", "index": 0 }]]
+    },
+    "Cron 12h Brasilia (reforco)": {
+      "main": [[{ "node": "Set tipo=reforco", "type": "main", "index": 0 }]]
+    },
+    "Webhook Reforco (manual)": {
+      "main": [[{ "node": "Set tipo=reforco", "type": "main", "index": 0 }]]
+    },
+    "Set tipo=aviso": {
+      "main": [[{ "node": "Tarefas do Dia", "type": "main", "index": 0 }]]
+    },
+    "Set tipo=reforco": {
+      "main": [[{ "node": "Tarefas do Dia", "type": "main", "index": 0 }]]
+    },
+    "Tarefas do Dia": {
+      "main": [[{ "node": "Montar Mensagem", "type": "main", "index": 0 }]]
+    },
+    "Montar Mensagem": {
+      "main": [[{ "node": "Enviar UAZAPI", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

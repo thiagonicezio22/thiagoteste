@@ -104,6 +104,7 @@ PYEOF
 deploy "Tm1Ec80tegOqWS4N" "workflows/01-GIULIA-Pipeline.json" "GIULIA - 01 Pipeline"
 deploy "sl6gOYuAIwvCRvOP" "workflows/02-GIULIA-Scheduler.json" "GIULIA - 02 Scheduler"
 deploy "DbNuINWG5JBEE08F" "workflows/04-GIULIA-Sumarizar-Memoria.json" "GIULIA - 04 Sumarizar Memoria"
+deploy "5kfBHcPbR0UMQxMK" "workflows/05-GIULIA-Rotina-Diaria.json" "GIULIA - 05 Rotina Diaria"
 deploy "AEVYq2LMB608RnU8" "workflows/03-GIULIA-Sync-Gastos-Sheets.json" "GIULIA - 03 Sync Gastos Sheets"
 
 echo ""
