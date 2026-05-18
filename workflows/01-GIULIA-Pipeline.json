@@ -336,7 +336,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO giulia_memoria (from_numero, role, content, metadata) VALUES\n  ('{{ $json.sender_numero }}', 'user', '{{ ($json.texto_original || '').replace(/'/g, \"''\") }}', NULL),\n  ('{{ $json.sender_numero }}', 'assistant', '{{ ($json.resposta_final || '').replace(/'/g, \"''\") }}', NULL);",
+        "query": "INSERT INTO giulia_memoria (from_numero, role, content, metadata) VALUES\n  ('{{ $('Formatar Resposta Final').item.json.sender_numero }}', 'user', '{{ ($('Formatar Resposta Final').item.json.texto_original || '').replace(/'/g, \"''\") }}', NULL),\n  ('{{ $('Formatar Resposta Final').item.json.sender_numero }}', 'assistant', '{{ ($('Formatar Resposta Final').item.json.resposta_final || '').replace(/'/g, \"''\") }}', NULL);",
         "options": {}
       },
       "id": "pg-mem-save",
