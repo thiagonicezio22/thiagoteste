@@ -56,3 +56,4 @@ CREATE TABLE IF NOT EXISTS giulia_notificacoes_thiago (
 );
 CREATE INDEX IF NOT EXISTS idx_giulia_notif_pendentes
   ON giulia_notificacoes_thiago(criada_em) WHERE status='pendente';
+ALTER TABLE giulia_reunioes ALTER COLUMN agendado_para DROP NOT NULL;
