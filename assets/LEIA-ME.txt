@@ -1,0 +1,3 @@
+Coloque aqui o arquivo da sua logo com o nome exato: logo.png
+(pode ser PNG com fundo transparente, recomendado ~400px de largura)
+Assim ela aparece automaticamente no topo do site, no favicon e no relatório PDF.
