@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dimensionador de Bombas — Cálculo de Vazão Real</title>
+<style>
+  :root{
+    --bg:#0d1117; --card:#161b22; --card2:#1c232d; --line:#2d3540;
+    --txt:#e6edf3; --muted:#8b949e; --accent:#1f6feb; --accent2:#2ea043;
+    --warn:#d29922; --danger:#f85149; --pump:#58a6ff; --sys:#f0883e; --op:#3fb950;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--txt);line-height:1.45;font-size:15px}
+  header{background:linear-gradient(135deg,#10243f,#0d1117);padding:22px 18px;border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:1.45rem}
+  header p{margin:6px 0 0;color:var(--muted);font-size:.9rem;max-width:760px}
+  .wrap{max-width:1100px;margin:0 auto;padding:18px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+  .card h2{margin:0 0 4px;font-size:1.05rem;display:flex;align-items:center;gap:8px}
+  .card .hint{color:var(--muted);font-size:.82rem;margin:0 0 12px}
+  label{display:block;font-size:.82rem;color:var(--muted);margin:10px 0 4px}
+  input,select{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:9px 10px;font-size:.95rem;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  .row{display:flex;gap:10px}
+  .row>div{flex:1}
+  table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--muted);font-weight:600}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:9px;padding:12px 18px;
+    font-size:1rem;font-weight:600;cursor:pointer;width:100%}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.sec{background:var(--card2);border:1px solid var(--line);color:var(--txt);width:auto;padding:7px 12px;font-size:.85rem;font-weight:500}
+  .pump-table input{padding:6px 8px;font-size:.9rem}
+  .fittings{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+  @media(max-width:560px){.fittings{grid-template-columns:1fr}}
+  .fit{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .fit span{font-size:.84rem}
+  .fit .k{color:var(--muted);font-size:.72rem}
+  .fit input{width:70px;text-align:center}
+  .result-big{font-size:2.6rem;font-weight:700;color:var(--op);line-height:1}
+  .result-big small{font-size:1rem;color:var(--muted);font-weight:400}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0}
+  .kpi{background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .kpi .v{font-size:1.25rem;font-weight:600}
+  .kpi .l{font-size:.74rem;color:var(--muted)}
+  .alert{border-radius:8px;padding:9px 12px;margin:7px 0;font-size:.86rem;border:1px solid}
+  .alert.ok{background:rgba(46,160,67,.12);border-color:var(--accent2);color:#7ee787}
+  .alert.warn{background:rgba(210,153,34,.12);border-color:var(--warn);color:#e3b341}
+  .alert.bad{background:rgba(248,81,73,.12);border-color:var(--danger);color:#ff7b72}
+  details{margin-top:8px}
+  summary{cursor:pointer;color:var(--accent);font-size:.9rem;padding:6px 0}
+  canvas{width:100%;height:auto;background:var(--card2);border-radius:9px;border:1px solid var(--line)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;margin-top:8px;color:var(--muted)}
+  .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+  .muted{color:var(--muted)}
+  .foot{color:var(--muted);font-size:.78rem;margin-top:8px}
+  .badge{font-size:.7rem;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:2px 9px;color:var(--muted)}
+  .hidden{display:none}
+  .delrow{background:none;border:none;color:var(--danger);cursor:pointer;font-size:1.1rem}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>💧 Dimensionador de Bombas — Vazão Real</h1>
+  <p>Calcula a <b>vazão final entregue</b> por uma bomba considerando a curva da bomba, o desnível (coluna d'água),
+  o comprimento da tubulação, o diâmetro e as conexões (cotovelos, curvas, válvulas). O resultado é o
+  <b>ponto de operação</b>: a interseção entre a curva da bomba e a curva do sistema.</p>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <!-- ============ COLUNA 1 ============ -->
+    <div>
+      <!-- BOMBA -->
+      <div class="card">
+        <h2>1️⃣ Curva da Bomba <span class="badge">dados do fabricante</span></h2>
+        <p class="hint">Digite os pontos da curva (vazão × altura) que vêm no catálogo/etiqueta da bomba.
+        Quanto mais pontos, mais preciso. Mínimo: a altura máxima (shutoff) + 1 ponto, ou 2 pontos.</p>
+
+        <label>Unidade da vazão dos pontos abaixo</label>
+        <select id="pumpUnit">
+          <option value="m3h">m³/h</option>
+          <option value="lh" selected>L/h (litros por hora)</option>
+          <option value="lmin">L/min</option>
+          <option value="ls">L/s</option>
+        </select>
+
+        <label>Altura máxima / "shutoff" — altura a vazão ZERO (mca) <span class="muted">(opcional, mas recomendado)</span></label>
+        <input id="shutoff" type="number" step="any" placeholder="ex: 22">
+
+        <table class="pump-table" style="margin-top:12px">
+          <thead><tr><th>Vazão (<span id="puLabel">L/h</span>)</th><th>Altura (mca)</th><th></th></tr></thead>
+          <tbody id="pumpRows"></tbody>
+        </table>
+        <button class="btn sec" id="addRow" style="margin-top:8px">+ adicionar ponto</button>
+        <p class="foot">mca = metros de coluna d'água. 1 mca ≈ 0,1 bar ≈ 1,42 psi. A "altura manométrica" da bomba é dada em mca.</p>
+      </div>
+
+      <!-- CONEXOES -->
+      <div class="card">
+        <h2>3️⃣ Conexões na tubulação (recalque)</h2>
+        <p class="hint">Quantas de cada tipo existem entre a bomba e o ponto final. Cada conexão adiciona perda
+        de carga proporcional ao coeficiente K (entre parênteses).</p>
+        <div class="fittings" id="fittings"></div>
+      </div>
+    </div>
+
+    <!-- ============ COLUNA 2 ============ -->
+    <div>
+      <!-- TUBULACAO -->
+      <div class="card">
+        <h2>2️⃣ Tubulação e desnível</h2>
+        <p class="hint">Geometria e material do trecho de recalque (da bomba até a saída).</p>
+
+        <label>Material do tubo (coeficiente C de Hazen-Williams)</label>
+        <select id="material">
+          <option value="150">PVC / PEAD / plástico novo (C=150)</option>
+          <option value="140">PVC usado / cobre (C=140)</option>
+          <option value="130">Ferro fundido novo / aço novo (C=130)</option>
+          <option value="125">Aço galvanizado (C=125)</option>
+          <option value="120">Concreto / aço usado (C=120)</option>
+          <option value="100">Ferro fundido usado ~10 anos (C=100)</option>
+          <option value="90">Ferro fundido velho / incrustado (C=90)</option>
+          <option value="custom">Personalizado…</option>
+        </select>
+        <input id="materialCustom" class="hidden" type="number" step="any" placeholder="Digite o C" style="margin-top:8px">
+
+        <label>Diâmetro do tubo</label>
+        <select id="diaSel">
+          <option value="17.0">DN 20 (½") — DI 17,0 mm</option>
+          <option value="21.6">DN 25 (¾") — DI 21,6 mm</option>
+          <option value="27.8">DN 32 (1") — DI 27,8 mm</option>
+          <option value="35.2">DN 40 (1¼") — DI 35,2 mm</option>
+          <option value="44.0" selected>DN 50 (1½") — DI 44,0 mm</option>
+          <option value="53.4">DN 60 (2") — DI 53,4 mm</option>
+          <option value="66.6">DN 75 (2½") — DI 66,6 mm</option>
+          <option value="75.6">DN 85 (3") — DI 75,6 mm</option>
+          <option value="97.8">DN 110 (4") — DI 97,8 mm</option>
+          <option value="custom">Personalizado (digitar DI)…</option>
+        </select>
+        <input id="diaCustom" class="hidden" type="number" step="any" placeholder="Diâmetro INTERNO em mm" style="margin-top:8px">
+        <p class="foot">DI = diâmetro interno real (é o que importa no cálculo). Os valores acima são típicos de PVC soldável de água.</p>
+
+        <div class="row">
+          <div>
+            <label>Comprimento total reto (m)</label>
+            <input id="length" type="number" step="any" value="5" placeholder="ex: 5">
+          </div>
+          <div>
+            <label>Desnível / altura a vencer (m)</label>
+            <input id="staticH" type="number" step="any" value="3" placeholder="ex: 3">
+          </div>
+        </div>
+        <p class="foot">Desnível = diferença de altura entre o nível da água na origem e o ponto de saída
+        (use valor negativo se a saída for mais baixa que a bomba).</p>
+
+        <label>Pressão exigida na chegada (mca) <span class="muted">(opcional — ex: chuveiro, aspersor)</span></label>
+        <input id="preq" type="number" step="any" value="0" placeholder="0">
+      </div>
+
+      <!-- NPSH AVANCADO -->
+      <div class="card">
+        <h2>4️⃣ Sucção e NPSH <span class="badge">avançado / opcional</span></h2>
+        <p class="hint">Preencha para verificar risco de cavitação (NPSH disponível ≥ NPSH requerido).
+        Deixe em branco se não precisar.</p>
+        <details>
+          <summary>Abrir cálculo de NPSH disponível</summary>
+          <div class="row">
+            <div>
+              <label>Altura de sucção (m)</label>
+              <input id="suctH" type="number" step="any" placeholder="+ acima da água / − afogada">
+            </div>
+            <div>
+              <label>Temperatura da água (°C)</label>
+              <input id="temp" type="number" step="any" value="20">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Altitude do local (m)</label>
+              <input id="alt" type="number" step="any" value="0">
+            </div>
+            <div>
+              <label>Compr. tubo de sucção (m)</label>
+              <input id="suctL" type="number" step="any" value="0">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Nº cotovelos 90° na sucção</label>
+              <input id="suctElb" type="number" step="any" value="0">
+            </div>
+            <div>
+              <label>Válvula de pé com crivo?</label>
+              <select id="suctValve"><option value="0">Não</option><option value="1">Sim</option></select>
+            </div>
+          </div>
+          <label>NPSH requerido pela bomba (m) <span class="muted">(do catálogo, se tiver)</span></label>
+          <input id="npshr" type="number" step="any" placeholder="ex: 2,5">
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn" id="calc">⚙️ CALCULAR VAZÃO FINAL</button>
+
+  <!-- RESULTADOS -->
+  <div class="card hidden" id="results" style="margin-top:16px">
+    <h2>📊 Resultado — Ponto de Operação</h2>
+    <div id="bigResult"></div>
+    <div class="kpis" id="kpis"></div>
+    <div id="alerts"></div>
+
+    <h2 style="margin-top:18px">Gráfico: curva da bomba × curva do sistema</h2>
+    <canvas id="chart" width="1000" height="560"></canvas>
+    <div class="legend">
+      <span><i style="background:var(--pump)"></i>Curva da bomba</span>
+      <span><i style="background:var(--sys)"></i>Curva do sistema</span>
+      <span><i style="background:var(--op);width:10px;height:10px;border-radius:50%"></i>Ponto de operação</span>
+    </div>
+
+    <details style="margin-top:14px">
+      <summary>Ver detalhamento completo dos cálculos</summary>
+      <table id="breakdown" style="margin-top:8px"></table>
+    </details>
+  </div>
+
+  <!-- TABELA REFERENCIA -->
+  <div class="card">
+    <h2>📋 Tabela de referência — capacidade do tubo por diâmetro</h2>
+    <p class="hint">Vazão máxima aproximada que cada diâmetro comporta segundo a velocidade da água
+    (Q = velocidade × área). A norma ABNT recomenda 0,6–2,0 m/s no recalque; 3,5 m/s é o limite máximo.</p>
+    <table id="refTable"></table>
+    <p class="foot">Calculado pelo diâmetro NOMINAL (prática comum de mercado). Ex.: tubo de 50 mm a ~3,7 m/s
+    ≈ 26.000 L/h — por isso se diz que "50 mm passa até 26 mil litros/hora". Para precisão use o diâmetro interno real no cálculo acima.</p>
+  </div>
+
+  <div class="card">
+    <h2>📐 Como o sistema calcula (base de engenharia)</h2>
+    <ul class="muted" style="font-size:.86rem;line-height:1.7">
+      <li><b>Curva do sistema:</b> H<sub>sistema</sub>(Q) = desnível + pressão exigida + perdas de carga.</li>
+      <li><b>Perda distribuída</b> (atrito no tubo reto), fórmula de <b>Hazen-Williams</b>:
+        J = 10,643 · Q<sup>1,852</sup> · C<sup>−1,852</sup> · D<sup>−4,87</sup> &nbsp;(Q em m³/s, D em m) → h<sub>f</sub> = J·L.</li>
+      <li><b>Perda localizada</b> (conexões), método dos coeficientes K:
+        h<sub>loc</sub> = ΣK · V²/(2g), com V = Q/Área e g = 9,81 m/s².</li>
+      <li><b>Ponto de operação:</b> vazão onde a curva da bomba cruza a curva do sistema (resolvido numericamente).</li>
+      <li><b>NPSH disponível</b> = P<sub>atm</sub> − P<sub>vapor</sub> − altura de sucção − perdas na sucção.
+        Deve ser ≥ NPSH requerido + 0,6 m de folga para evitar cavitação.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+//==================== CONSTANTES E DADOS ====================
+const G = 9.81;
+
+// Coeficientes K (perda localizada) — valores típicos de referência (Azevedo Netto / Crane)
+const FITTINGS = [
+  {id:'elb90',  name:'Cotovelo 90° (raio curto)',  k:0.90},
+  {id:'elb90l', name:'Cotovelo 90° (raio longo)',  k:0.60},
+  {id:'elb45',  name:'Cotovelo 45°',               k:0.40},
+  {id:'cur90',  name:'Curva 90° (raio longo)',     k:0.40},
+  {id:'cur45',  name:'Curva 45°',                  k:0.20},
+  {id:'teed',   name:'Tê — passagem direta',       k:0.60},
+  {id:'tees',   name:'Tê — saída lateral',         k:1.30},
+  {id:'teeb',   name:'Tê — saída bilateral',       k:1.80},
+  {id:'gav',    name:'Registro de gaveta (aberto)',k:0.20},
+  {id:'esf',    name:'Registro de esfera (aberto)',k:0.05},
+  {id:'glob',   name:'Registro de globo (aberto)', k:10.0},
+  {id:'ret',    name:'Válvula de retenção',        k:2.50},
+  {id:'amp',    name:'Ampliação gradual',          k:0.30},
+  {id:'red',    name:'Redução gradual',            k:0.15},
+  {id:'said',   name:'Saída da tubulação',         k:1.00},
+  {id:'ent',    name:'Entrada (borda)',            k:0.50},
+];
+
+// Pressão de vapor da água (mca) por temperatura
+const PV = [[0,0.062],[5,0.089],[10,0.125],[15,0.174],[20,0.239],[25,0.323],
+           [30,0.433],[35,0.573],[40,0.752],[50,1.258],[60,2.031],[70,3.20],[80,4.83],[90,7.15],[100,10.33]];
+
+//==================== HELPERS DE CONVERSÃO ====================
+function toM3s(v, unit){ // -> m3/s
+  switch(unit){case 'm3h':return v/3600; case 'lh':return v/3600000;
+    case 'lmin':return v/60000; case 'ls':return v/1000;} return v;
+}
+function toM3h(v, unit){ return toM3s(v,unit)*3600; }
+function area(D){ return Math.PI/4*D*D; }            // D em m
+function vel(Qs,D){ return Qs/area(D); }             // m/s
+function hwUnit(Qs,C,D){ if(Qs<=0)return 0; return 10.643*Math.pow(Qs,1.852)*Math.pow(C,-1.852)*Math.pow(D,-4.87); }
+function interp(table,x){
+  if(x<=table[0][0])return table[0][1];
+  if(x>=table[table.length-1][0])return table[table.length-1][1];
+  for(let i=0;i<table.length-1;i++){const[a,va]=table[i],[b,vb]=table[i+1];
+    if(x>=a&&x<=b)return va+(vb-va)*(x-a)/(b-a);} return table[0][1];
+}
+
+//==================== CURVA DO SISTEMA ====================
+// p = {Hstatic, Preq, C, D(m), L, sumK}; Qh em m3/h
+function systemHead(Qh,p){
+  const Qs=Qh/3600;
+  const hfd=hwUnit(Qs,p.C,p.D)*p.L;
+  const v=vel(Qs,p.D);
+  const hfl=p.sumK*v*v/(2*G);
+  return {H:p.Hstatic+p.Preq+hfd+hfl, hfd, hfl, v, Qs};
+}
+
+//==================== AJUSTE DA CURVA DA BOMBA ====================
+function solve3(A,b){ // Gauss 3x3
+  const M=[[...A[0],b[0]],[...A[1],b[1]],[...A[2],b[2]]];
+  for(let i=0;i<3;i++){
+    let piv=i; for(let r=i+1;r<3;r++) if(Math.abs(M[r][i])>Math.abs(M[piv][i]))piv=r;
+    [M[i],M[piv]]=[M[piv],M[i]];
+    if(Math.abs(M[i][i])<1e-12)return null;
+    for(let r=0;r<3;r++){ if(r===i)continue; const f=M[r][i]/M[i][i];
+      for(let c=i;c<4;c++)M[r][c]-=f*M[i][c]; }
+  }
+  return [M[0][3]/M[0][0],M[1][3]/M[1][1],M[2][3]/M[2][2]];
+}
+// pts: [{Qh,H}] -> coef [c0,c1,c2] (H = c0+c1*Qh+c2*Qh^2)
+function fitPump(pts){
+  const n=pts.length;
+  if(n>=3){
+    let S0=0,S1=0,S2=0,S3=0,S4=0,T0=0,T1=0,T2=0;
+    for(const p of pts){const x=p.Qh,x2=x*x;
+      S0++;S1+=x;S2+=x2;S3+=x2*x;S4+=x2*x2;T0+=p.H;T1+=x*p.H;T2+=x2*p.H;}
+    const c=solve3([[S0,S1,S2],[S1,S2,S3],[S2,S3,S4]],[T0,T1,T2]);
+    if(c)return c;
+  }
+  if(n===2){ // H=a+c*Qh^2
+    const[p1,p2]=pts, x1=p1.Qh*p1.Qh, x2=p2.Qh*p2.Qh;
+    if(Math.abs(x2-x1)<1e-12)return null;
+    const c2=(p2.H-p1.H)/(x2-x1), c0=p1.H-c2*x1; return [c0,0,c2];
+  }
+  return null;
+}
+function evalPump(c,Qh){ return c[0]+c[1]*Qh+c[2]*Qh*Qh; }
+function pumpZero(c){ // maior raiz positiva de H=0
+  if(Math.abs(c[2])<1e-12){ return c[1]!==0? -c[0]/c[1] : Infinity; }
+  const disc=c[1]*c[1]-4*c[2]*c[0]; if(disc<0)return Infinity;
+  const r1=(-c[1]+Math.sqrt(disc))/(2*c[2]), r2=(-c[1]-Math.sqrt(disc))/(2*c[2]);
+  const pos=[r1,r2].filter(r=>r>0); return pos.length? Math.min(...pos):Infinity;
+}
+
+//==================== PONTO DE OPERAÇÃO ====================
+function operating(c,p){
+  const f=Qh=>evalPump(c,Qh)-systemHead(Qh,p).H;
+  if(f(0)<=0) return {Q:0, status:'noflow'};
+  let hi=pumpZero(c);
+  if(!isFinite(hi)||hi<=0) hi=1e6;
+  if(f(hi)>0) return {Q:hi, status:'maxflow'}; // sistema nunca alcança a bomba
+  let lo=0;
+  for(let i=0;i<80;i++){ const mid=(lo+hi)/2; (f(mid)>0? lo=mid: hi=mid); }
+  return {Q:(lo+hi)/2, status:'ok'};
+}
+
+//==================== NPSH ====================
+function npshAvailable(Qh,p){
+  const alt=num('alt'), temp=num('temp'), suctH=num('suctH'),
+        suctL=num('suctL'), suctElb=num('suctElb'), suctValve=num('suctValve');
+  if(suctH===null && suctL===null && num('npshr')===null) return null;
+  const Patm = 10.33 - (alt||0)/900;          // mca por altitude
+  const Pv = interp(PV, temp||20);            // mca por temperatura
+  // perdas na sucção (mesmo D do recalque, simplificação)
+  const Qs=Qh/3600, v=vel(Qs,p.D);
+  let sumKs=(suctElb||0)*0.90 + (suctValve? 1.75:0) + 0.5; // + entrada de borda
+  const hfs = hwUnit(Qs,p.C,p.D)*(suctL||0) + sumKs*v*v/(2*G);
+  const npshd = Patm - Pv - (suctH||0) - hfs;
+  return {npshd, Patm, Pv, hfs};
+}
+
+//==================== UI: construir formulário ====================
+function num(id){ const el=document.getElementById(id); if(!el||el.value==='')return null; const v=parseFloat(el.value.replace(',','.')); return isNaN(v)?null:v; }
+
+function buildFittings(){
+  const box=document.getElementById('fittings');
+  box.innerHTML=FITTINGS.map(f=>`<div class="fit">
+    <span>${f.name} <span class="k">K=${f.k}</span></span>
+    <input type="number" min="0" step="1" id="fit_${f.id}" value="0">
+  </div>`).join('');
+  // exemplo do usuário: 3 cotovelos 90°
+  document.getElementById('fit_elb90').value=3;
+}
+function addPumpRow(q='',h=''){
+  const tb=document.getElementById('pumpRows');
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><input type="number" step="any" class="pq" value="${q}"></td>
+    <td><input type="number" step="any" class="ph" value="${h}"></td>
+    <td><button class="delrow" title="remover">✕</button></td>`;
+  tr.querySelector('.delrow').onclick=()=>tr.remove();
+  tb.appendChild(tr);
+}
+function buildPumpTable(){
+  // exemplo: bomba ~1/2 cv
+  addPumpRow(5000,18); addPumpRow(10000,13); addPumpRow(14000,6);
+}
+function buildRefTable(){
+  const dias=[[20,'½"'],[25,'¾"'],[32,'1"'],[40,'1¼"'],[50,'1½"'],[60,'2"'],
+              [75,'2½"'],[85,'3"'],[100,'3½"'],[110,'4"'],[150,'6"'],[200,'8"']];
+  const vels=[1.5,2.0,3.5];
+  let h='<thead><tr><th>Tubo</th>'+vels.map(v=>`<th>${v} m/s</th>`).join('')+'</tr></thead><tbody>';
+  for(const[mm,pol] of dias){
+    const A=area(mm/1000);
+    h+=`<tr><td>${mm} mm (${pol})</td>`+vels.map(v=>{
+      const lh=A*v*3600000; return `<td>${Math.round(lh).toLocaleString('pt-BR')} L/h<br><span class="muted">${(lh/1000).toFixed(1)} m³/h</span></td>`;
+    }).join('')+'</tr>';
+  }
+  document.getElementById('refTable').innerHTML=h+'</tbody>';
+}
+
+//==================== EVENTOS DE UI ====================
+document.getElementById('material').onchange=e=>{
+  document.getElementById('materialCustom').classList.toggle('hidden', e.target.value!=='custom');
+};
+document.getElementById('diaSel').onchange=e=>{
+  document.getElementById('diaCustom').classList.toggle('hidden', e.target.value!=='custom');
+};
+document.getElementById('pumpUnit').onchange=e=>{
+  const map={m3h:'m³/h',lh:'L/h',lmin:'L/min',ls:'L/s'};
+  document.getElementById('puLabel').textContent=map[e.target.value];
+};
+document.getElementById('addRow').onclick=()=>addPumpRow();
+
+//==================== CÁLCULO PRINCIPAL ====================
+document.getElementById('calc').onclick=()=>{
+  // --- bomba ---
+  const unit=document.getElementById('pumpUnit').value;
+  const pts=[];
+  document.querySelectorAll('#pumpRows tr').forEach(tr=>{
+    const q=tr.querySelector('.pq').value, h=tr.querySelector('.ph').value;
+    if(q!==''&&h!==''){ const qh=toM3h(parseFloat(q.replace(',','.')),unit);
+      pts.push({Qh:qh,H:parseFloat(h.replace(',','.'))}); }
+  });
+  const sh=num('shutoff'); if(sh!==null) pts.unshift({Qh:0,H:sh});
+  pts.sort((a,b)=>a.Qh-b.Qh);
+  if(pts.length<2){ alert('Informe pelo menos 2 pontos da curva da bomba (ou a altura máxima + 1 ponto).'); return; }
+  const coef=fitPump(pts);
+  if(!coef){ alert('Não consegui ajustar a curva com esses pontos. Verifique os valores.'); return; }
+
+  // --- tubulação ---
+  let C=parseFloat(document.getElementById('material').value);
+  if(document.getElementById('material').value==='custom') C=num('materialCustom')||150;
+  let Dmm=parseFloat(document.getElementById('diaSel').value);
+  if(document.getElementById('diaSel').value==='custom') Dmm=num('diaCustom');
+  if(!Dmm){ alert('Informe o diâmetro interno do tubo.'); return; }
+  const D=Dmm/1000;
+  const L=num('length')||0, Hstatic=num('staticH')||0, Preq=num('preq')||0;
+
+  // --- conexões ---
+  let sumK=0; FITTINGS.forEach(f=>{ sumK += (num('fit_'+f.id)||0)*f.k; });
+
+  const p={Hstatic,Preq,C,D,L,sumK};
+
+  // --- ponto de operação ---
+  const op=operating(coef,p);
+  showResults(op,coef,p,Dmm);
+};
+
+//==================== RENDER RESULTADOS ====================
+function fmt(n,d=1){ return Number(n).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+
+function showResults(op,coef,p,Dmm){
+  document.getElementById('results').classList.remove('hidden');
+  const Qh=op.Q;
+  const s=systemHead(Qh,p);
+  const amt=evalPump(coef,Qh);
+  const Qlh=Qh*1000, Qlmin=Qh*1000/60, Qls=Qh*1000/3600;
+
+  // bloco principal
+  let big;
+  if(op.status==='noflow'){
+    big=`<div class="result-big" style="color:var(--danger)">0 L/h</div>
+      <div class="alert bad">A bomba <b>não tem altura suficiente</b> para vencer o desnível + pressão exigida
+      (${fmt(p.Hstatic+p.Preq)} mca). A altura máxima da bomba é ${fmt(evalPump(coef,0))} mca. Não há vazão.</div>`;
+  }else{
+    big=`<div class="result-big">${Math.round(Qlh).toLocaleString('pt-BR')} <small>L/h</small></div>`;
+  }
+  document.getElementById('bigResult').innerHTML=big;
+
+  // KPIs
+  document.getElementById('kpis').innerHTML=[
+    ['Vazão','m³/h',fmt(Qh,2)],
+    ['Vazão','L/min',fmt(Qlmin,1)],
+    ['Vazão','L/s',fmt(Qls,2)],
+    ['Altura manométrica','mca',fmt(amt,1)],
+    ['Velocidade no tubo','m/s',fmt(s.v,2)],
+    ['Perda total','mca',fmt(s.hfd+s.hfl,2)],
+  ].map(([l,u,v])=>`<div class="kpi"><div class="v">${v} <span class="muted" style="font-size:.7rem">${u}</span></div><div class="l">${l}</div></div>`).join('');
+
+  // alertas
+  const al=[];
+  if(op.status==='ok'){
+    al.push(`<div class="alert ok">✓ Ponto de operação encontrado: a bomba entrega <b>${Math.round(Qlh).toLocaleString('pt-BR')} L/h</b> (${fmt(Qh,2)} m³/h) a ${fmt(amt,1)} mca neste sistema.</div>`);
+  }
+  if(op.status==='maxflow'){
+    al.push(`<div class="alert warn">⚠️ As perdas são tão baixas que a bomba trabalha perto da vazão máxima (extremo da curva). Resultado aproximado: ${Math.round(Qlh).toLocaleString('pt-BR')} L/h.</div>`);
+  }
+  if(op.status!=='noflow'){
+    if(s.v>3.5) al.push(`<div class="alert bad">⚠️ Velocidade ${fmt(s.v,2)} m/s acima do limite (3,5 m/s). Risco de ruído, golpe de aríete e erosão. <b>Aumente o diâmetro do tubo.</b></div>`);
+    else if(s.v>2.0) al.push(`<div class="alert warn">⚠️ Velocidade ${fmt(s.v,2)} m/s acima do recomendado para recalque (≤2,0 m/s). Considere um diâmetro maior para reduzir perdas.</div>`);
+    else if(s.v<0.6) al.push(`<div class="alert warn">ℹ️ Velocidade ${fmt(s.v,2)} m/s baixa (&lt;0,6 m/s): risco de sedimentação. Tubo possivelmente superdimensionado.</div>`);
+    else al.push(`<div class="alert ok">✓ Velocidade ${fmt(s.v,2)} m/s dentro da faixa recomendada (0,6–2,0 m/s).</div>`);
+  }
+  // NPSH
+  const n=npshAvailable(Qh,p);
+  if(n){
+    const npshr=num('npshr');
+    let cls='ok',msg=`NPSH disponível ≈ <b>${fmt(n.npshd,2)} m</b> (P.atm ${fmt(n.Patm,2)} − vapor ${fmt(n.Pv,2)} − sucção ${fmt(num('suctH')||0,2)} − perdas ${fmt(n.hfs,2)}).`;
+    if(npshr!==null){
+      const margem=n.npshd-npshr;
+      if(margem<0){cls='bad';msg+=` ✗ <b>MENOR</b> que o NPSH requerido (${fmt(npshr,2)} m) → vai CAVITAR. Reduza a altura/comprimento da sucção ou aumente o diâmetro.`;}
+      else if(margem<0.6){cls='warn';msg+=` ⚠️ Folga de só ${fmt(margem,2)} m sobre o requerido (${fmt(npshr,2)} m). Recomenda-se ≥0,6 m.`;}
+      else{msg+=` ✓ Folga de ${fmt(margem,2)} m sobre o requerido (${fmt(npshr,2)} m) — OK.`;}
+    }
+    if(n.npshd<0){cls='bad';}
+    al.push(`<div class="alert ${cls}">💨 ${msg}</div>`);
+  }
+  document.getElementById('alerts').innerHTML=al.join('');
+
+  // detalhamento
+  document.getElementById('breakdown').innerHTML=`
+    <tr><th>Componente</th><th>Valor</th></tr>
+    <tr><td>Desnível geométrico</td><td>${fmt(p.Hstatic,2)} mca</td></tr>
+    <tr><td>Pressão exigida na chegada</td><td>${fmt(p.Preq,2)} mca</td></tr>
+    <tr><td>Perda distribuída (atrito no tubo) — Hazen-Williams</td><td>${fmt(s.hfd,2)} mca</td></tr>
+    <tr><td>Perda localizada (conexões, ΣK=${fmt(p.sumK,2)})</td><td>${fmt(s.hfl,2)} mca</td></tr>
+    <tr><td><b>Altura manométrica total (AMT) no ponto</b></td><td><b>${fmt(amt,2)} mca</b></td></tr>
+    <tr><td>Diâmetro interno usado</td><td>${fmt(Dmm,1)} mm</td></tr>
+    <tr><td>Coeficiente C (material)</td><td>${p.C}</td></tr>
+    <tr><td>Comprimento reto</td><td>${fmt(p.L,1)} m</td></tr>
+    <tr><td>Curva ajustada da bomba</td><td>H = ${fmt(coef[0],2)} ${coef[1]>=0?'+':'−'} ${fmt(Math.abs(coef[1]),4)}·Q ${coef[2]>=0?'+':'−'} ${fmt(Math.abs(coef[2]),5)}·Q² <span class="muted">(Q em m³/h)</span></td></tr>`;
+
+  drawChart(coef,p,op);
+  document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+//==================== GRÁFICO ====================
+function drawChart(coef,p,op){
+  const cv=document.getElementById('chart'), ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,padL=64,padB=52,padT=20,padR=20;
+  ctx.clearRect(0,0,W,H);
+  const qmax=Math.max(pumpZero(coef)||1, op.Q*1.2, 1);
+  // hmax
+  let hmax=evalPump(coef,0);
+  for(let i=0;i<=50;i++){ const q=qmax*i/50; hmax=Math.max(hmax, systemHead(q,p).H); }
+  hmax*=1.1;
+  const X=q=>padL+(q/qmax)*(W-padL-padR);
+  const Y=h=>H-padB-(h/hmax)*(H-padT-padB);
+
+  // grid + eixos
+  ctx.strokeStyle='#2d3540';ctx.fillStyle='#8b949e';ctx.font='12px sans-serif';ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const q=qmax*i/5, x=X(q);
+    ctx.beginPath();ctx.moveTo(x,padT);ctx.lineTo(x,H-padB);ctx.stroke();
+    ctx.fillText(q.toFixed(1),x-10,H-padB+18);
+    const h=hmax*i/5, y=Y(h);
+    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();
+    ctx.fillText(h.toFixed(0),padL-32,y+4);
+  }
+  ctx.fillStyle='#e6edf3';ctx.font='13px sans-serif';
+  ctx.fillText('Vazão (m³/h)',W/2-40,H-12);
+  ctx.save();ctx.translate(16,H/2+40);ctx.rotate(-Math.PI/2);ctx.fillText('Altura (mca)',0,0);ctx.restore();
+
+  // curva bomba
+  ctx.strokeStyle='#58a6ff';ctx.lineWidth=2.5;ctx.beginPath();
+  for(let i=0;i<=200;i++){ const q=qmax*i/200, h=evalPump(coef,q);
+    if(h<0)break; i===0?ctx.moveTo(X(q),Y(h)):ctx.lineTo(X(q),Y(h)); }
+  ctx.stroke();
+  // curva sistema
+  ctx.strokeStyle='#f0883e';ctx.lineWidth=2.5;ctx.beginPath();
+  for(let i=0;i<=200;i++){ const q=qmax*i/200, h=systemHead(q,p).H;
+    i===0?ctx.moveTo(X(q),Y(h)):ctx.lineTo(X(q),Y(h)); }
+  ctx.stroke();
+  // ponto de operação
+  if(op.status!=='noflow'){
+    const h=evalPump(coef,op.Q), x=X(op.Q), y=Y(h);
+    ctx.strokeStyle='#3fb950';ctx.setLineDash([4,4]);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,H-padB);ctx.lineTo(x,y);ctx.lineTo(padL,y);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#3fb950';ctx.beginPath();ctx.arc(x,y,6,0,7);ctx.fill();
+    ctx.fillStyle='#e6edf3';ctx.font='bold 12px sans-serif';
+    ctx.fillText(`${(op.Q*1000).toLocaleString('pt-BR',{maximumFractionDigits:0})} L/h @ ${h.toFixed(1)} mca`, x+10, y-8);
+  }
+}
+
+//==================== INICIALIZAÇÃO ====================
+buildFittings();
+buildPumpTable();
+buildRefTable();
+</script>
+</body>
+</html>
