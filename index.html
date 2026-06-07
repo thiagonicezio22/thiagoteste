@@ -124,8 +124,16 @@
           <option value="ls">L/s</option>
         </select>
 
-        <label>Altura máxima / "shutoff" — altura a vazão ZERO (mca) <span class="muted">(recomendado)</span></label>
-        <input id="shutoff" type="number" step="any" placeholder="ex: 22">
+        <div class="row">
+          <div>
+            <label>Altura máx / "shutoff" — a vazão ZERO (mca)</label>
+            <input id="shutoff" type="number" step="any" placeholder="ex: 9,6">
+          </div>
+          <div>
+            <label>Potência (W) <span class="muted">(opcional)</span></label>
+            <input id="power" type="number" step="any" placeholder="ex: 1150">
+          </div>
+        </div>
 
         <table class="pump-table" style="margin-top:12px">
           <thead><tr><th>Vazão (<span id="puLabel">L/h</span>)</th><th>Altura (mca)</th><th></th></tr></thead>
@@ -333,12 +341,14 @@ function readPumpForm(){
     const q=tr.querySelector('.pq').value,h=tr.querySelector('.ph').value;
     if(q!==''&&h!=='')points.push({q,h});
   });
-  return {unit,shutoff,points};
+  const power=document.getElementById('power').value;
+  return {unit,shutoff,power,points};
 }
 function writePumpForm(data){
   document.getElementById('pumpUnit').value=data.unit||'lh';
   document.getElementById('puLabel').textContent={m3h:'m³/h',lh:'L/h',lmin:'L/min',ls:'L/s'}[data.unit||'lh'];
   document.getElementById('shutoff').value=data.shutoff||'';
+  document.getElementById('power').value=data.power||'';
   document.getElementById('pumpRows').innerHTML='';
   (data.points||[]).forEach(pt=>addPumpRow(pt.q,pt.h));
   if(!(data.points||[]).length)addPumpRow();
@@ -409,7 +419,7 @@ document.getElementById('calc').onclick=()=>{
   if(!coef){alert('Informe pelo menos 2 pontos da curva (ou shutoff + 1 ponto).');return;}
   const p=getInstallation();if(!p)return;
   const op=operating(coef,p);
-  last1={coef,p,op,name:document.getElementById('modelName').value.trim()};
+  last1={coef,p,op,name:document.getElementById('modelName').value.trim(),power:data.power};
   showResults(op,coef,p,p.Dmm);
 };
 function showResults(op,coef,p,Dmm){
@@ -500,9 +510,9 @@ function openReport(inner){const w=window.open('','_blank');if(!w){alert('Permit
 
 document.getElementById('pdf1').onclick=()=>{
   if(!last1){alert('Calcule uma bomba primeiro.');return;}
-  const {coef,p,op,name}=last1;const Qh=op.Q,s=systemHead(Qh,p),amt=evalPump(coef,Qh);
+  const {coef,p,op,name,power}=last1;const Qh=op.Q,s=systemHead(Qh,p),amt=evalPump(coef,Qh);
   const img=document.getElementById('chart').toDataURL('image/png');
-  const inner=`<h1>Relatório de Dimensionamento de Bomba</h1><p class="muted">Data: ${new Date().toLocaleDateString('pt-BR')}${name?' • Bomba: '+name:''}</p>
+  const inner=`<h1>Relatório de Dimensionamento de Bomba</h1><p class="muted">Data: ${new Date().toLocaleDateString('pt-BR')}${name?' • Bomba: '+name:''}${power?' • '+power+' W':''}</p>
   <h2>Resultado</h2><p class="big">${op.status==='noflow'?'0':intBR(Qh*1000)} L/h</p>
   <table><tr><th>Vazão</th><td>${fmt(Qh,2)} m³/h • ${intBR(Qh*1000)} L/h • ${fmt(Qh*1000/60,1)} L/min</td></tr>
   <tr><th>Altura manométrica (AMT)</th><td>${fmt(amt,2)} mca</td></tr>
@@ -525,19 +535,22 @@ document.getElementById('pdf2').onclick=()=>{
   openReport(inner);
 };
 
-//==================== SEED + INIT ====================
-function seedIfEmpty(){
-  const db=dbLoad();if(Object.keys(db).length)return;
-  db['Exemplo 20.000 L/h']={unit:'lh',shutoff:'15',points:[{q:'10000',h:'12'},{q:'15000',h:'9'},{q:'20000',h:'3'}]};
-  db['Exemplo 35.000 L/h']={unit:'lh',shutoff:'22',points:[{q:'15000',h:'19'},{q:'25000',h:'14'},{q:'35000',h:'5'}]};
-  db['Exemplo 50.000 L/h']={unit:'lh',shutoff:'28',points:[{q:'20000',h:'25'},{q:'35000',h:'18'},{q:'50000',h:'7'}]};
-  dbSaveAll(db);
-}
+//==================== BOMBAS DE FÁBRICA + INIT ====================
+// Dados reais do manual ENG Soluções (AquaMax). Curva aproximada pelos 2 pontos âncora
+// (altura máxima a vazão zero + vazão máxima a altura zero). Refine com pontos do meio se tiver.
+const FACTORY={
+  'AquaMax 35.000L':{unit:'lh',shutoff:'8.2',power:'630',points:[{q:'35000',h:'0'}]},
+  'AquaMax 50.000L':{unit:'lh',shutoff:'9.6',power:'1150',points:[{q:'50000',h:'0'}]},
+};
+function ensureFactory(){const db=dbLoad();let ch=false;for(const k in FACTORY){if(!db[k]){db[k]=FACTORY[k];ch=true;}}if(ch)dbSaveAll(db);}
 buildFittings();
 buildRefTable();
-seedIfEmpty();
+ensureFactory();
 refreshSelect();
-addPumpRow(5000,18);addPumpRow(10000,13);addPumpRow(14000,6);
+// abre com a AquaMax 50.000L já carregada
+writePumpForm(FACTORY['AquaMax 50.000L']);
+document.getElementById('modelName').value='AquaMax 50.000L';
+document.getElementById('dbSelect').value='AquaMax 50.000L';
 </script>
 </body>
 </html>
