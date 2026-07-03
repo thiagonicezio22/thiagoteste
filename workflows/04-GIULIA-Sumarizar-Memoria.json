@@ -4,14 +4,22 @@
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 4 * * 0" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 4 * * 0"
+            }
+          ]
         }
       },
       "id": "cron-domingo",
       "name": "Cron Domingo 4h UTC-4 (1h Brasilia)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 300]
+      "position": [
+        200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -24,7 +32,10 @@
       "name": "Webhook manual",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 460],
+      "position": [
+        200,
+        460
+      ],
       "webhookId": "giulia-sumarizar-tick-wh"
     },
     {
@@ -37,7 +48,10 @@
       "name": "Buscar Conversas Antigas",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [420, 380],
+      "position": [
+        420,
+        380
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -53,7 +67,10 @@
       "name": "Preparar Prompts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 380]
+      "position": [
+        640,
+        380
+      ]
     },
     {
       "parameters": {
@@ -62,19 +79,27 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
-        "options": { "timeout": 120000 }
+        "options": {
+          "timeout": 120000
+        }
       },
       "id": "http-gemini",
       "name": "Gemini Sumarizar",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 380]
+      "position": [
+        860,
+        380
+      ]
     },
     {
       "parameters": {
@@ -84,7 +109,10 @@
       "name": "Montar SQL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1080, 380]
+      "position": [
+        1080,
+        380
+      ]
     },
     {
       "parameters": {
@@ -96,33 +124,111 @@
       "name": "Salvar Resumo + Apagar Antigas",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [1300, 380],
+      "position": [
+        1300,
+        380
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
           "name": "PostgreSQL Julian"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM giulia_lembretes WHERE status IN ('enviado','cancelado') AND criado_em < NOW() - INTERVAL '90 days';\nDELETE FROM giulia_mensagens_agendadas WHERE status IN ('enviado','cancelado','erro') AND criado_em < NOW() - INTERVAL '90 days';\nDELETE FROM giulia_notificacoes_thiago WHERE status = 'enviada' AND criada_em < NOW() - INTERVAL '90 days';\nDELETE FROM giulia_envios_pendentes WHERE status != 'aguardando_confirmacao' AND criado_em < NOW() - INTERVAL '30 days';\nDELETE FROM giulia_contatos_engano WHERE expira_em < NOW() - INTERVAL '30 days';\nDELETE FROM giulia_msgs_processadas WHERE processado_em < NOW() - INTERVAL '7 days';\nSELECT 'purge ok' AS r;",
+        "options": {}
+      },
+      "id": "pg-purge",
+      "name": "Purge Filas Antigas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        200,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      },
+      "continueOnFail": true
     }
   ],
   "connections": {
     "Cron Domingo 4h UTC-4 (1h Brasilia)": {
-      "main": [[{ "node": "Buscar Conversas Antigas", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Buscar Conversas Antigas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Purge Filas Antigas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook manual": {
-      "main": [[{ "node": "Buscar Conversas Antigas", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Buscar Conversas Antigas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Buscar Conversas Antigas": {
-      "main": [[{ "node": "Preparar Prompts", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Prompts": {
-      "main": [[{ "node": "Gemini Sumarizar", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gemini Sumarizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gemini Sumarizar": {
-      "main": [[{ "node": "Montar SQL", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Montar SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Montar SQL": {
-      "main": [[{ "node": "Salvar Resumo + Apagar Antigas", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Salvar Resumo + Apagar Antigas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
