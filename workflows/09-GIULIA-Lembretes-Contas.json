@@ -4,14 +4,22 @@
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "30 7 * * *" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 7 * * *"
+            }
+          ]
         }
       },
       "id": "cron-830",
       "name": "Cron 8h30 Brasilia",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 300]
+      "position": [
+        200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -24,34 +32,46 @@
       "name": "Webhook manual",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 460],
+      "position": [
+        200,
+        460
+      ],
       "webhookId": "giulia-contas-tick-wh"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, descricao, valor, to_char(vencimento,'DD/MM') AS venc,\n  CASE\n    WHEN vencimento < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date THEN 'atrasada'\n    WHEN vencimento = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date AND NOT lembrete_dia_enviado THEN 'hoje'\n    WHEN vencimento = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date + 1 AND NOT lembrete_1d_enviado THEN 'amanha'\n    WHEN vencimento <= (NOW() AT TIME ZONE 'America/Sao_Paulo')::date + 3 AND NOT lembrete_3d_enviado THEN 'proximos_3d'\n    ELSE NULL\n  END AS janela\nFROM giulia_contas_pagar\nWHERE status = 'pendente'\n  AND vencimento <= (NOW() AT TIME ZONE 'America/Sao_Paulo')::date + 3\nORDER BY vencimento\nLIMIT 20;",
+        "query": "SELECT c.id, c.descricao, c.valor, to_char(c.vencimento,'DD/MM') AS venc, c.dono_numero,\n  CASE\n    WHEN c.vencimento < (NOW() AT TIME ZONE d.timezone)::date THEN 'atrasada'\n    WHEN c.vencimento = (NOW() AT TIME ZONE d.timezone)::date AND NOT c.lembrete_dia_enviado THEN 'hoje'\n    WHEN c.vencimento = (NOW() AT TIME ZONE d.timezone)::date + 1 AND NOT c.lembrete_1d_enviado THEN 'amanha'\n    WHEN c.vencimento <= (NOW() AT TIME ZONE d.timezone)::date + 3 AND NOT c.lembrete_3d_enviado THEN 'proximos_3d'\n    ELSE NULL\n  END AS janela\nFROM giulia_contas_pagar c\nJOIN giulia_donos d ON d.numero = c.dono_numero\nWHERE c.status = 'pendente'\n  AND c.vencimento <= (NOW() AT TIME ZONE d.timezone)::date + 3\nORDER BY c.dono_numero, c.vencimento\nLIMIT 40;",
         "options": {}
       },
       "id": "pg-due",
       "name": "Contas Vencendo",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [420, 380],
+      "position": [
+        420,
+        380
+      ],
       "credentials": {
-        "postgres": { "id": "qSNNpS1TadimC3ND", "name": "PostgreSQL Julian" }
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
       },
       "executeOnce": true
     },
     {
       "parameters": {
-        "jsCode": "// Agrega contas vencendo em UMA mensagem + SQL de flags\nconst THIAGO_NUMERO = '5511910441709';\nconst contas = items.filter(i => i.json && i.json.id && i.json.janela);\nif (!contas.length) return [];\n\nfunction money(v){ if (v == null) return ''; const n = Number(v); return isNaN(n) ? '' : ' R$ ' + n.toFixed(2).replace('.', ','); }\n\nconst atrasadas = contas.filter(c => c.json.janela === 'atrasada');\nconst hoje = contas.filter(c => c.json.janela === 'hoje');\nconst amanha = contas.filter(c => c.json.janela === 'amanha');\nconst prox = contas.filter(c => c.json.janela === 'proximos_3d');\n\nlet partes = [];\nif (atrasadas.length) partes.push('*ATRASADAS:*\\n' + atrasadas.map(c => `  #${c.json.id} ${c.json.descricao}${money(c.json.valor)} (venceu ${c.json.venc})`).join('\\n'));\nif (hoje.length) partes.push('*Vencem HOJE:*\\n' + hoje.map(c => `  #${c.json.id} ${c.json.descricao}${money(c.json.valor)}`).join('\\n'));\nif (amanha.length) partes.push('*Vencem amanha:*\\n' + amanha.map(c => `  #${c.json.id} ${c.json.descricao}${money(c.json.valor)}`).join('\\n'));\nif (prox.length) partes.push('*Proximos 3 dias:*\\n' + prox.map(c => `  #${c.json.id} ${c.json.descricao}${money(c.json.valor)} (${c.json.venc})`).join('\\n'));\n\nif (!partes.length) return [];\n\nconst total = contas.reduce((s,c) => s + Number(c.json.valor || 0), 0);\nlet texto = 'Contas a pagar:\\n\\n' + partes.join('\\n\\n');\nif (total > 0) texto += `\\n\\nTotal: R$ ${total.toFixed(2).replace('.', ',')}`;\ntexto += '\\n\\nQuando pagar, manda o comprovante ou fala \"paguei a #ID\" que eu dou baixa e lanco na planilha.';\n\n// Flags: marca lembrete enviado conforme janela\nconst sqls = [];\nconst idsHoje = hoje.map(c => c.json.id);\nconst idsAmanha = amanha.map(c => c.json.id);\nconst idsProx = prox.map(c => c.json.id);\nif (idsHoje.length) sqls.push(`UPDATE giulia_contas_pagar SET lembrete_dia_enviado = TRUE WHERE id IN (${idsHoje.join(',')});`);\nif (idsAmanha.length) sqls.push(`UPDATE giulia_contas_pagar SET lembrete_1d_enviado = TRUE WHERE id IN (${idsAmanha.join(',')});`);\nif (idsProx.length) sqls.push(`UPDATE giulia_contas_pagar SET lembrete_3d_enviado = TRUE WHERE id IN (${idsProx.join(',')});`);\n\nreturn [{ json: { send_to: THIAGO_NUMERO, send_text: texto, sql_flags: sqls.join('\\n') || 'SELECT 1;' } }];"
+        "jsCode": "// Agrega contas vencendo POR DONO\nconst contasAll = items.filter(i => i.json && i.json.id && i.json.janela);\nif (!contasAll.length) return [];\n\nfunction money(v){ if (v == null) return ''; const n = Number(v); return isNaN(n) ? '' : ' R$ ' + n.toFixed(2).replace('.', ','); }\n\nconst porDono = {};\nfor (const c of contasAll) { (porDono[c.json.dono_numero] ||= []).push(c.json); }\n\nconst out = [];\nconst sqls = [];\nfor (const [dono, contas] of Object.entries(porDono)) {\n  const atrasadas = contas.filter(c => c.janela === 'atrasada');\n  const hoje = contas.filter(c => c.janela === 'hoje');\n  const amanha = contas.filter(c => c.janela === 'amanha');\n  const prox = contas.filter(c => c.janela === 'proximos_3d');\n\n  let partes = [];\n  if (atrasadas.length) partes.push('*ATRASADAS:*\\n' + atrasadas.map(c => `  #${c.id} ${c.descricao}${money(c.valor)} (venceu ${c.venc})`).join('\\n'));\n  if (hoje.length) partes.push('*Vencem HOJE:*\\n' + hoje.map(c => `  #${c.id} ${c.descricao}${money(c.valor)}`).join('\\n'));\n  if (amanha.length) partes.push('*Vencem amanha:*\\n' + amanha.map(c => `  #${c.id} ${c.descricao}${money(c.valor)}`).join('\\n'));\n  if (prox.length) partes.push('*Proximos 3 dias:*\\n' + prox.map(c => `  #${c.id} ${c.descricao}${money(c.valor)} (${c.venc})`).join('\\n'));\n  if (!partes.length) continue;\n\n  const total = contas.reduce((s,c) => s + Number(c.valor || 0), 0);\n  let texto = 'Contas a pagar:\\n\\n' + partes.join('\\n\\n');\n  if (total > 0) texto += `\\n\\nTotal: R$ ${total.toFixed(2).replace('.', ',')}`;\n  texto += '\\n\\nQuando pagar, manda o comprovante ou fala \"paguei a #ID\" que eu dou baixa.';\n\n  const idsHoje = hoje.map(c => c.id);\n  const idsAmanha = amanha.map(c => c.id);\n  const idsProx = prox.map(c => c.id);\n  if (idsHoje.length) sqls.push(`UPDATE giulia_contas_pagar SET lembrete_dia_enviado = TRUE WHERE id IN (${idsHoje.join(',')});`);\n  if (idsAmanha.length) sqls.push(`UPDATE giulia_contas_pagar SET lembrete_1d_enviado = TRUE WHERE id IN (${idsAmanha.join(',')});`);\n  if (idsProx.length) sqls.push(`UPDATE giulia_contas_pagar SET lembrete_3d_enviado = TRUE WHERE id IN (${idsProx.join(',')});`);\n\n  out.push({ json: { send_to: dono, send_text: texto } });\n}\nif (!out.length) return [];\nconst sqlFlags = sqls.join('\\n') || 'SELECT 1;';\nout.forEach(o => o.json.sql_flags = sqlFlags);\nreturn out;"
       },
       "id": "code-build",
       "name": "Montar Aviso",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 380]
+      "position": [
+        640,
+        380
+      ]
     },
     {
       "parameters": {
@@ -60,20 +80,31 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "http-send",
       "name": "Enviar UAZAPI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 380],
+      "position": [
+        860,
+        380
+      ],
       "continueOnFail": true
     },
     {
@@ -86,27 +117,73 @@
       "name": "Marcar Flags",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [1080, 380],
+      "position": [
+        1080,
+        380
+      ],
       "credentials": {
-        "postgres": { "id": "qSNNpS1TadimC3ND", "name": "PostgreSQL Julian" }
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
       }
     }
   ],
   "connections": {
     "Cron 8h30 Brasilia": {
-      "main": [[{ "node": "Contas Vencendo", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Contas Vencendo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook manual": {
-      "main": [[{ "node": "Contas Vencendo", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Contas Vencendo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Contas Vencendo": {
-      "main": [[{ "node": "Montar Aviso", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Montar Aviso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Montar Aviso": {
-      "main": [[{ "node": "Enviar UAZAPI", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enviar UAZAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Enviar UAZAPI": {
-      "main": [[{ "node": "Marcar Flags", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Marcar Flags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {

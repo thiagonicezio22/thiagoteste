@@ -4,14 +4,22 @@
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
         }
       },
       "id": "cron-5min",
       "name": "Cron 5min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 300]
+      "position": [
+        200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -24,20 +32,26 @@
       "name": "Webhook Test (manual)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 460],
+      "position": [
+        200,
+        460
+      ],
       "webhookId": "giulia-sync-gastos-tick-wh"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, descricao, valor, categoria, forma_pagamento, COALESCE(array_to_string(tags, ', '), '') AS tags, data_gasto, COALESCE(observacoes, '') AS observacoes, criado_em\nFROM giulia_gastos\nWHERE sheets_synced = FALSE\nORDER BY criado_em ASC\nLIMIT 100;",
+        "query": "SELECT id, descricao, valor, categoria, forma_pagamento, COALESCE(array_to_string(tags, ', '), '') AS tags, data_gasto, COALESCE(observacoes, '') AS observacoes, criado_em\nFROM giulia_gastos\nWHERE sheets_synced = FALSE\n  AND dono_numero = '5511910441709'\nORDER BY criado_em ASC\nLIMIT 100;",
         "options": {}
       },
       "id": "pg-pending",
       "name": "Gastos Pendentes",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [420, 380],
+      "position": [
+        420,
+        380
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -53,7 +67,10 @@
       "name": "Formatar Linhas",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 380]
+      "position": [
+        640,
+        380
+      ]
     },
     {
       "parameters": {
@@ -76,13 +93,18 @@
           "matchingColumns": [],
           "schema": []
         },
-        "options": { "valueInputMode": "USER_ENTERED" }
+        "options": {
+          "valueInputMode": "USER_ENTERED"
+        }
       },
       "id": "sheets-append",
       "name": "Append Sheets",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [860, 380],
+      "position": [
+        860,
+        380
+      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "__GIULIA_SHEETS_CRED_ID__",
@@ -100,7 +122,10 @@
       "name": "Marcar Sincronizado",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [1080, 380],
+      "position": [
+        1080,
+        380
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -111,19 +136,59 @@
   ],
   "connections": {
     "Cron 5min": {
-      "main": [[{ "node": "Gastos Pendentes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gastos Pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook Test (manual)": {
-      "main": [[{ "node": "Gastos Pendentes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gastos Pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gastos Pendentes": {
-      "main": [[{ "node": "Formatar Linhas", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Formatar Linhas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Formatar Linhas": {
-      "main": [[{ "node": "Append Sheets", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Append Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Append Sheets": {
-      "main": [[{ "node": "Marcar Sincronizado", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Marcar Sincronizado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {

@@ -41,7 +41,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH claimed AS (\n  UPDATE giulia_lembretes\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT id FROM giulia_lembretes\n    WHERE (status = 'pendente' OR (status = 'processando' AND disparar_em < (NOW() AT TIME ZONE 'America/Sao_Paulo') - INTERVAL '15 minutes'))\n      AND disparar_em <= NOW() AT TIME ZONE 'America/Sao_Paulo'\n    FOR UPDATE SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, descricao, disparar_em, recorrencia\n)\nSELECT id, descricao, disparar_em, recorrencia FROM claimed;",
+        "query": "WITH claimed AS (\n  UPDATE giulia_lembretes\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT l2.id FROM giulia_lembretes l2\n    LEFT JOIN giulia_donos d ON d.numero = l2.dono_numero\n    WHERE (l2.status = 'pendente' OR (l2.status = 'processando' AND l2.disparar_em < (NOW() AT TIME ZONE COALESCE(d.timezone,'America/Sao_Paulo')) - INTERVAL '15 minutes'))\n      AND l2.disparar_em <= NOW() AT TIME ZONE COALESCE(d.timezone,'America/Sao_Paulo')\n    FOR UPDATE OF l2 SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, descricao, disparar_em, recorrencia, dono_numero\n)\nSELECT id, descricao, disparar_em, recorrencia, dono_numero FROM claimed;",
         "options": {}
       },
       "id": "pg-claim-lembretes",
@@ -103,7 +103,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Lembretes -> mensagem pro Thiago\nconst THIAGO_NUMERO = '5511910441709';\nconst lembretes = items.filter(i => i.json && i.json.id);\n\nreturn lembretes.map(l => {\n  const j = l.json;\n  const isRec = j.recorrencia && ['diaria','semanal','mensal'].includes(j.recorrencia);\n  const interval = j.recorrencia === 'diaria' ? '1 day' : j.recorrencia === 'semanal' ? '7 days' : '1 month';\n  const recSql = isRec\n    ? `INSERT INTO giulia_lembretes (descricao, disparar_em, recorrencia) VALUES ('${String(j.descricao).replace(/'/g,\"''\")}', ('${j.disparar_em}'::TIMESTAMP + INTERVAL '${interval}'), '${j.recorrencia}');`\n    : '';\n  return {\n    json: {\n      tipo: 'lembrete',\n      lembrete_id: j.id,\n      send_to: THIAGO_NUMERO,\n      send_text: `Lembrete: ${j.descricao}`,\n      finalize_sql: `UPDATE giulia_lembretes SET status = 'enviado', enviado_em = NOW() WHERE id = ${j.id};${recSql}`\n    }\n  };\n});"
+        "jsCode": "// Lembretes -> mensagem pro DONO correspondente (multi-dono)\nconst THIAGO_NUMERO = '5511910441709';\nconst lembretes = items.filter(i => i.json && i.json.id);\n\nreturn lembretes.map(l => {\n  const j = l.json;\n  const donoDest = j.dono_numero || THIAGO_NUMERO;\n  const isRec = j.recorrencia && ['diaria','semanal','mensal'].includes(j.recorrencia);\n  const interval = j.recorrencia === 'diaria' ? '1 day' : j.recorrencia === 'semanal' ? '7 days' : '1 month';\n  const recSql = isRec\n    ? `INSERT INTO giulia_lembretes (descricao, disparar_em, recorrencia, dono_numero) VALUES ('${String(j.descricao).replace(/'/g,\"''\")}', ('${j.disparar_em}'::TIMESTAMP + INTERVAL '${interval}'), '${j.recorrencia}', '${donoDest}');`\n    : '';\n  return {\n    json: {\n      tipo: 'lembrete',\n      lembrete_id: j.id,\n      send_to: donoDest,\n      send_text: `Lembrete: ${j.descricao}`,\n      finalize_sql: `UPDATE giulia_lembretes SET status = 'enviado', enviado_em = NOW() WHERE id = ${j.id};${recSql}`\n    }\n  };\n});"
       },
       "id": "code-prep-lembretes",
       "name": "Preparar Lembretes",
