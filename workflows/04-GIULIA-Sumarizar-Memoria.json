@@ -58,7 +58,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=__GIULIA_GEMINI_API_KEY__",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=__GIULIA_GEMINI_API_KEY__",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

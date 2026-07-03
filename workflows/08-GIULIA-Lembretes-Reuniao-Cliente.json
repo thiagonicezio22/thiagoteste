@@ -1,0 +1,121 @@
+{
+  "name": "GIULIA - 08 Lembretes Reuniao Cliente",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "*/15 * * * *" }]
+        }
+      },
+      "id": "cron-15m",
+      "name": "Cron 15min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-lembrete-reuniao-tick",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-tick",
+      "name": "Webhook manual",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 460],
+      "webhookId": "giulia-lembrete-reuniao-tick-wh"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, numero_cliente, COALESCE(nome_cliente,'') AS nome_cliente, agendado_para, COALESCE(assunto,'') AS assunto,\n  CASE\n    WHEN NOT lembrete_2h_enviado\n     AND agendado_para BETWEEN (NOW() AT TIME ZONE 'America/Sao_Paulo') + INTERVAL '30 minutes'\n                           AND (NOW() AT TIME ZONE 'America/Sao_Paulo') + INTERVAL '2 hours 15 minutes'\n      THEN '2h'\n    WHEN NOT lembrete_24h_enviado\n     AND agendado_para BETWEEN (NOW() AT TIME ZONE 'America/Sao_Paulo') + INTERVAL '22 hours'\n                           AND (NOW() AT TIME ZONE 'America/Sao_Paulo') + INTERVAL '25 hours'\n      THEN '24h'\n    ELSE NULL\n  END AS tipo_lembrete\nFROM giulia_reunioes\nWHERE status IN ('agendada','confirmada')\n  AND agendado_para IS NOT NULL\n  AND agendado_para > NOW() AT TIME ZONE 'America/Sao_Paulo'\n  AND (\n    (NOT lembrete_2h_enviado AND agendado_para <= (NOW() AT TIME ZONE 'America/Sao_Paulo') + INTERVAL '2 hours 15 minutes')\n    OR\n    (NOT lembrete_24h_enviado AND agendado_para <= (NOW() AT TIME ZONE 'America/Sao_Paulo') + INTERVAL '25 hours')\n  )\nLIMIT 10;",
+        "options": {}
+      },
+      "id": "pg-due",
+      "name": "Reunioes a Lembrar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [420, 380],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Monta lembrete pro CLIENTE (24h ou 2h antes) com tom natural\nconst reunioes = items.filter(i => i.json && i.json.id && i.json.tipo_lembrete);\nif (!reunioes.length) return [];\n\nfunction fmtHora(dt) {\n  const d = new Date(dt);\n  return String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');\n}\nfunction fmtData(dt) {\n  const d = new Date(dt);\n  return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0');\n}\n\nreturn reunioes.map(r => {\n  const j = r.json;\n  const primeiroNome = (j.nome_cliente || '').split(' ')[0];\n  const oi = primeiroNome ? `Oi ${primeiroNome}, tudo bem?` : 'Oi, tudo bem?';\n  const hora = fmtHora(j.agendado_para);\n  let texto;\n  if (j.tipo_lembrete === '24h') {\n    texto = `${oi} Aqui e a Giulia, secretaria do Thiago Nicezio. Passando pra lembrar da conversa de voces amanha (${fmtData(j.agendado_para)}) as ${hora}. Confirmado? Se precisar remarcar, me avisa por aqui.`;\n  } else {\n    texto = `${oi} Lembrando que a conversa com o Thiago Nicezio e daqui a pouco, as ${hora}. Ate ja!`;\n  }\n  const flag = j.tipo_lembrete === '24h' ? 'lembrete_24h_enviado' : 'lembrete_2h_enviado';\n  return {\n    json: {\n      send_to: String(j.numero_cliente).replace(/[^0-9]/g,''),\n      send_text: texto,\n      finalize_sql: `UPDATE giulia_reunioes SET ${flag} = TRUE WHERE id = ${j.id};`\n    }\n  };\n});"
+      },
+      "id": "code-build",
+      "name": "Montar Lembrete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "http-send",
+      "name": "Enviar UAZAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 380],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $('Montar Lembrete').item.json.finalize_sql }}",
+        "options": {}
+      },
+      "id": "pg-finalize",
+      "name": "Marcar Enviado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1080, 380],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 15min": {
+      "main": [[{ "node": "Reunioes a Lembrar", "type": "main", "index": 0 }]]
+    },
+    "Webhook manual": {
+      "main": [[{ "node": "Reunioes a Lembrar", "type": "main", "index": 0 }]]
+    },
+    "Reunioes a Lembrar": {
+      "main": [[{ "node": "Montar Lembrete", "type": "main", "index": 0 }]]
+    },
+    "Montar Lembrete": {
+      "main": [[{ "node": "Enviar UAZAPI", "type": "main", "index": 0 }]]
+    },
+    "Enviar UAZAPI": {
+      "main": [[{ "node": "Marcar Enviado", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

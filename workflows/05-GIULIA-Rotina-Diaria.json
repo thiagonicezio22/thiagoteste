@@ -4,26 +4,22 @@
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
-        }
-      },
-      "id": "cron-aviso",
-      "name": "Cron 7h Brasilia (aviso)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [200, 220]
-    },
-    {
-      "parameters": {
-        "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 11 * * *" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 11 * * *"
+            }
+          ]
         }
       },
       "id": "cron-reforco",
       "name": "Cron 12h Brasilia (reforco)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 380]
+      "position": [
+        200,
+        380
+      ]
     },
     {
       "parameters": {
@@ -36,7 +32,10 @@
       "name": "Webhook Aviso (manual)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 540],
+      "position": [
+        200,
+        540
+      ],
       "webhookId": "giulia-rotina-aviso-wh"
     },
     {
@@ -50,7 +49,10 @@
       "name": "Webhook Reforco (manual)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 700],
+      "position": [
+        200,
+        700
+      ],
       "webhookId": "giulia-rotina-reforco-wh"
     },
     {
@@ -61,7 +63,10 @@
       "name": "Set tipo=aviso",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 380]
+      "position": [
+        420,
+        380
+      ]
     },
     {
       "parameters": {
@@ -71,7 +76,10 @@
       "name": "Set tipo=reforco",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 700]
+      "position": [
+        420,
+        700
+      ]
     },
     {
       "parameters": {
@@ -83,7 +91,10 @@
       "name": "Tarefas do Dia",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [640, 540],
+      "position": [
+        640,
+        540
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -100,7 +111,10 @@
       "name": "Montar Mensagem",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [860, 540]
+      "position": [
+        860,
+        540
+      ]
     },
     {
       "parameters": {
@@ -109,46 +123,110 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "http-send",
       "name": "Enviar UAZAPI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1080, 540]
+      "position": [
+        1080,
+        540
+      ]
     }
   ],
   "connections": {
-    "Cron 7h Brasilia (aviso)": {
-      "main": [[{ "node": "Set tipo=aviso", "type": "main", "index": 0 }]]
-    },
     "Webhook Aviso (manual)": {
-      "main": [[{ "node": "Set tipo=aviso", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set tipo=aviso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Cron 12h Brasilia (reforco)": {
-      "main": [[{ "node": "Set tipo=reforco", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set tipo=reforco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook Reforco (manual)": {
-      "main": [[{ "node": "Set tipo=reforco", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set tipo=reforco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set tipo=aviso": {
-      "main": [[{ "node": "Tarefas do Dia", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Tarefas do Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set tipo=reforco": {
-      "main": [[{ "node": "Tarefas do Dia", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Tarefas do Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Tarefas do Dia": {
-      "main": [[{ "node": "Montar Mensagem", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Montar Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Montar Mensagem": {
-      "main": [[{ "node": "Enviar UAZAPI", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enviar UAZAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
