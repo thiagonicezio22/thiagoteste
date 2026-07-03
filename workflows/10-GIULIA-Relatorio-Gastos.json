@@ -1,0 +1,433 @@
+{
+  "name": "GIULIA - 10 Relatorio Gastos",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-relatorio-gastos",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wh-rel",
+      "name": "Webhook Relatorio",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        380
+      ],
+      "webhookId": "giulia-relatorio-gastos-wh"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida pedido e monta SQL (dono sanitizado, periodo whitelist)\nconst body = items[0].json.body || items[0].json;\nconst dono = String(body.dono || '').replace(/[^0-9]/g, '');\nconst periodos = ['hoje','semana','mes','mes_passado','tudo'];\nconst periodo = periodos.includes(body.periodo) ? body.periodo : 'mes';\nif (!dono) return [];\n\nconst hojeLocal = \"(NOW() AT TIME ZONE d.timezone)::date\";\nlet filtro;\nif (periodo === 'hoje') filtro = `g0.data_gasto = ${hojeLocal}`;\nelse if (periodo === 'semana') filtro = `g0.data_gasto >= ${hojeLocal} - 6`;\nelse if (periodo === 'mes') filtro = `date_trunc('month', g0.data_gasto) = date_trunc('month', ${hojeLocal})`;\nelse if (periodo === 'mes_passado') filtro = `date_trunc('month', g0.data_gasto) = date_trunc('month', ${hojeLocal} - INTERVAL '1 month')`;\nelse filtro = 'TRUE';\n\nconst sql = `SELECT d.numero, d.nome, d.timezone, d.moeda,\\n  (SELECT COALESCE(json_agg(json_build_object('id', g0.id, 'data', to_char(g0.data_gasto,'DD/MM/YYYY'), 'descricao', g0.descricao, 'categoria', COALESCE(g0.categoria,'outros'), 'forma', COALESCE(g0.forma_pagamento,''), 'valor', g0.valor, 'obs', COALESCE(g0.observacoes,'')) ORDER BY g0.data_gasto, g0.id), '[]'::json)\\n   FROM giulia_gastos g0 WHERE g0.dono_numero = d.numero AND ${filtro}) AS gastos\\nFROM giulia_donos d WHERE d.numero = '${dono}';`;\n\nreturn [{ json: { dono, periodo, sql } }];"
+      },
+      "id": "code-prep",
+      "name": "Preparar Pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql }}",
+        "options": {}
+      },
+      "id": "pg-dados",
+      "name": "Carregar Dados",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        640,
+        380
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      },
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Monta resumo texto + configs dos graficos (QuickChart) + meta da planilha\nconst req = $('Preparar Pedido').first().json;\nconst d = (items[0] && items[0].json) || {};\nconst labelPeriodo = ({hoje:'hoje', semana:'ultimos 7 dias', mes:'mes atual', mes_passado:'mes passado', tudo:'periodo completo'})[req.periodo] || 'mes atual';\nif (!d.numero) return [{ json: { vazio: true, dono: req.dono, texto: 'Nao consegui gerar o relatorio agora. Me pede de novo em instantes?' } }];\nconst gastos = typeof d.gastos === 'string' ? JSON.parse(d.gastos) : (d.gastos || []);\nconst SYM = d.moeda === 'USD' ? '$' : 'R$';\nfunction fmt(v){ const n = Number(v) || 0; return SYM + ' ' + n.toFixed(2).replace('.', ',').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.'); }\nif (!gastos.length) return [{ json: { vazio: true, dono: d.numero, texto: `Nenhum gasto registrado no periodo (${labelPeriodo}).` } }];\n\nconst total = gastos.reduce((s,g) => s + (Number(g.valor)||0), 0);\nconst porCat = {};\nfor (const g of gastos) porCat[g.categoria] = (porCat[g.categoria]||0) + (Number(g.valor)||0);\nlet cats = Object.entries(porCat).sort((a,b) => b[1]-a[1]);\nif (cats.length > 8) { const resto = cats.slice(7).reduce((s,c)=>s+c[1],0); cats = cats.slice(0,7); cats.push(['outros', resto]); }\nconst porDia = {};\nfor (const g of gastos) { const dd = String(g.data).substring(0,5); porDia[dd] = (porDia[dd]||0) + (Number(g.valor)||0); }\nconst dias = Object.entries(porDia);\n\n// paleta categorica validada (ordem fixa, CVD-safe)\nconst CORES = ['#2a78d6','#1baf7a','#eda100','#008300','#4a3aa7','#e34948','#e87ba4','#eb6834'];\nconst pct = v => total ? Math.round(v/total*100) : 0;\nconst chartCat = {\n  type: 'doughnut',\n  data: { labels: cats.map(([c,v]) => `${c} - ${fmt(v)} (${pct(v)}%)`),\n          datasets: [{ data: cats.map(([c,v]) => Math.round(v*100)/100), backgroundColor: CORES.slice(0, cats.length), borderColor: '#ffffff', borderWidth: 2 }] },\n  options: { title: { display: true, text: ['Gastos por categoria', 'Total: ' + fmt(total)], fontSize: 18, fontColor: '#0b0b0b' },\n             legend: { position: 'right', labels: { fontSize: 13, fontColor: '#0b0b0b' } },\n             plugins: { datalabels: { display: false } } }\n};\nconst chartDia = dias.length > 1 ? {\n  type: 'bar',\n  data: { labels: dias.map(x => x[0]), datasets: [{ data: dias.map(x => Math.round(x[1]*100)/100), backgroundColor: '#2a78d6', maxBarThickness: 40 }] },\n  options: { title: { display: true, text: `Gasto por dia (${SYM}) - ${labelPeriodo}`, fontSize: 18, fontColor: '#0b0b0b' },\n             legend: { display: false },\n             scales: { yAxes: [{ ticks: { beginAtZero: true, fontColor: '#52514e' }, gridLines: { color: '#eeeeee' } }], xAxes: [{ ticks: { fontColor: '#52514e' }, gridLines: { display: false } }] },\n             plugins: { datalabels: { display: false } } }\n} : null;\nconst qc = cfg => 'https://quickchart.io/chart?w=700&h=420&bkg=white&c=' + encodeURIComponent(JSON.stringify(cfg));\n\nconst maior = gastos.reduce((m,g) => (Number(g.valor)||0) > (Number(m.valor)||0) ? g : m, gastos[0]);\nconst linhasCat = cats.map(([c,v]) => `  ${c}: ${fmt(v)} (${pct(v)}%)`).join('\\n');\nconst agoraLocal = new Date().toLocaleString('sv-SE', { timeZone: d.timezone || 'America/Sao_Paulo' });\nconst dataFmt = agoraLocal.substring(8,10) + '/' + agoraLocal.substring(5,7) + '/' + agoraLocal.substring(0,4);\nconst nLanc = gastos.length === 1 ? '1 lancamento' : gastos.length + ' lancamentos';\nconst texto = `*Relatorio de gastos - ${labelPeriodo}*\\n_Gerado em ${dataFmt}_\\n\\n*Total: ${fmt(total)}* (${nLanc})\\n\\n*Por categoria:*\\n${linhasCat}\\n\\n*Maior gasto:* ${maior.descricao} - ${fmt(maior.valor)}\\n\\nSegue os graficos e a planilha completa.`;\nconst docname = `gastos-${req.periodo}-${dataFmt.replace(/\\//g,'-')}.xlsx`;\n\nreturn [{ json: { vazio: false, dono: d.numero, moeda: d.moeda || 'BRL', texto, chart_cat_url: qc(chartCat), chart_dia_url: chartDia ? qc(chartDia) : '', docname, gastos, total } }];"
+      },
+      "id": "code-meta",
+      "name": "Montar Meta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.dono, text: $json.texto }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-resumo",
+      "name": "Enviar Resumo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1080,
+        380
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Montar Meta').first().json.vazio }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-tem",
+      "name": "Tem Gastos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Um item por midia (graficos) pra enviar em sequencia\nconst meta = $('Montar Meta').first().json;\nconst out = [];\nif (meta.chart_cat_url) out.push({ json: { number: meta.dono, file: meta.chart_cat_url, caption: 'Como se distribui por categoria' } });\nif (meta.chart_dia_url) out.push({ json: { number: meta.dono, file: meta.chart_dia_url, caption: 'Evolucao dia a dia' } });\nreturn out;"
+      },
+      "id": "code-midias",
+      "name": "Montar Midias",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.number, type: 'image', file: $json.file, text: $json.caption }) }}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-midias",
+      "name": "Enviar Graficos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1740,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Linhas da planilha XLSX (uma por gasto + linha TOTAL)\nconst meta = $('Montar Meta').first().json;\nconst rows = meta.gastos.map(g => ({ json: {\n  'Data': g.data,\n  'Descricao': g.descricao,\n  'Categoria': g.categoria,\n  'Forma de pagamento': g.forma || '',\n  'Valor': Number(g.valor) || 0,\n  'Moeda': meta.moeda,\n  'Observacoes': g.obs || ''\n}}));\nrows.push({ json: { 'Data': '', 'Descricao': 'TOTAL', 'Categoria': '', 'Forma de pagamento': '', 'Valor': Math.round(meta.total*100)/100, 'Moeda': meta.moeda, 'Observacoes': '' } });\nreturn rows;"
+      },
+      "id": "code-linhas",
+      "name": "Montar Linhas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "fileName": "={{ $('Montar Meta').first().json.docname }}",
+          "sheetName": "Gastos"
+        }
+      },
+      "id": "conv-xlsx",
+      "name": "Converter XLSX",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "sourceProperty": "data",
+        "destinationKey": "xlsx_b64",
+        "options": {}
+      },
+      "id": "extract-b64",
+      "name": "Extrair Base64 XLSX",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Montar Meta').first().json.dono, type: 'document', file: 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + $json.xlsx_b64, docName: $('Montar Meta').first().json.docname, text: 'Planilha completa em anexo' }) }}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-planilha",
+      "name": "Enviar Planilha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2620,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + $('Montar Meta').first().json.texto.replace(/'/g, \"''\") + \"', '\" + $('Montar Meta').first().json.dono + \"')\" }}",
+        "options": {}
+      },
+      "id": "pg-memoria",
+      "name": "Salvar Memoria Relatorio",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        540
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      },
+      "continueOnFail": true,
+      "executeOnce": true
+    }
+  ],
+  "connections": {
+    "Webhook Relatorio": {
+      "main": [
+        [
+          {
+            "node": "Preparar Pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Pedido": {
+      "main": [
+        [
+          {
+            "node": "Carregar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Dados": {
+      "main": [
+        [
+          {
+            "node": "Montar Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Meta": {
+      "main": [
+        [
+          {
+            "node": "Enviar Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Resumo": {
+      "main": [
+        [
+          {
+            "node": "Tem Gastos?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Salvar Memoria Relatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Gastos?": {
+      "main": [
+        [
+          {
+            "node": "Montar Midias",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Montar Midias": {
+      "main": [
+        [
+          {
+            "node": "Enviar Graficos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Graficos": {
+      "main": [
+        [
+          {
+            "node": "Montar Linhas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Linhas": {
+      "main": [
+        [
+          {
+            "node": "Converter XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converter XLSX": {
+      "main": [
+        [
+          {
+            "node": "Extrair Base64 XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Base64 XLSX": {
+      "main": [
+        [
+          {
+            "node": "Enviar Planilha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
