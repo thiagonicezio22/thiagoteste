@@ -108,6 +108,7 @@ deploy "5kfBHcPbR0UMQxMK" "workflows/05-GIULIA-Rotina-Diaria.json" "GIULIA - 05 
 deploy "5WhC5PwNoptX5lKm" "workflows/06-GIULIA-Cobrar-Tarefas.json" "GIULIA - 06 Cobrar Tarefas"
 deploy "ZFr4vsDTHv8TDrXE" "workflows/07-GIULIA-Briefing-Matinal.json" "GIULIA - 07 Briefing Matinal"
 deploy "J1Sj1a3aTvcPQ391" "workflows/08-GIULIA-Lembretes-Reuniao-Cliente.json" "GIULIA - 08 Lembretes Reuniao Cliente"
+deploy "nqLalQVouNGgh4EQ" "workflows/09-GIULIA-Lembretes-Contas.json" "GIULIA - 09 Lembretes Contas"
 deploy "AEVYq2LMB608RnU8" "workflows/03-GIULIA-Sync-Gastos-Sheets.json" "GIULIA - 03 Sync Gastos Sheets"
 
 echo ""
