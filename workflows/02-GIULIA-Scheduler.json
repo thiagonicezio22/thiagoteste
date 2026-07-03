@@ -4,14 +4,22 @@
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "minutes", "minutesInterval": 1 }]
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
         }
       },
       "id": "cron-1min",
       "name": "Cron 1min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 300]
+      "position": [
+        200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -24,20 +32,26 @@
       "name": "Webhook Test (manual)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 480],
+      "position": [
+        200,
+        480
+      ],
       "webhookId": "giulia-scheduler-tick-wh"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH claimed AS (\n  UPDATE giulia_lembretes\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT id FROM giulia_lembretes\n    WHERE status = 'pendente'\n      AND disparar_em <= NOW() AT TIME ZONE 'America/Sao_Paulo'\n    FOR UPDATE SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, descricao, disparar_em, recorrencia\n)\nSELECT id, descricao, disparar_em, recorrencia FROM claimed;",
+        "query": "WITH claimed AS (\n  UPDATE giulia_lembretes\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT id FROM giulia_lembretes\n    WHERE (status = 'pendente' OR (status = 'processando' AND disparar_em < (NOW() AT TIME ZONE 'America/Sao_Paulo') - INTERVAL '15 minutes'))\n      AND disparar_em <= NOW() AT TIME ZONE 'America/Sao_Paulo'\n    FOR UPDATE SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, descricao, disparar_em, recorrencia\n)\nSELECT id, descricao, disparar_em, recorrencia FROM claimed;",
         "options": {}
       },
       "id": "pg-claim-lembretes",
       "name": "Claim Lembretes Devidos",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [420, 100],
+      "position": [
+        420,
+        100
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -48,14 +62,17 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH claimed AS (\n  UPDATE giulia_mensagens_agendadas\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT id FROM giulia_mensagens_agendadas\n    WHERE status = 'pendente'\n      AND agendado_para <= NOW() AT TIME ZONE 'America/Sao_Paulo'\n    FOR UPDATE SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, destinatario_numero, destinatario_nome, conteudo\n)\nSELECT id, destinatario_numero, destinatario_nome, conteudo FROM claimed;",
+        "query": "WITH claimed AS (\n  UPDATE giulia_mensagens_agendadas\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT id FROM giulia_mensagens_agendadas\n    WHERE (status = 'pendente' OR (status = 'processando' AND agendado_para < (NOW() AT TIME ZONE 'America/Sao_Paulo') - INTERVAL '15 minutes'))\n      AND agendado_para <= NOW() AT TIME ZONE 'America/Sao_Paulo'\n    FOR UPDATE SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, destinatario_numero, destinatario_nome, conteudo\n)\nSELECT id, destinatario_numero, destinatario_nome, conteudo FROM claimed;",
         "options": {}
       },
       "id": "pg-claim-msgs",
       "name": "Claim Msgs Agendadas Devidas",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [420, 460],
+      "position": [
+        420,
+        460
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -66,14 +83,17 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH claimed AS (\n  UPDATE giulia_notificacoes_thiago\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT id FROM giulia_notificacoes_thiago\n    WHERE status = 'pendente'\n    FOR UPDATE SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, tipo, origem_numero, origem_nome, resumo, urgencia\n)\nSELECT id, tipo, origem_numero, origem_nome, resumo, urgencia FROM claimed;",
+        "query": "WITH claimed AS (\n  UPDATE giulia_notificacoes_thiago\n  SET status = 'processando'\n  WHERE id IN (\n    SELECT id FROM giulia_notificacoes_thiago\n    WHERE (status = 'pendente' OR (status = 'processando' AND criada_em < NOW() - INTERVAL '15 minutes'))\n    FOR UPDATE SKIP LOCKED\n    LIMIT 20\n  )\n  RETURNING id, tipo, origem_numero, origem_nome, resumo, urgencia\n)\nSELECT id, tipo, origem_numero, origem_nome, resumo, urgencia FROM claimed;",
         "options": {}
       },
       "id": "pg-claim-notif",
       "name": "Claim Notificacoes Thiago",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [420, 280],
+      "position": [
+        420,
+        280
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -89,7 +109,10 @@
       "name": "Preparar Lembretes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 100]
+      "position": [
+        640,
+        100
+      ]
     },
     {
       "parameters": {
@@ -99,7 +122,10 @@
       "name": "Preparar Msgs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 460]
+      "position": [
+        640,
+        460
+      ]
     },
     {
       "parameters": {
@@ -109,7 +135,10 @@
       "name": "Preparar Notificacoes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 280]
+      "position": [
+        640,
+        280
+      ]
     },
     {
       "parameters": {
@@ -118,20 +147,32 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "http-send-lembrete",
       "name": "Enviar Lembrete UAZAPI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 100]
+      "position": [
+        860,
+        100
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -140,20 +181,32 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "http-send-msg",
       "name": "Enviar Msg UAZAPI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 460]
+      "position": [
+        860,
+        460
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -162,20 +215,32 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "http-send-notif",
       "name": "Enviar Notificacao UAZAPI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 280]
+      "position": [
+        860,
+        280
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -186,7 +251,10 @@
       "name": "Wait 30s Anti-spam",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1080, 460]
+      "position": [
+        1080,
+        460
+      ]
     },
     {
       "parameters": {
@@ -198,7 +266,10 @@
       "name": "Finalizar Lembrete",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [1080, 100],
+      "position": [
+        1080,
+        100
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -216,7 +287,10 @@
       "name": "Finalizar Notificacao",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [1080, 280],
+      "position": [
+        1080,
+        280
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -234,7 +308,10 @@
       "name": "Finalizar Msg",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [1300, 460],
+      "position": [
+        1300,
+        460
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -247,50 +324,154 @@
     "Cron 1min": {
       "main": [
         [
-          { "node": "Claim Lembretes Devidos", "type": "main", "index": 0 },
-          { "node": "Claim Notificacoes Thiago", "type": "main", "index": 0 },
-          { "node": "Claim Msgs Agendadas Devidas", "type": "main", "index": 0 }
+          {
+            "node": "Claim Lembretes Devidos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Claim Notificacoes Thiago",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Claim Msgs Agendadas Devidas",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Webhook Test (manual)": {
       "main": [
         [
-          { "node": "Claim Lembretes Devidos", "type": "main", "index": 0 },
-          { "node": "Claim Notificacoes Thiago", "type": "main", "index": 0 },
-          { "node": "Claim Msgs Agendadas Devidas", "type": "main", "index": 0 }
+          {
+            "node": "Claim Lembretes Devidos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Claim Notificacoes Thiago",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Claim Msgs Agendadas Devidas",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Claim Lembretes Devidos": {
-      "main": [[{ "node": "Preparar Lembretes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Lembretes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claim Msgs Agendadas Devidas": {
-      "main": [[{ "node": "Preparar Msgs", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Msgs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claim Notificacoes Thiago": {
-      "main": [[{ "node": "Preparar Notificacoes", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Notificacoes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Lembretes": {
-      "main": [[{ "node": "Enviar Lembrete UAZAPI", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enviar Lembrete UAZAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Msgs": {
-      "main": [[{ "node": "Enviar Msg UAZAPI", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enviar Msg UAZAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Notificacoes": {
-      "main": [[{ "node": "Enviar Notificacao UAZAPI", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enviar Notificacao UAZAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Enviar Lembrete UAZAPI": {
-      "main": [[{ "node": "Finalizar Lembrete", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Finalizar Lembrete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Enviar Notificacao UAZAPI": {
-      "main": [[{ "node": "Finalizar Notificacao", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Finalizar Notificacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Enviar Msg UAZAPI": {
-      "main": [[{ "node": "Wait 30s Anti-spam", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Wait 30s Anti-spam",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Wait 30s Anti-spam": {
-      "main": [[{ "node": "Finalizar Msg", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Finalizar Msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
