@@ -41,7 +41,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, descricao, valor, categoria, forma_pagamento, COALESCE(array_to_string(tags, ', '), '') AS tags, data_gasto, COALESCE(observacoes, '') AS observacoes, criado_em\nFROM giulia_gastos\nWHERE sheets_synced = FALSE\n  AND dono_numero = '5511910441709'\nORDER BY criado_em ASC\nLIMIT 100;",
+        "query": "SELECT id, descricao, valor, categoria, COALESCE(subcategoria,'') AS subcategoria, forma_pagamento, COALESCE(array_to_string(tags, ', '), '') AS tags, data_gasto, COALESCE(observacoes, '') AS observacoes, criado_em\nFROM giulia_gastos\nWHERE sheets_synced = FALSE\n  AND dono_numero = '5511910441709'\nORDER BY criado_em ASC\nLIMIT 100;",
         "options": {}
       },
       "id": "pg-pending",
@@ -61,7 +61,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Formata cada gasto pra uma linha da planilha\n// Colunas esperadas na planilha: ID, Data, Descricao, Valor, Categoria, Forma Pagamento, Tags, Observacoes, Registrado em\nconst gastos = items.filter(i => i.json && i.json.id);\nif (!gastos.length) return [];\n\nfunction fmtDate(d){\n  if (!d) return '';\n  const s = String(d);\n  const m = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);\n  return m ? `${m[3]}/${m[2]}/${m[1]}` : s;\n}\nfunction fmtDateTime(d){\n  if (!d) return '';\n  return new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n}\n\nreturn gastos.map(g => {\n  const j = g.json;\n  return {\n    json: {\n      id: j.id,\n      ID: String(j.id),\n      Data: fmtDate(j.data_gasto),\n      Descricao: j.descricao || '',\n      Valor: Number(j.valor || 0),\n      Categoria: j.categoria || '',\n      'Forma Pagamento': j.forma_pagamento || '',\n      Tags: j.tags || '',\n      Observacoes: j.observacoes || '',\n      'Registrado em': fmtDateTime(j.criado_em)\n    }\n  };\n});"
+        "jsCode": "// Formata cada gasto pra uma linha da planilha\n// Colunas esperadas na planilha: ID, Data, Descricao, Valor, Categoria, Forma Pagamento, Tags, Observacoes, Registrado em\nconst gastos = items.filter(i => i.json && i.json.id);\nif (!gastos.length) return [];\n\nfunction fmtDate(d){\n  if (!d) return '';\n  const s = String(d);\n  const m = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);\n  return m ? `${m[3]}/${m[2]}/${m[1]}` : s;\n}\nfunction fmtDateTime(d){\n  if (!d) return '';\n  return new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n}\n\nreturn gastos.map(g => {\n  const j = g.json;\n  return {\n    json: {\n      id: j.id,\n      ID: String(j.id),\n      Data: fmtDate(j.data_gasto),\n      Descricao: j.descricao || '',\n      Valor: Number(j.valor || 0),\n      Categoria: (j.categoria || '') + (j.subcategoria ? ' / ' + j.subcategoria : ''),\n      'Forma Pagamento': j.forma_pagamento || '',\n      Tags: j.tags || '',\n      Observacoes: j.observacoes || '',\n      'Registrado em': fmtDateTime(j.criado_em)\n    }\n  };\n});"
       },
       "id": "code-prep",
       "name": "Formatar Linhas",

@@ -220,24 +220,25 @@ function buildXlsx(meta) {
 
   // ===== Aba 2: Lancamentos =====
   const s2 = mkSheet();
-  band(s2, 'Lançamentos detalhados', subtitulo, 6);
-  s2.add([txt(1, 'Data', 4), txt(2, 'Descrição', 4), txt(3, 'Categoria', 4), txt(4, 'Forma de pagamento', 4), txt(5, 'Valor', 4), txt(6, 'Observações', 4)]);
+  band(s2, 'Lançamentos detalhados', subtitulo, 7);
+  s2.add([txt(1, 'Data', 4), txt(2, 'Descrição', 4), txt(3, 'Categoria', 4), txt(4, 'Subcategoria', 4), txt(5, 'Forma de pagamento', 4), txt(6, 'Valor', 4), txt(7, 'Observações', 4)]);
   gastos.forEach((g, i) => {
     const z = i % 2 === 1;
     s2.add([
       txt(1, g.data || '', z ? 17 : 16),
       txt(2, g.descricao || '', z ? 9 : 8),
       txt(3, g.categoria || '', z ? 9 : 8),
-      txt(4, g.forma || '', z ? 9 : 8),
-      num(5, Math.round((Number(g.valor) || 0) * 100) / 100, z ? 11 : 10),
-      txt(6, g.obs || '', z ? 9 : 8)
+      txt(4, g.sub || '', z ? 9 : 8),
+      txt(5, g.forma || '', z ? 9 : 8),
+      num(6, Math.round((Number(g.valor) || 0) * 100) / 100, z ? 11 : 10),
+      txt(7, g.obs || '', z ? 9 : 8)
     ]);
   });
   const lastData = s2.row();
-  s2.add([txt(1, '', 14), txt(2, 'Total', 14), txt(3, '', 14), txt(4, '', 14), num(5, Math.round(total * 100) / 100, 15), txt(6, '', 14)]);
+  s2.add([txt(1, '', 14), txt(2, 'Total', 14), txt(3, '', 14), txt(4, '', 14), txt(5, '', 14), num(6, Math.round(total * 100) / 100, 15), txt(7, '', 14)]);
 
   const sheet1 = sheetXml(s1.rows, s1.merges, [22, 20, 12, 34], {});
-  const sheet2 = sheetXml(s2.rows, s2.merges, [12, 42, 15, 19, 14, 46], { freezeRow: 3, autoFilter: `A3:F${lastData}` });
+  const sheet2 = sheetXml(s2.rows, s2.merges, [12, 38, 14, 16, 18, 13, 42], { freezeRow: 3, autoFilter: `A3:G${lastData}` });
 
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -282,11 +283,10 @@ if (require.main === module) {
   const meta = {
     moeda: 'USD', nome: 'Andre Amorim', label_periodo: 'mês atual', data_geracao: '04/07/2026',
     gastos: [
-      { data: '30/06/2026', descricao: 'Consulta médica', categoria: 'saude', forma: 'cartao', valor: 180, obs: '' },
-      { data: '01/07/2026', descricao: 'Uber aeroporto', categoria: 'transporte', forma: '', valor: 45.9, obs: '' },
-      { data: '02/07/2026', descricao: 'Mercado semanal', categoria: 'alimentacao', forma: 'cartao', valor: 230.5, obs: '' },
-      { data: '03/07/2026', descricao: 'Alex - Limpeza de terreno e showroom', categoria: 'profissional', forma: 'transferencia', valor: 1280, obs: 'Derrubada de árvores e remoção de lixo' },
-      { data: '03/07/2026', descricao: 'Laercio (pago via Marchioni Custom Furniture) - serviço de construção', categoria: 'profissional', forma: '', valor: 8230, obs: 'Vidros, pedras e deck de madeira' }
+      { data: '30/06/2026', descricao: 'Consulta médica', categoria: 'saude', sub: '', forma: 'cartao', valor: 180, obs: '' },
+      { data: '02/07/2026', descricao: 'Mercado semanal', categoria: 'alimentacao', sub: '', forma: 'cartao', valor: 230.5, obs: '' },
+      { data: '03/07/2026', descricao: 'Alex - Limpeza de terreno', categoria: 'profissional', sub: 'obra showroom', forma: 'transferencia', valor: 1280, obs: 'Derrubada de árvores' },
+      { data: '03/07/2026', descricao: 'Laercio - serviço de construção', categoria: 'profissional', sub: 'obra showroom', forma: '', valor: 8230, obs: 'Vidros, pedras e deck' }
     ]
   };
   const b64 = buildXlsx(meta);
