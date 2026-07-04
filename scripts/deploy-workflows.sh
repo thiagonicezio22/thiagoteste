@@ -96,8 +96,22 @@ PYEOF
 
   if [ "$was_active" = "True" ]; then
     echo "  reativando..."
-    curl -s -X POST -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_URL/api/v1/workflows/$wf_id/activate" \
-      | python3 -c "import json,sys; d=json.load(sys.stdin); print('  active:', d.get('active'))"
+    local ok=""
+    for tent in 1 2 3; do
+      curl -s -X POST -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_URL/api/v1/workflows/$wf_id/activate" > /dev/null
+      ok=$(curl -s -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_URL/api/v1/workflows/$wf_id" \
+        | python3 -c "import json,sys; print(json.load(sys.stdin).get('active', False))")
+      if [ "$ok" = "True" ]; then
+        echo "  active: True (verificado)"
+        break
+      fi
+      echo "  ATENCAO: ainda inativo (tentativa $tent), retentando..."
+      sleep 2
+    done
+    if [ "$ok" != "True" ]; then
+      echo "  ERRO FATAL: $wf_label NAO REATIVOU - workflow parado em producao!"
+      exit 1
+    fi
   fi
 }
 
