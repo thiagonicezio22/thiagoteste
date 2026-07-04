@@ -176,6 +176,31 @@ banidos e o serviço morre da noite pro dia. Decisão a tomar antes do MVP comer
 
 ---
 
+## 12. Escopo v1 aprovado — "A secretária que organiza a vida do empreendedor" (04/07/2026)
+
+Direção definida pelo Thiago: começar organizando a vida do empreendedor —
+agenda + vida financeira — em **três pilares**:
+
+- **Agenda** *(pronto)*: briefing matinal, lembretes, tarefas com cobrança,
+  rotina, visão do dia, recados a terceiros com aprovação.
+- **Dinheiro** *(forte, faltam 4 peças)*: gastos multimodais e relatórios prontos;
+  adicionar recorrência automática de despesas fixas, contas a receber com
+  cobrança educada, fluxo de caixa com projeção e PDF como comprovante.
+- **Pessoas** *(construir — o diferencial validado)*: cadastro de funcionários/
+  prestadores com valor e frequência, aviso proativo no dia de pagar, baixa por
+  comprovante ligada à pessoa, histórico por pessoa e relatório de folha.
+
+**Ordem de construção**: (1) Pessoas/folha → (2) fixas recorrentes →
+(3) contas a receber → (4) fluxo de caixa + resumos automáticos (domingo à
+noite + fechamento mensal) → (5) PDF. Cada etapa testável pelo Thiago e pelo
+André no dia seguinte.
+
+**Fora do v1, de propósito**: execução de pagamentos, Open Finance,
+metas/orçamento por categoria, CRM de leads como produto.
+
+Painel visual da estratégia:
+https://claude.ai/code/artifact/742be0f1-cc69-4f20-b667-d42b7a3b6f88
+
 ## Anexo A — Matriz competitiva (pesquisa concluída em 04/07/2026)
 
 Método: varredura web em 5 frentes, 22 fontes, 109 afirmações extraídas, 25 mais
