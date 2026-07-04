@@ -111,6 +111,7 @@ deploy "J1Sj1a3aTvcPQ391" "workflows/08-GIULIA-Lembretes-Reuniao-Cliente.json" "
 deploy "nqLalQVouNGgh4EQ" "workflows/09-GIULIA-Lembretes-Contas.json" "GIULIA - 09 Lembretes Contas"
 deploy "AEVYq2LMB608RnU8" "workflows/03-GIULIA-Sync-Gastos-Sheets.json" "GIULIA - 03 Sync Gastos Sheets"
 deploy "q8HWnaLoiBTVXP0a" "workflows/10-GIULIA-Relatorio-Gastos.json" "GIULIA - 10 Relatorio Gastos"
+deploy "yISL7XnwlOBkD0Dz" "workflows/11-GIULIA-Fechamento-Dia.json" "GIULIA - 11 Fechamento do Dia"
 
 echo ""
 echo "Workflows deployados com secrets injetados."
