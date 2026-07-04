@@ -243,9 +243,18 @@ real de banimento em cascata (onda documentada em 2026). Caminho: **API oficial
 do WhatsApp Cloud** (Meta direto ou BSP tipo Zenvia/Gupshup/Twilio), com n8n
 seguindo como motor — sistema novo isolado do existente, mesmo compartilhando VPS.
 
-**Nomes descartados**: "Solutions" (colide com ENG Soluções), "Facility",
-"Experience", "Easy Life" (multinível homônimo no BR), "Simplifica" (saturado).
-Direção: nome próprio de assistente (tipo Nino/Duo/Bora).
+**Nome — DECIDIDO (04/07/2026)**: o assistente se chama **"Thiago Nicezio"** —
+a solução leva o nome da marca pessoal como diferencial de venda. Persona:
+muito inteligente e bem-humorada de forma natural (humor nunca em assunto
+sério). Nos recados a terceiros: "Aqui é o Thiago Nicezio, assistente do
+[dono]" (para o próprio Thiago: "o assistente do Thiago Nicezio", sem duplicar).
+Já aplicado em produção. Nomes descartados no caminho: "Solutions" (colide com
+ENG Soluções), "Facility", "Experience", "Easy Life" (multinível homônimo no
+BR), "Simplifica" (saturado).
+
+**Imagens de ilustração (gráficos dos relatórios)**: dark premium da marca —
+fundo verde #0B1A13, títulos Georgia creme #F5F0E8, destaques dourados #C9A84C,
+paleta de dados dark-mode validada para acessibilidade (CVD/contraste).
 
 ## Anexo A — Matriz competitiva (pesquisa concluída em 04/07/2026)
 
