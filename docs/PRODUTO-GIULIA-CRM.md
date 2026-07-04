@@ -201,6 +201,52 @@ metas/orçamento por categoria, CRM de leads como produto.
 Painel visual da estratégia:
 https://claude.ai/code/artifact/742be0f1-cc69-4f20-b667-d42b7a3b6f88
 
+## 13. Marca e contexto do subproduto (definido pelo Thiago em 04/07/2026)
+
+**Arquitetura de marca**: o assistente deixa de carregar a marca pessoal
+"Thiago Nicezio" — vira um subproduto com **nome próprio** (em aberto), lançado
+como subpágina de **thiagonicezio.com**, que funciona como selo de autoridade
+(mesmo padrão do Julian na ENG). Universo separado do de lagos/piscinas, aberto
+a qualquer prestador de serviço/pequeno negócio.
+
+**Identidade visual de referência** (herdada de thiagonicezio.com, dark premium):
+- `#0B1A13` verde escuro · `#C9A84C` dourado · `#F5F0E8` creme
+- Tipografia: Cormorant Garamond (títulos) + Inter (corpo); em artefatos Office,
+  fallback Georgia (títulos) + Calibri (corpo)
+- Já aplicada: planilha de relatório em duas abas (Resumo + Lançamentos) com
+  cabeçalho congelado, filtros e formatos de moeda nativos — princípios de
+  design de relatório financeiro (IBCS/financial modeling): poucas cores com
+  significado, tipografia consistente, números alinhados, clareza sobre enfeite.
+
+**Posicionamento**: vazio entre bots de finanças pessoais genéricos (Lucrefy,
+Financinha, POQT, Meu Assessor) e ERPs caros sem WhatsApp nativo (Omie, Bling,
+Conta Azul — R$ 220–1.800/mês, todos via middleware). Ninguém amarra
+**cliente + parcela + agendamento** numa conversa só.
+
+**Roadmap refinado**:
+- **v1 (MVP)**: contas a pagar/receber **por cliente** (não categoria genérica),
+  lembrete de agendamento com confirmação (48h/24h), registro por texto ou
+  áudio, resumo semanal automático.
+- **v2**: boleto/Pix disparado quando o agendamento é confirmado, PT/EN/ES
+  nativo, modo equipe/sócio, PDF pro contador.
+- **v3**: white-label para associações (ex.: ABLP aos associados), ponte de
+  saída para Omie/Conta Azul.
+
+**Estratégia de mercado**: validar no Brasil primeiro (piloto com associados da
+ABLP), depois EUA mirando o empreendedor latino/brasileiro imigrante (46% dos
+hispânicos nos EUA usam WhatsApp regularmente vs 16% dos brancos). Rede de
+entrada via Horizon/André no sul da Flórida.
+
+**Decisão técnica (fechada)**: NÃO reaproveitar o padrão UAZAPI/não-oficial
+neste produto. Multi-tenant com N números não-oficiais na mesma VPS tem risco
+real de banimento em cascata (onda documentada em 2026). Caminho: **API oficial
+do WhatsApp Cloud** (Meta direto ou BSP tipo Zenvia/Gupshup/Twilio), com n8n
+seguindo como motor — sistema novo isolado do existente, mesmo compartilhando VPS.
+
+**Nomes descartados**: "Solutions" (colide com ENG Soluções), "Facility",
+"Experience", "Easy Life" (multinível homônimo no BR), "Simplifica" (saturado).
+Direção: nome próprio de assistente (tipo Nino/Duo/Bora).
+
 ## Anexo A — Matriz competitiva (pesquisa concluída em 04/07/2026)
 
 Método: varredura web em 5 frentes, 22 fontes, 109 afirmações extraídas, 25 mais
