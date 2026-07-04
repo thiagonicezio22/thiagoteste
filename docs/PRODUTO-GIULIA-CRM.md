@@ -176,8 +176,67 @@ banidos e o serviço morre da noite pro dia. Decisão a tomar antes do MVP comer
 
 ---
 
-## Anexo A — Matriz competitiva
-*(será preenchido com o resultado da pesquisa de mercado em andamento)*
+## Anexo A — Matriz competitiva (pesquisa concluída em 04/07/2026)
+
+Método: varredura web em 5 frentes, 22 fontes, 109 afirmações extraídas, 25 mais
+importantes submetidas a verificação adversarial (3 votos independentes cada).
+**16 confirmadas por unanimidade (3-0)**; 9 ficaram sem verificação completa por
+limite de orçamento de processamento (marcadas com *). Nenhuma afirmação refutada.
+
+### Concorrentes — o que cada um realmente oferece
+
+| Produto | Captura de gastos | Contas fixas/recorrentes | Paga contas de verdade | Folha funcionários/prestadores | Multi-usuário | Multi-moeda | Observação |
+|---|---|---|---|---|---|---|---|
+| **Magie** (magie.com.br) | — | agenda e paga boletos | **SIM** (Pix por áudio/foto, conta com CDI) | não | não | não | Fintech de verdade; grátis; Reclame Aqui nota ~7,0 com reclamações sem resposta |
+| **Friday** (friday.ai) | áudio/texto, categorização automática | lembrete + paga com "sim" | **SIM** (Open Finance) | mostra "Pix Funcionário" no marketing (execução, não gestão) | não | não | O mais próximo do nosso território no financeiro |
+| **Jota** (jota.ai) | texto/áudio/foto* | lembretes agendados* | SIM* (pagamento em lote p/ folha e fornecedores*) | execução em lote*, sem gestão/histórico | não | não | *afirmações do próprio vendor, não verificadas |
+| **Meu Assessor** | voz/texto, "99,9% precisão" | rastreio de recorrentes + projeção de fluxo de caixa | não (Open Finance só leitura, 114 bancos) | não | **SIM** (famílias/sócios/equipes) | não | Referência de fluxo de caixa conversacional |
+| **Financinha** | prints/áudio/PDF/texto | lembra 1 dia antes + no dia (pagar E receber) | não | **não — lacuna confirmada** | SIM (até 5 números) | **SIM** (R$, US$, €, ¥) | O mais parecido com o nosso modelo pessoal |
+| **ZapGastos** | texto/áudio/foto | recorrência por linguagem natural ("R$ 50 de academia todo dia 5") | não | não* | SIM* | não | Focado em PF/autônomo |
+| **GranaZen** | texto/áudio/foto/PDF* | lembretes recorrentes pagar/receber* | não | não | plano compartilhado* | não | |
+| **Zapia** | **não tem módulo financeiro** | não | não | não | — | — | Assistente geral (preços, agenda, e-mail) — não é concorrente no financeiro |
+| **Tyms AI** (global) | texto* | — | não | não | — | — | Gera fatura/recibo ao registrar venda* (contas a receber) |
+| **Receiptor AI** (global) | OCR de recibo por foto + relatórios por texto* | — | não | não | — | — | Bookkeeping conversacional, referência gringa |
+
+### O que a pesquisa validou (leituras principais)
+
+1. **Captura multimodal virou commodity.** Texto + áudio + foto com categorização
+   automática existe em pelo menos 6 produtos. Não é diferencial — é aposta mínima.
+   (Nós já temos; falta só PDF de comprovante.)
+2. **A lacuna confirmada é GESTÃO de folha de funcionários/prestadores.** Ninguém
+   oferece cadastro de pessoas + valor combinado + frequência + histórico por pessoa
+   + aviso de "dia de pagar" + relatório de folha. Friday/Jota tocam o tema só pelo
+   lado da EXECUÇÃO bancária (fazer o Pix), não do controle. É exatamente onde o
+   nosso público (empreendedor de serviços com diaristas/empreiteiros) mais sofre —
+   e a prioridade nº 1 do produto está certa.
+3. **Executar pagamento (Pix/boleto) é outro negócio.** Magie/Friday/Jota são
+   fintechs reguladas com Open Finance. Não competimos nisso no MVP — nosso papel é
+   controle + lembrete + comprovante; a execução fica no banco do cliente. (Possível
+   parceria/integração no futuro.)
+4. **Multi-usuário e multi-moeda já existem no mercado** (Financinha: 5 números,
+   R$/US$; Meu Assessor: famílias/sócios) — mas nenhum combina isso com folha de
+   prestadores nem com secretaria proativa. Nossa combinação segue única.
+5. **Qualidade de atendimento é reclamação real** (Magie com nota ~7,0 e queixas sem
+   resposta no Reclame Aqui). Proatividade + suporte que responde é diferencial
+   defensável.
+6. **Stack validado por terceiros**: existem templates n8n públicos de expense
+   tracker WhatsApp + Postgres + IA — o caminho técnico que já usamos é padrão de
+   mercado, sem risco de arquitetura exótica.
+
+### Recomendação priorizada (o que implementar, em ordem)
+
+1. **Folha de funcionários/prestadores (gestão)** — a lacuna de mercado confirmada
+   e a maior dor do nosso público. (Fase 1)
+2. **Despesas fixas com recorrência automática** — paridade com Financinha/ZapGastos,
+   já meio construído nas contas a pagar. (Fase 1)
+3. **Contas a receber com lembrete pagar/receber** — paridade com Financinha,
+   abre o caminho da cobrança educada ao cliente. (Fase 2)
+4. **Fluxo de caixa com projeção** — paridade com Meu Assessor, vira o relatório
+   mais valioso do plano Profissional. (Fase 2)
+5. **PDF como formato de comprovante** — fecha a paridade de captura. (Fase 1, barato)
+6. **Multi-tenant + onboarding + billing** — infra do produto (Fases 1–2, conforme doc).
+7. **Não fazer agora**: execução de pagamentos (exige fintech/regulação) e
+   integração Open Finance (só leitura faz sentido num plano futuro).
 
 ## Anexo B — Decisões em aberto
 1. Nome/marca do produto (manter "Giulia"? registrar domínio/marca?).
