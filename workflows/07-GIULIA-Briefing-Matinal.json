@@ -105,6 +105,28 @@
         860,
         380
       ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + $('Formatar Briefing').item.json.send_text.replace(/'/g, \"''\") + \"', '\" + $('Formatar Briefing').item.json.send_to + \"')\" }}",
+        "options": {}
+      },
+      "id": "pg-memoria-brief",
+      "name": "Salvar Memoria Briefing",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        380
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      },
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -146,6 +168,17 @@
         [
           {
             "node": "Enviar UAZAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar UAZAPI": {
+      "main": [
+        [
+          {
+            "node": "Salvar Memoria Briefing",
             "type": "main",
             "index": 0
           }

@@ -126,6 +126,28 @@
           "name": "PostgreSQL Julian"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + $('Montar Cobranca').item.json.send_text.replace(/'/g, \"''\") + \"', '\" + $('Montar Cobranca').item.json.send_to + \"')\" }}",
+        "options": {}
+      },
+      "id": "pg-memoria-cob",
+      "name": "Salvar Memoria Cobranca",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        380
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      },
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -178,6 +200,17 @@
         [
           {
             "node": "Atualizar cobranca_count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualizar cobranca_count": {
+      "main": [
+        [
+          {
+            "node": "Salvar Memoria Cobranca",
             "type": "main",
             "index": 0
           }
