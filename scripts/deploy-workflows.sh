@@ -128,6 +128,7 @@ deploy "q8HWnaLoiBTVXP0a" "workflows/10-GIULIA-Relatorio-Gastos.json" "GIULIA - 
 deploy "yISL7XnwlOBkD0Dz" "workflows/11-GIULIA-Fechamento-Dia.json" "GIULIA - 11 Fechamento do Dia"
 deploy "WnNoWQX8IJKy6MgP" "workflows/12-GIULIA-Orcamentos.json" "GIULIA - 12 Orcamentos PDF"
 deploy "m74g1NvcBTiu08ce" "workflows/13-GIULIA-Orcamentos-Followup.json" "GIULIA - 13 Orcamentos Followup"
+deploy "wids1oU1e8EaNrHl" "workflows/14-GIULIA-Trials.json" "GIULIA - 14 Trials"
 
 echo ""
 echo "Workflows deployados com secrets injetados."

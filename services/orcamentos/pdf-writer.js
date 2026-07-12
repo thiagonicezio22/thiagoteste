@@ -365,7 +365,7 @@ function renderLine(el, campos, layout) {
     var s = el.segments[i];
     var str = s.key !== undefined ? fieldValue(campos, s.key) : String(s.text);
     var baseFont = layout.fonts[s.font];
-    segs.push({ str: str, baseFont: baseFont, size: s.size, color: s.color });
+    segs.push({ str: str, baseFont: baseFont, size: s.size, color: s.color, isKey: s.key !== undefined });
     total += textWidth(str, baseFont, s.size);
   }
   if (total === 0) return '';
@@ -374,24 +374,29 @@ function renderLine(el, campos, layout) {
   if (el.shrink && el.maxWidth && total > el.maxWidth) {
     factor = Math.max(el.maxWidth / total, SHRINK_MIN);
   }
-  // se mesmo no fator minimo nao coube, trunca o ultimo segment nao-vazio.
+  // se mesmo no fator minimo nao coube, encurta com "…" o MAIOR segment de
+  // campo (tipicamente o nome do cliente) ate a linha inteira caber — os
+  // demais segments sobrevivem (um nome gigante nao pode engolir o mes/ano).
   // tolerancia de 0.01pt: total*(maxWidth/total) pode passar de maxWidth por
   // erro de ponto flutuante e truncaria com "…" um texto que cabe exato.
   if (el.maxWidth && total * factor > el.maxWidth + 0.01) {
-    var avail = el.maxWidth;
+    var widest = -1, widestW = -1;
     for (var j = 0; j < segs.length; j++) {
       var w = textWidth(segs[j].str, segs[j].baseFont, segs[j].size * factor);
-      if (w <= avail) { avail -= w; continue; }
-      // este segment nao cabe inteiro: corta com "…" e descarta os seguintes
-      var cutStr = segs[j].str;
-      while (cutStr.length > 0 &&
-             textWidth(cutStr + ELLIPSIS, segs[j].baseFont, segs[j].size * factor) > avail) {
-        cutStr = cutStr.substring(0, cutStr.length - 1).replace(/\s+$/, '');
-      }
-      segs[j].str = cutStr + ELLIPSIS;
-      segs = segs.slice(0, j + 1);
-      break;
+      if (segs[j].isKey && w > widestW) { widest = j; widestW = w; }
     }
+    if (widest < 0) widest = 0;
+    var fixedW = 0;
+    for (var j2 = 0; j2 < segs.length; j2++) {
+      if (j2 !== widest) fixedW += textWidth(segs[j2].str, segs[j2].baseFont, segs[j2].size * factor);
+    }
+    var avail = el.maxWidth - fixedW;
+    var cutStr = segs[widest].str;
+    while (cutStr.length > 0 &&
+           textWidth(cutStr + ELLIPSIS, segs[widest].baseFont, segs[widest].size * factor) > avail) {
+      cutStr = cutStr.substring(0, cutStr.length - 1).replace(/\s+$/, '');
+    }
+    segs[widest].str = cutStr + ELLIPSIS;
   }
   // desenha os segments em sequencia na mesma baseline (Tj avanca a posicao)
   var yPdf = layout.pageH - el.baseline;
