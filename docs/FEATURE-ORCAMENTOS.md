@@ -1,10 +1,42 @@
 # Feature: Orçamentos em PDF a partir de modelo PowerPoint
 
 > Especificação fechada com o Thiago em 05/07/2026.
-> Status 12/07: preview em PDF do modelo piloto recebido e mapeado (Anexo);
-> micro-serviço pronto em `services/orcamentos/`; tabelas criadas
-> (migração 16). Aguardando o ARQUIVO .PPTX original para marcar os
-> placeholders e ligar o fluxo no n8n.
+> **Status 12/07: NO AR.** O Thiago liberou converter o próprio PDF de
+> exemplo em modelo ("vou enviar depois o ppt ou voce converte ele, quero
+> que voce faça tudo"). O modelo foi reconstruído a partir do PDF e o fluxo
+> completo está em produção — pedido por chat → RESUMO → confirma → PDF no
+> WhatsApp do dono → registro ORC-YYYY-NNN → follow-up em 3 dias.
+> Bateria de 26 verificações reais: todas passaram.
+
+## Como ficou implementado (v1 em produção)
+
+- **Template "visual"**: cada página do modelo virou uma imagem JPEG
+  (2000px; textos variáveis removidos das págs 1/6/9 e marcador EXEMPLO
+  apagado) + um layout spec (`services/orcamentos/templates/
+  ambiente-aquatico.layout.json`) que define onde cada campo é desenhado
+  (fonte, tamanho, cor, alinhamento, shrink-to-fit, wrap, cards opcionais).
+- **Geração DENTRO do n8n** (sem depender de container novo):
+  `services/orcamentos/pdf-writer.js` — gerador de PDF em JS puro (fontes
+  base-14 + tabelas AFM, WinAnsi com acentos, JPEG embutido) — roda num
+  Code node do WF12. Determinístico, revisado adversarialmente.
+- **WF12 "Orcamentos PDF"** (webhook `giulia-orcamento`): claim do pendente
+  → INSERT em giulia_orcamentos com número sequencial por dono/ano →
+  monta o PDF → UAZAPI /send/media pro DONO → marca pendente processado +
+  memória.
+- **WF13 "Orcamentos Followup"** (cron horário): às 10h locais do dono,
+  orçamentos gerado/enviado há 3+ dias sem atualização → pergunta ao dono
+  ('aprovou'/'recusou' atualiza via atualizar_orcamento_status). Webhook
+  de teste: `giulia-orcamento-followup-tick` com `{force: numero}`.
+- **WF01**: 4 ações novas (gerar_orcamento com RESUMO obrigatório,
+  confirmar_orcamento, cancelar_orcamento, atualizar_orcamento_status),
+  2 loaders (template do dono + orçamentos pendentes/recentes), branch
+  ORCAMENTO no roteador.
+- **Micro-serviço python-pptx + LibreOffice** (`services/orcamentos/`):
+  continua pronto como caminho alternativo para quando clientes mandarem
+  PPTX próprios complexos — o `.pptx` oficial do modelo piloto
+  (`templates/ambiente-aquatico.pptx`, gerado por `build_template.py`)
+  já está marcado com os placeholders e validado. Deploy no EasyPanel
+  segue opcional (README do serviço).
 
 ## Decisões (definidas pelo Thiago)
 

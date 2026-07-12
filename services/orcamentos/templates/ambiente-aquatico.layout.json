@@ -18,98 +18,401 @@
     "fundo_pagina": "#FBFAF7"
   },
   "campos": [
-    {"campo": "cliente", "dica": "nome do cliente final (pessoa ou empresa)", "obrigatorio": true},
-    {"campo": "mes_ano", "dica": "mês e ano por extenso, ex: Julho/2026", "obrigatorio": true},
-    {"campo": "numero", "dica": "número sequencial da proposta (gerado pelo sistema)", "obrigatorio": true},
-    {"campo": "validade", "dica": "data limite da proposta, ex: 27/07/2026", "obrigatorio": true},
-    {"campo": "projeto_titulo", "dica": "nome do projeto principal, ex: Lago Ornamental com Praia de Areia", "obrigatorio": true},
-    {"campo": "projeto_descricao", "dica": "descrição curta do projeto (1-2 frases)", "obrigatorio": true},
-    {"campo": "volume", "dica": "volume estimado, ex: 18.000 a 22.000 litros", "obrigatorio": true},
-    {"campo": "estilo", "dica": "estilo do projeto, ex: Orgânico · Praia de areia · Tropical", "obrigatorio": true},
-    {"campo": "execucao", "dica": "tipo de execução, ex: Projeto completo — chave na mão", "obrigatorio": true},
-    {"campo": "investimento", "dica": "valor da opção principal formatado, ex: R$ 48.000", "obrigatorio": true},
-    {"campo": "opcao1_titulo", "dica": "nome da opção 1 (igual ou resumo do projeto principal)", "obrigatorio": true},
-    {"campo": "opcao1_sub", "dica": "resumo da opção 1, ex: Praia de areia · Cascata · Paisagismo", "obrigatorio": true},
-    {"campo": "opcao1_valor", "dica": "valor da opção 1, ex: R$ 48.000", "obrigatorio": true},
-    {"campo": "opcao2_titulo", "dica": "nome da opção 2 (vazio se o orçamento tiver só 1 opção)", "obrigatorio": false},
-    {"campo": "opcao2_sub", "dica": "resumo da opção 2", "obrigatorio": false},
-    {"campo": "opcao2_valor", "dica": "valor da opção 2", "obrigatorio": false},
-    {"campo": "opcao3_titulo", "dica": "nome da opção 3 (vazio se não houver)", "obrigatorio": false},
-    {"campo": "opcao3_sub", "dica": "resumo da opção 3", "obrigatorio": false},
-    {"campo": "opcao3_valor", "dica": "valor da opção 3", "obrigatorio": false}
+    {
+      "campo": "cliente",
+      "dica": "nome do cliente final (pessoa ou empresa)",
+      "obrigatorio": true
+    },
+    {
+      "campo": "mes_ano",
+      "dica": "mês e ano por extenso, ex: Julho/2026",
+      "obrigatorio": true
+    },
+    {
+      "campo": "numero",
+      "dica": "número sequencial da proposta (gerado pelo sistema)",
+      "obrigatorio": true
+    },
+    {
+      "campo": "validade",
+      "dica": "data limite da proposta, ex: 27/07/2026",
+      "obrigatorio": true
+    },
+    {
+      "campo": "projeto_titulo",
+      "dica": "nome do projeto principal, ex: Lago Ornamental com Praia de Areia",
+      "obrigatorio": true
+    },
+    {
+      "campo": "projeto_descricao",
+      "dica": "descrição curta do projeto (1-2 frases)",
+      "obrigatorio": true
+    },
+    {
+      "campo": "volume",
+      "dica": "volume estimado, ex: 18.000 a 22.000 litros",
+      "obrigatorio": true
+    },
+    {
+      "campo": "estilo",
+      "dica": "estilo do projeto, ex: Orgânico · Praia de areia · Tropical",
+      "obrigatorio": true
+    },
+    {
+      "campo": "execucao",
+      "dica": "tipo de execução, ex: Projeto completo — chave na mão",
+      "obrigatorio": true
+    },
+    {
+      "campo": "investimento",
+      "dica": "valor da opção principal formatado, ex: R$ 48.000",
+      "obrigatorio": true
+    },
+    {
+      "campo": "opcao1_titulo",
+      "dica": "nome da opção 1 (igual ou resumo do projeto principal)",
+      "obrigatorio": true
+    },
+    {
+      "campo": "opcao1_sub",
+      "dica": "resumo da opção 1, ex: Praia de areia · Cascata · Paisagismo",
+      "obrigatorio": true
+    },
+    {
+      "campo": "opcao1_valor",
+      "dica": "valor da opção 1, ex: R$ 48.000",
+      "obrigatorio": true
+    },
+    {
+      "campo": "opcao2_titulo",
+      "dica": "nome da opção 2 (vazio se o orçamento tiver só 1 opção)",
+      "obrigatorio": false
+    },
+    {
+      "campo": "opcao2_sub",
+      "dica": "resumo da opção 2",
+      "obrigatorio": false
+    },
+    {
+      "campo": "opcao2_valor",
+      "dica": "valor da opção 2",
+      "obrigatorio": false
+    },
+    {
+      "campo": "opcao3_titulo",
+      "dica": "nome da opção 3 (vazio se não houver)",
+      "obrigatorio": false
+    },
+    {
+      "campo": "opcao3_sub",
+      "dica": "resumo da opção 3",
+      "obrigatorio": false
+    },
+    {
+      "campo": "opcao3_valor",
+      "dica": "valor da opção 3",
+      "obrigatorio": false
+    }
   ],
   "pages": [
     {
       "img": 0,
       "elements": [
-        {"type": "line", "x": 52, "baseline": 367,
-         "segments": [
-           {"text": "Preparado para ", "font": "sans", "size": 12.5, "color": "#9DAAA4"},
-           {"key": "cliente", "font": "sans-bold", "size": 12.5, "color": "#F5F0E8"},
-           {"text": "  ·  ", "font": "sans", "size": 12.5, "color": "#9DAAA4"},
-           {"key": "mes_ano", "font": "sans", "size": 12.5, "color": "#9DAAA4"}
-         ],
-         "maxWidth": 268, "shrink": true},
-        {"type": "line", "x": 52, "baseline": 384.5,
-         "segments": [
-           {"text": "Proposta ", "font": "sans", "size": 9, "color": "#9DAAA4"},
-           {"key": "numero", "font": "sans-bold", "size": 9, "color": "#9DAAA4"},
-           {"text": " · válida até ", "font": "sans", "size": 9, "color": "#9DAAA4"},
-           {"key": "validade", "font": "sans", "size": 9, "color": "#9DAAA4"}
-         ],
-         "maxWidth": 268, "shrink": true}
+        {
+          "type": "line",
+          "x": 52,
+          "baseline": 367,
+          "segments": [
+            {
+              "text": "Preparado para ",
+              "font": "sans",
+              "size": 12.5,
+              "color": "#9DAAA4"
+            },
+            {
+              "key": "cliente",
+              "font": "sans-bold",
+              "size": 12.5,
+              "color": "#F5F0E8"
+            },
+            {
+              "text": "  ·  ",
+              "font": "sans",
+              "size": 12.5,
+              "color": "#9DAAA4"
+            },
+            {
+              "key": "mes_ano",
+              "font": "sans",
+              "size": 12.5,
+              "color": "#9DAAA4"
+            }
+          ],
+          "maxWidth": 268,
+          "shrink": true
+        },
+        {
+          "type": "line",
+          "x": 52,
+          "baseline": 384.5,
+          "segments": [
+            {
+              "text": "Proposta ",
+              "font": "sans",
+              "size": 9,
+              "color": "#9DAAA4"
+            },
+            {
+              "key": "numero",
+              "font": "sans-bold",
+              "size": 9,
+              "color": "#9DAAA4"
+            },
+            {
+              "text": " · válida até ",
+              "font": "sans",
+              "size": 9,
+              "color": "#9DAAA4"
+            },
+            {
+              "key": "validade",
+              "font": "sans",
+              "size": 9,
+              "color": "#9DAAA4"
+            }
+          ],
+          "maxWidth": 268,
+          "shrink": true
+        }
       ]
     },
-    {"img": 1},
-    {"img": 2},
-    {"img": 3},
-    {"img": 4},
+    {
+      "img": 1
+    },
+    {
+      "img": 2
+    },
+    {
+      "img": 3
+    },
+    {
+      "img": 4
+    },
     {
       "img": 5,
       "elements": [
-        {"type": "text", "key": "projeto_titulo", "x": 41.7, "baseline": 103.2,
-         "font": "serif-bold", "size": 24, "color": "#12302B", "maxWidth": 384, "shrink": true},
-        {"type": "wrap", "key": "projeto_descricao", "x": 43.2, "baseline": 147.8,
-         "font": "sans", "size": 12, "color": "#5E6A66", "maxWidth": 380,
-         "lineHeight": 15.8, "maxLines": 2},
-        {"type": "text", "key": "volume", "x": 43.2, "baseline": 214.9,
-         "font": "sans-bold", "size": 14.5, "color": "#12302B", "maxWidth": 370, "shrink": true},
-        {"type": "text", "key": "estilo", "x": 43.2, "baseline": 262.4,
-         "font": "sans-bold", "size": 14.5, "color": "#12302B", "maxWidth": 370, "shrink": true},
-        {"type": "text", "key": "execucao", "x": 43.2, "baseline": 310.0,
-         "font": "sans-bold", "size": 14.5, "color": "#12302B", "maxWidth": 370, "shrink": true},
-        {"type": "text", "key": "investimento", "x": 403.3, "align": "right", "baseline": 362.5,
-         "font": "serif-bold", "size": 26.5, "color": "#FFFFFF", "maxWidth": 155, "shrink": true}
+        {
+          "type": "text",
+          "key": "projeto_titulo",
+          "x": 41.7,
+          "baseline": 103.2,
+          "font": "serif-bold",
+          "size": 24,
+          "color": "#12302B",
+          "maxWidth": 384,
+          "shrink": true
+        },
+        {
+          "type": "wrap",
+          "key": "projeto_descricao",
+          "x": 43.2,
+          "baseline": 147.8,
+          "font": "sans",
+          "size": 12,
+          "color": "#5E6A66",
+          "maxWidth": 380,
+          "lineHeight": 15.8,
+          "maxLines": 2
+        },
+        {
+          "type": "text",
+          "key": "volume",
+          "x": 43.2,
+          "baseline": 214.9,
+          "font": "sans-bold",
+          "size": 14.5,
+          "color": "#12302B",
+          "maxWidth": 370,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "estilo",
+          "x": 43.2,
+          "baseline": 262.4,
+          "font": "sans-bold",
+          "size": 14.5,
+          "color": "#12302B",
+          "maxWidth": 370,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "execucao",
+          "x": 43.2,
+          "baseline": 310.0,
+          "font": "sans-bold",
+          "size": 14.5,
+          "color": "#12302B",
+          "maxWidth": 370,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "investimento",
+          "x": 403.3,
+          "align": "right",
+          "baseline": 362.5,
+          "font": "serif-bold",
+          "size": 26.5,
+          "color": "#FFFFFF",
+          "maxWidth": 155,
+          "shrink": true
+        }
       ]
     },
-    {"img": 6},
-    {"img": 7},
+    {
+      "img": 6
+    },
+    {
+      "img": 7
+    },
     {
       "img": 8,
       "elements": [
-        {"type": "rect", "ifEmpty": "opcao2_titulo", "x": 36, "y": 196, "w": 648, "h": 76, "color": "#FBFAF7"},
-        {"type": "rect", "ifEmpty": "opcao3_titulo", "x": 36, "y": 271, "w": 648, "h": 76, "color": "#FBFAF7"},
-        {"type": "text", "key": "opcao1_titulo", "x": 61.2, "baseline": 169.7,
-         "font": "sans-bold", "size": 14, "color": "#12302B", "maxWidth": 385, "shrink": true},
-        {"type": "text", "key": "opcao1_sub", "x": 61.2, "baseline": 185.7,
-         "font": "sans", "size": 9.5, "color": "#5E6A66", "maxWidth": 385, "shrink": true},
-        {"type": "text", "key": "opcao1_valor", "x": 658.8, "align": "right", "baseline": 168.2,
-         "font": "serif-bold", "size": 23.5, "color": "#12302B", "maxWidth": 205, "shrink": true},
-        {"type": "text", "key": "opcao2_titulo", "x": 61.2, "baseline": 244.5, "if": "opcao2_titulo",
-         "font": "sans-bold", "size": 14, "color": "#12302B", "maxWidth": 385, "shrink": true},
-        {"type": "text", "key": "opcao2_sub", "x": 61.2, "baseline": 260.6, "if": "opcao2_titulo",
-         "font": "sans", "size": 9.5, "color": "#5E6A66", "maxWidth": 385, "shrink": true},
-        {"type": "text", "key": "opcao2_valor", "x": 658.8, "align": "right", "baseline": 243.1, "if": "opcao2_titulo",
-         "font": "serif-bold", "size": 23.5, "color": "#12302B", "maxWidth": 205, "shrink": true},
-        {"type": "text", "key": "opcao3_titulo", "x": 61.2, "baseline": 319.4, "if": "opcao3_titulo",
-         "font": "sans-bold", "size": 14, "color": "#12302B", "maxWidth": 385, "shrink": true},
-        {"type": "text", "key": "opcao3_sub", "x": 61.2, "baseline": 335.4, "if": "opcao3_titulo",
-         "font": "sans", "size": 9.5, "color": "#5E6A66", "maxWidth": 385, "shrink": true},
-        {"type": "text", "key": "opcao3_valor", "x": 658.8, "align": "right", "baseline": 317.9, "if": "opcao3_titulo",
-         "font": "serif-bold", "size": 23.5, "color": "#12302B", "maxWidth": 205, "shrink": true}
+        {
+          "type": "rect",
+          "ifEmpty": "opcao2_titulo",
+          "x": 36,
+          "y": 196,
+          "w": 648,
+          "h": 80,
+          "color": "#FBFAF7"
+        },
+        {
+          "type": "rect",
+          "ifEmpty": "opcao3_titulo",
+          "x": 36,
+          "y": 271,
+          "w": 648,
+          "h": 80,
+          "color": "#FBFAF7"
+        },
+        {
+          "type": "text",
+          "key": "opcao1_titulo",
+          "x": 61.2,
+          "baseline": 169.7,
+          "font": "sans-bold",
+          "size": 14,
+          "color": "#12302B",
+          "maxWidth": 385,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "opcao1_sub",
+          "x": 61.2,
+          "baseline": 185.7,
+          "font": "sans",
+          "size": 9.5,
+          "color": "#5E6A66",
+          "maxWidth": 385,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "opcao1_valor",
+          "x": 658.8,
+          "align": "right",
+          "baseline": 168.2,
+          "font": "serif-bold",
+          "size": 23.5,
+          "color": "#12302B",
+          "maxWidth": 205,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "opcao2_titulo",
+          "x": 61.2,
+          "baseline": 244.5,
+          "if": "opcao2_titulo",
+          "font": "sans-bold",
+          "size": 14,
+          "color": "#12302B",
+          "maxWidth": 385,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "opcao2_sub",
+          "x": 61.2,
+          "baseline": 260.6,
+          "if": "opcao2_titulo",
+          "font": "sans",
+          "size": 9.5,
+          "color": "#5E6A66",
+          "maxWidth": 385,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "opcao2_valor",
+          "x": 658.8,
+          "align": "right",
+          "baseline": 243.1,
+          "if": "opcao2_titulo",
+          "font": "serif-bold",
+          "size": 23.5,
+          "color": "#12302B",
+          "maxWidth": 205,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "opcao3_titulo",
+          "x": 61.2,
+          "baseline": 319.4,
+          "if": "opcao3_titulo",
+          "font": "sans-bold",
+          "size": 14,
+          "color": "#12302B",
+          "maxWidth": 385,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "opcao3_sub",
+          "x": 61.2,
+          "baseline": 335.4,
+          "if": "opcao3_titulo",
+          "font": "sans",
+          "size": 9.5,
+          "color": "#5E6A66",
+          "maxWidth": 385,
+          "shrink": true
+        },
+        {
+          "type": "text",
+          "key": "opcao3_valor",
+          "x": 658.8,
+          "align": "right",
+          "baseline": 317.9,
+          "if": "opcao3_titulo",
+          "font": "serif-bold",
+          "size": 23.5,
+          "color": "#12302B",
+          "maxWidth": 205,
+          "shrink": true
+        }
       ]
     },
-    {"img": 9},
-    {"img": 10}
+    {
+      "img": 9
+    },
+    {
+      "img": 10
+    }
   ]
 }
