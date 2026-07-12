@@ -1,0 +1,77 @@
+{
+  "name": "GIULIA - 15 Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "err-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formata o erro de qualquer workflow num alerta pro Thiago\n// (via fila do scheduler, com dedup de 15 min por workflow)\nconst j = items[0].json || {};\nconst wfName = (j.workflow && j.workflow.name) || 'workflow desconhecido';\nconst execId = (j.execution && j.execution.id) || '?';\nconst node = (j.execution && (j.execution.lastNodeExecuted ||\n  (j.execution.error && j.execution.error.node && j.execution.error.node.name))) || '?';\nconst msg = String((j.execution && j.execution.error && j.execution.error.message) || 'erro desconhecido')\n  .substring(0, 200).replace(/'/g, '');\nconst alerta = '⚠️ Alerta tecnico: erro no ' + wfName + ' (node ' + node + '): ' + msg + '. Exec ' + execId + '.';\nconst esc = s => String(s).replace(/'/g, \"''\");\nconst wfLike = esc(wfName).replace(/[%_]/g, '');\nconst sql = \"INSERT INTO giulia_mensagens_agendadas (destinatario_numero, destinatario_nome, conteudo, agendado_para, status) \" +\n  \"SELECT '5511910441709', 'Thiago', '\" + esc(alerta) + \"', NOW() AT TIME ZONE 'America/Sao_Paulo', 'pendente' \" +\n  \"WHERE NOT EXISTS (SELECT 1 FROM giulia_mensagens_agendadas WHERE destinatario_numero = '5511910441709' \" +\n  \"AND conteudo LIKE '⚠️ Alerta tecnico: erro no \" + wfLike + \"%' AND criado_em > NOW() - INTERVAL '15 minutes');\";\nreturn [{ json: { sql, alerta } }];\n"
+      },
+      "id": "montar-alerta",
+      "name": "Montar Alerta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql }}",
+        "options": {}
+      },
+      "id": "salvar-alerta",
+      "name": "Salvar Alerta",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Montar Alerta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Alerta": {
+      "main": [
+        [
+          {
+            "node": "Salvar Alerta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

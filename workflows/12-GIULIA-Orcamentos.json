@@ -142,7 +142,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Marca o pendente conforme o resultado real do envio + memoria do assistente\nconst resp = items[0].json || {};\nconst g = $('Gerar PDF').first().json;\nconst falhou = !!(resp.error || (typeof resp.message === 'string' && /not on whatsapp|invalid|erro|failed/i.test(resp.message)));\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\");\nconst st = falhou ? 'erro' : 'processado';\nconst mem = falhou\n  ? ('Falha ao enviar o PDF do orcamento ' + g.numero + ' pro dono - vou precisar gerar de novo.')\n  : g.resumoMem;\nconst sql = \"UPDATE giulia_orcamentos_pendentes SET status = '\" + st + \"' WHERE id = \" + parseInt(g.orc_pend_id, 10) + \";\\n\" +\n  \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + esc(mem) + \"', '\" + esc(g.dono) + \"');\";\nreturn [{ json: { sql, falhou } }];\n"
+        "jsCode": "// Marca o pendente conforme o resultado real do envio + memoria do assistente\nconst resp = items[0].json || {};\nconst g = $('Gerar PDF').first().json;\nconst falhou = !!(resp.error || (typeof resp.message === 'string' && /not on whatsapp|invalid|erro|failed/i.test(resp.message)));\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\");\nconst st = falhou ? 'erro' : 'processado';\nconst mem = falhou\n  ? ('Falha ao enviar o PDF do orcamento ' + g.numero + ' pro dono - vou precisar gerar de novo.')\n  : g.resumoMem;\nlet sql = \"UPDATE giulia_orcamentos_pendentes SET status = '\" + st + \"' WHERE id = \" + parseInt(g.orc_pend_id, 10) + \";\\n\" +\n  \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + esc(mem) + \"', '\" + esc(g.dono) + \"');\";\nif (falhou) {\n  const alerta = 'Alerta tecnico: falha ao enviar o PDF do orcamento ' + g.numero + ' pro dono ' + g.dono + '. Pendente marcado como erro - o usuario precisa pedir de novo.';\n  sql += \"\\nINSERT INTO giulia_mensagens_agendadas (destinatario_numero, destinatario_nome, conteudo, agendado_para, status) VALUES ('5511910441709', 'Thiago', '\\u26a0\\ufe0f \" + esc(alerta) + \"', NOW() AT TIME ZONE 'America/Sao_Paulo', 'pendente');\";\n}\nreturn [{ json: { sql, falhou } }];\n"
       },
       "id": "finalizar",
       "name": "Finalizar",
@@ -266,6 +266,7 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "errorWorkflow": "ltVUUCOCDYKMmtnT"
   }
 }

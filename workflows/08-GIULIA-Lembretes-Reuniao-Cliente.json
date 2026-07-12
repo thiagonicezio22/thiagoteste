@@ -4,14 +4,22 @@
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "*/15 * * * *" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/15 * * * *"
+            }
+          ]
         }
       },
       "id": "cron-15m",
       "name": "Cron 15min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 300]
+      "position": [
+        200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -24,7 +32,10 @@
       "name": "Webhook manual",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 460],
+      "position": [
+        200,
+        460
+      ],
       "webhookId": "giulia-lembrete-reuniao-tick-wh"
     },
     {
@@ -37,7 +48,10 @@
       "name": "Reunioes a Lembrar",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [420, 380],
+      "position": [
+        420,
+        380
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -54,7 +68,10 @@
       "name": "Montar Lembrete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 380]
+      "position": [
+        640,
+        380
+      ]
     },
     {
       "parameters": {
@@ -63,20 +80,31 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "token", "value": "__GIULIA_UAZAPI_TOKEN__" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "http-send",
       "name": "Enviar UAZAPI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 380],
+      "position": [
+        860,
+        380
+      ],
       "continueOnFail": true
     },
     {
@@ -89,7 +117,10 @@
       "name": "Marcar Enviado",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [1080, 380],
+      "position": [
+        1080,
+        380
+      ],
       "credentials": {
         "postgres": {
           "id": "qSNNpS1TadimC3ND",
@@ -100,22 +131,63 @@
   ],
   "connections": {
     "Cron 15min": {
-      "main": [[{ "node": "Reunioes a Lembrar", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Reunioes a Lembrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook manual": {
-      "main": [[{ "node": "Reunioes a Lembrar", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Reunioes a Lembrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Reunioes a Lembrar": {
-      "main": [[{ "node": "Montar Lembrete", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Montar Lembrete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Montar Lembrete": {
-      "main": [[{ "node": "Enviar UAZAPI", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enviar UAZAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Enviar UAZAPI": {
-      "main": [[{ "node": "Marcar Enviado", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Marcar Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "errorWorkflow": "ltVUUCOCDYKMmtnT"
   }
 }

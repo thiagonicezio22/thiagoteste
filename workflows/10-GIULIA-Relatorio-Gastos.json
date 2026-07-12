@@ -373,6 +373,7 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "errorWorkflow": "ltVUUCOCDYKMmtnT"
   }
 }
