@@ -130,7 +130,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + $('Montar Cobranca').item.json.send_text.replace(/'/g, \"''\") + \"', '\" + $('Montar Cobranca').item.json.send_to + \"')\" }}",
+        "query": "={{ \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + $('Montar Cobranca').all()[$itemIndex].json.send_text.replace(/'/g, \"''\") + \"', '\" + $('Montar Cobranca').all()[$itemIndex].json.send_to + \"')\" }}",
         "options": {}
       },
       "id": "pg-memoria-cob",

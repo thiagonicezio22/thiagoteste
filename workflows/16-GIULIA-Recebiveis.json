@@ -129,7 +129,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ $('Preparar Avisos').item.json.memoria_sql }}",
+        "query": "={{ $('Preparar Avisos').all()[$itemIndex].json.memoria_sql }}",
         "options": {}
       },
       "id": "salvar-memoria-receb",

@@ -129,7 +129,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ $('Preparar Mensagens').item.json.memoria_sql }}",
+        "query": "={{ $('Preparar Mensagens').all()[$itemIndex].json.memoria_sql }}",
         "options": {}
       },
       "id": "salvar-memoria-fu",
