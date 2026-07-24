@@ -131,6 +131,7 @@ deploy "m74g1NvcBTiu08ce" "workflows/13-GIULIA-Orcamentos-Followup.json" "GIULIA
 deploy "wids1oU1e8EaNrHl" "workflows/14-GIULIA-Trials.json" "GIULIA - 14 Trials"
 deploy "ltVUUCOCDYKMmtnT" "workflows/15-GIULIA-Error-Handler.json" "GIULIA - 15 Error Handler"
 deploy "BK8oAvp5Mzt4rmUs" "workflows/16-GIULIA-Recebiveis.json" "GIULIA - 16 Recebiveis"
+deploy "qojjGwPdhIVwcpu3" "workflows/17-GIULIA-Financeiro.json" "GIULIA - 17 Financeiro"
 
 echo ""
 echo "Workflows deployados com secrets injetados."
