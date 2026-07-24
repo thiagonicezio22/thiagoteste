@@ -38,3 +38,15 @@ Testes executados em 12/07: início/aviso-D5/expiração+suspensão com dono
 fake, suspenso sem fantasia no WF01, reativação e suspensão por chat —
 todos passaram. Envios dos WF12/13/14 com retry 3x (falha de rede
 transitória detectada em teste).
+
+## Modo eco (desde 24/07)
+
+Usuário 5+ dias sem mandar mensagem entra automaticamente em modo eco:
+só o briefing da manhã continua; fechamento 21h, cobranças de tarefa,
+follow-ups de orçamento e avisos de recebíveis pausam. Lembretes que o
+usuário pediu explicitamente (ex: remédios) continuam. O Thiago é
+avisado na entrada ("ativei o modo eco — talvez um toque pessoal ajude")
+e na saída ("voltou a usar — modo normal reativado"), que é automática
+na primeira mensagem do usuário. Thiago é isento. Estado do aviso:
+giulia_donos.eco_avisado_em (o modo em si é calculado ao vivo pela
+memória). Implementado em WF06/11/13/16 (condição) + WF14 (eventos).

@@ -41,7 +41,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT t.id, t.titulo, t.prazo, t.cobranca_count, t.criada_em, t.dono_numero, d.timezone,\n  CASE\n    WHEN t.prazo IS NOT NULL AND t.prazo < (NOW() AT TIME ZONE d.timezone)::date THEN 'atrasada'\n    WHEN t.prazo IS NOT NULL AND t.prazo = (NOW() AT TIME ZONE d.timezone)::date THEN 'hoje'\n    ELSE 'normal'\n  END AS urgencia\nFROM giulia_tarefas t\nJOIN giulia_donos d ON d.numero = t.dono_numero\nWHERE t.status = 'pendente'\n  AND (t.proxima_cobranca_em IS NULL OR t.proxima_cobranca_em <= NOW())\n  AND (COALESCE(d.cobranca_modo, 'padrao') != 'diaria' OR to_char(NOW() AT TIME ZONE d.timezone, 'HH24')::int BETWEEN 7 AND 10)\nORDER BY t.dono_numero, (t.prazo IS NULL), t.prazo ASC, t.criada_em ASC\nLIMIT 10;",
+        "query": "SELECT t.id, t.titulo, t.prazo, t.cobranca_count, t.criada_em, t.dono_numero, d.timezone,\n  CASE\n    WHEN t.prazo IS NOT NULL AND t.prazo < (NOW() AT TIME ZONE d.timezone)::date THEN 'atrasada'\n    WHEN t.prazo IS NOT NULL AND t.prazo = (NOW() AT TIME ZONE d.timezone)::date THEN 'hoje'\n    ELSE 'normal'\n  END AS urgencia\nFROM giulia_tarefas t\nJOIN giulia_donos d ON d.numero = t.dono_numero\nWHERE t.status = 'pendente'\n  AND (t.proxima_cobranca_em IS NULL OR t.proxima_cobranca_em <= NOW())\n  AND (COALESCE(d.cobranca_modo, 'padrao') != 'diaria' OR to_char(NOW() AT TIME ZONE d.timezone, 'HH24')::int BETWEEN 7 AND 10)\n  AND (d.numero = '5511910441709' OR EXISTS (SELECT 1 FROM giulia_memoria m WHERE m.from_numero = d.numero AND m.role = 'user' AND m.created_at > NOW() - INTERVAL '5 days'))\nORDER BY t.dono_numero, (t.prazo IS NULL), t.prazo ASC, t.criada_em ASC\nLIMIT 10;",
         "options": {}
       },
       "id": "pg-due",
