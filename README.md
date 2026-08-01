@@ -8,8 +8,10 @@ Pesquisa e sistema de prompts para gerar imagens fotorrealistas de **lagos ornam
 |---|---|
 | [`pesquisa-completa.md`](pesquisa-completa.md) | **Relatório consolidado da pesquisa** — ferramentas (ChatGPT, Gemini/Nano Banana, Higgsfield, especializadas), workflows do YouTube/fóruns, especificação da foto, aspectos jurídicos (CDC) e recomendação de stack |
 | [`sistema-de-prompts.md`](sistema-de-prompts.md) | **Sistema de prompts v1** — protocolo de captura, legenda padrão do rascunho, prompt mestre (PT/EN), iterações, variações comerciais, selo/cláusula jurídica e checklist |
+| [`ferramentas/gerador-de-prompt.html`](ferramentas/gerador-de-prompt.html) | **Gerador de prompt** — página (funciona no celular) que monta o prompt mestre preenchido para Gemini/ChatGPT/Higgsfield, com legenda de cores, iterações e checklists |
+| [`exemplos/`](exemplos/) | Caso de teste oficial: foto aérea de drone com rascunho no Paint + [`prompt-caso-teste.md`](exemplos/prompt-caso-teste.md) pronto para colar |
+| [`automacao/`](automacao/) | Script Python que gera os renders via API do Gemini (para escalar depois) |
 | [`anexos/`](anexos/) | 11 relatórios brutos da pesquisa multi-agente (com todas as fontes) + análise do workshop ArqExpress |
-| [`exemplos/`](exemplos/) | Caso de teste oficial: foto aérea de drone com rascunho no Paint |
 
 ## TL;DR da pesquisa
 

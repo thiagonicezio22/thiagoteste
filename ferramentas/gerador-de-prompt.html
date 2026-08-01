@@ -1,0 +1,308 @@
+<title>Gerador de Prompt — Render sobre Foto</title>
+<style>
+  :root{
+    --agua:#0E7C86; --agua-forte:#0A5F67; --tinta:#22302F; --tinta-suave:#5B6B69;
+    --fundo:#F8F5EE; --cartao:#FFFFFF; --borda:#E3DCCB; --areia:#EFE7D3;
+    --ok:#2E7D4F;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --agua:#3EC3CE; --agua-forte:#7BD8DF; --tinta:#E8EEEC; --tinta-suave:#9FB0AD;
+      --fundo:#101817; --cartao:#182220; --borda:#2A3833; --areia:#243029; --ok:#5FBF8A; }
+  }
+  :root[data-theme="dark"]{ --agua:#3EC3CE; --agua-forte:#7BD8DF; --tinta:#E8EEEC; --tinta-suave:#9FB0AD;
+    --fundo:#101817; --cartao:#182220; --borda:#2A3833; --areia:#243029; --ok:#5FBF8A; }
+  :root[data-theme="light"]{ --agua:#0E7C86; --agua-forte:#0A5F67; --tinta:#22302F; --tinta-suave:#5B6B69;
+    --fundo:#F8F5EE; --cartao:#FFFFFF; --borda:#E3DCCB; --areia:#EFE7D3; --ok:#2E7D4F; }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fundo);color:var(--tinta);font-family:var(--sans);line-height:1.55}
+  .pagina{max-width:760px;margin:0 auto;padding:20px 16px 96px;display:flex;flex-direction:column;gap:18px}
+  header h1{font-family:var(--serif);font-size:1.7rem;margin:0 0 4px;text-wrap:balance}
+  header p{margin:0;color:var(--tinta-suave);font-size:.95rem;max-width:60ch}
+  .cartao{background:var(--cartao);border:1px solid var(--borda);border-radius:10px;padding:16px}
+  .cartao h2{font-family:var(--serif);font-size:1.08rem;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;
+       background:var(--agua);color:var(--fundo);font-family:var(--sans);font-size:.78rem;font-weight:700;flex:none}
+  .campo{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+  .campo:last-child{margin-bottom:0}
+  label{font-size:.82rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--tinta-suave)}
+  input[type=text],select,textarea{
+    width:100%;padding:9px 10px;border:1px solid var(--borda);border-radius:7px;
+    background:var(--fundo);color:var(--tinta);font-family:var(--sans);font-size:.95rem}
+  textarea{resize:vertical}
+  input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--agua);outline-offset:1px}
+  .linhas{display:flex;flex-direction:column;gap:8px}
+  .opcao{display:flex;align-items:center;gap:9px;font-size:.95rem}
+  .opcao input[type=checkbox],.opcao input[type=radio]{width:17px;height:17px;accent-color:var(--agua);flex:none}
+  .grade2{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+  @media(max-width:540px){.grade2{grid-template-columns:1fr}}
+  .cor-linha{display:flex;align-items:center;gap:9px}
+  .cor-linha .bolinha{width:15px;height:15px;border-radius:50%;border:1px solid var(--borda);flex:none}
+  .cor-linha input[type=text]{flex:1}
+  .dica{font-size:.85rem;color:var(--tinta-suave);background:var(--areia);border-radius:7px;padding:9px 11px;margin-top:10px}
+  .ordem{font-size:.9rem;padding:10px 12px;border-left:3px solid var(--agua);background:var(--areia);border-radius:0 7px 7px 0;margin-bottom:10px}
+  #saida{font-family:var(--mono);font-size:.82rem;line-height:1.5;min-height:260px;white-space:pre-wrap}
+  .acoes{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+  button{border:1px solid var(--borda);border-radius:8px;padding:10px 16px;font-size:.92rem;font-weight:600;
+         background:var(--cartao);color:var(--tinta);cursor:pointer}
+  button.principal{background:var(--agua);border-color:var(--agua);color:var(--fundo)}
+  button.principal.copiado{background:var(--ok);border-color:var(--ok)}
+  details{border-top:1px solid var(--borda);padding-top:12px;margin-top:12px}
+  summary{cursor:pointer;font-weight:600;font-size:.92rem}
+  .chips{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .chip{display:flex;align-items:flex-start;gap:8px;font-size:.86rem}
+  .chip button{padding:4px 10px;font-size:.78rem;flex:none}
+  .chip span{color:var(--tinta-suave)}
+  ul.check{margin:8px 0 0;padding-left:20px;font-size:.9rem;color:var(--tinta-suave)}
+  ul.check li{margin-bottom:4px}
+  footer{font-size:.8rem;color:var(--tinta-suave);text-align:center}
+</style>
+
+<div class="pagina">
+<header>
+  <h1>Gerador de Prompt — Render sobre Foto</h1>
+  <p>Preencha os campos do projeto e copie o prompt pronto para o Gemini (Nano Banana), ChatGPT ou Higgsfield. O prompt segue o protocolo: foto limpa + rascunho com legenda + referências + lista de preservação.</p>
+</header>
+
+<section class="cartao">
+  <h2><span class="num">1</span>O projeto</h2>
+  <div class="grade2">
+    <div class="campo"><label for="tipo">Tipo de projeto</label>
+      <select id="tipo">
+        <option value="piscina natural de areia estilo praia">Piscina de areia estilo praia</option>
+        <option value="lago ornamental">Lago ornamental</option>
+        <option value="lago ornamental com carpas">Lago ornamental com carpas</option>
+        <option value="projeto de paisagismo">Paisagismo</option>
+      </select></div>
+    <div class="campo"><label for="medidas">Medidas da área (ex.: 9 × 6 m)</label>
+      <input type="text" id="medidas" placeholder="9 × 6 m"></div>
+    <div class="campo"><label for="agua">Cor da água</label>
+      <select id="agua">
+        <option value="verde-esmeralda cristalina">Verde-esmeralda cristalina</option>
+        <option value="turquesa translúcida">Turquesa translúcida</option>
+        <option value="azul clara natural">Azul clara natural</option>
+        <option value="escura espelhada, estilo lago natural">Escura espelhada (lago)</option>
+      </select></div>
+    <div class="campo"><label for="foto-tipo">Tipo de foto</label>
+      <select id="foto-tipo">
+        <option value="olhos">Nível dos olhos</option>
+        <option value="drone">Aérea (drone)</option>
+      </select></div>
+  </div>
+  <div class="campo" style="margin-top:12px"><label>Elementos do projeto</label>
+    <div class="grade2">
+      <label class="opcao"><input type="checkbox" class="elem" value="praia de areia clara com entrada gradual na água" checked>Praia de areia (entrada gradual)</label>
+      <label class="opcao"><input type="checkbox" class="elem" value="cascata baixa de pedras naturais">Cascata de pedra</label>
+      <label class="opcao"><input type="checkbox" class="elem" value="bordas de pedras naturais" checked>Pedras naturais na borda</label>
+      <label class="opcao"><input type="checkbox" class="elem" value="deck de madeira cumaru">Deck de madeira</label>
+      <label class="opcao"><input type="checkbox" class="elem" value="paisagismo tropical com coqueiros, filodendro Xanadu e helicônias" checked>Vegetação tropical</label>
+      <label class="opcao"><input type="checkbox" class="elem" value="iluminação de jardim embutida">Iluminação de jardim</label>
+    </div></div>
+  <div class="campo"><label for="extras">Detalhes extras (opcional)</label>
+    <textarea id="extras" rows="2" placeholder="ex.: prainha voltada para a churrasqueira; cascata do lado esquerdo"></textarea></div>
+</section>
+
+<section class="cartao">
+  <h2><span class="num">2</span>Rascunho e legenda</h2>
+  <label class="opcao" style="margin-bottom:10px"><input type="checkbox" id="tem-rascunho" checked>Vou enviar a foto com rascunho desenhado por cima (Paint/dedo)</label>
+  <div id="legenda" class="linhas">
+    <div class="cor-linha"><input type="checkbox" class="cor" data-cor="AZUL" checked><span class="bolinha" style="background:#2E86D4"></span><input type="text" data-sig value="espelho d'água"></div>
+    <div class="cor-linha"><input type="checkbox" class="cor" data-cor="BEGE" checked><span class="bolinha" style="background:#E4C98B"></span><input type="text" data-sig value="praia de areia clara com entrada gradual"></div>
+    <div class="cor-linha"><input type="checkbox" class="cor" data-cor="MARROM" checked><span class="bolinha" style="background:#8B5A33"></span><input type="text" data-sig value="borda de pedras naturais e limite exato do projeto"></div>
+    <div class="cor-linha"><input type="checkbox" class="cor" data-cor="VERDE"><span class="bolinha" style="background:#3E9A4E"></span><input type="text" data-sig value="vegetação e paisagismo novos"></div>
+    <div class="cor-linha"><input type="checkbox" class="cor" data-cor="VERMELHO"><span class="bolinha" style="background:#C94437"></span><input type="text" data-sig value="cascata / queda d'água"></div>
+    <div class="cor-linha"><input type="checkbox" class="cor" data-cor="PRETO"><span class="bolinha" style="background:#2B2B2B"></span><input type="text" data-sig value="deck de madeira"></div>
+  </div>
+  <div class="dica">Use sempre as mesmas cores em todos os projetos — assim o mesmo prompt funciona sempre. O desenho é posicional: o prompt avisa a IA para não copiar os traços.</div>
+</section>
+
+<section class="cartao">
+  <h2><span class="num">3</span>Referências e preservação</h2>
+  <div class="campo"><label for="refs">Fotos de referência do seu portfólio</label>
+    <select id="refs">
+      <option value="0">Nenhuma</option><option value="1" selected>1 foto</option>
+      <option value="2">2 fotos</option><option value="3">3 fotos</option>
+    </select></div>
+  <div class="campo"><label>Preservar exatamente (marque tudo que aparece na foto)</label>
+    <div class="grade2">
+      <label class="opcao"><input type="checkbox" class="pres" value="a casa, telhado, janelas e portas" checked>Casa / telhado</label>
+      <label class="opcao"><input type="checkbox" class="pres" value="os muros e cercas" checked>Muros e cercas</label>
+      <label class="opcao"><input type="checkbox" class="pres" value="o portão">Portão</label>
+      <label class="opcao"><input type="checkbox" class="pres" value="o piso e calçadas existentes fora da área do projeto" checked>Piso existente</label>
+      <label class="opcao"><input type="checkbox" class="pres" value="as construções vizinhas" checked>Vizinhança</label>
+      <label class="opcao"><input type="checkbox" class="pres" value="as árvores e plantas existentes fora da área do projeto" checked>Árvores existentes</label>
+    </div></div>
+  <div class="campo"><label for="pres-extra">Outros itens a preservar (opcional)</label>
+    <input type="text" id="pres-extra" placeholder="ex.: a churrasqueira, o varal, a cerca viva à direita"></div>
+</section>
+
+<section class="cartao">
+  <h2><span class="num">4</span>Ferramenta e idioma</h2>
+  <div class="grade2">
+    <div class="linhas">
+      <label class="opcao"><input type="radio" name="dest" value="gemini" checked>Gemini / Nano Banana (recomendado)</label>
+      <label class="opcao"><input type="radio" name="dest" value="chatgpt">ChatGPT</label>
+      <label class="opcao"><input type="radio" name="dest" value="higgsfield">Higgsfield (pincel)</label>
+    </div>
+    <div class="linhas">
+      <label class="opcao"><input type="radio" name="lang" value="pt" checked>Português</label>
+      <label class="opcao"><input type="radio" name="lang" value="en">Inglês (mais estável)</label>
+    </div>
+  </div>
+  <div class="dica" id="dica-dest"></div>
+</section>
+
+<section class="cartao">
+  <h2><span class="num">5</span>Prompt pronto</h2>
+  <div class="ordem" id="ordem"></div>
+  <textarea id="saida" readonly></textarea>
+  <div class="acoes">
+    <button class="principal" id="copiar">Copiar prompt</button>
+    <button id="baixar">Baixar .txt</button>
+  </div>
+
+  <details>
+    <summary>Prompts de iteração (um ajuste por vez)</summary>
+    <div class="chips" id="iteracoes"></div>
+  </details>
+
+  <details>
+    <summary>Checklist da foto de entrada</summary>
+    <ul class="check">
+      <li>Horizontal, câmera 1x, altura dos olhos (ou drone para layout), nivelada</li>
+      <li>Luz difusa entre ~10h e 16h; sem filtro, sem HDR forte, sem panorâmica</li>
+      <li>De um canto do terreno: área do projeto + muro + casa + um pouco de céu</li>
+      <li>Enviada como DOCUMENTO no WhatsApp (nunca como foto comprimida)</li>
+      <li>Cena limpa: sem lixeira, mangueira, entulho, carros, pessoas</li>
+      <li>Medir a área e anotar — as medidas entram no prompt</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>Antes de enviar ao cliente</summary>
+    <ul class="check">
+      <li>Compare lado a lado com a foto original (casa, muro e portão idênticos?)</li>
+      <li>Escala do projeto compatível com as medidas reais</li>
+      <li>Só aparece o que está no orçamento (extras marcados como opcionais)</li>
+      <li>Aplicar o selo: “SIMULAÇÃO DIGITAL GERADA POR IA — imagem conceitual, sem valor contratual. O resultado final seguirá o memorial descritivo.”</li>
+    </ul>
+  </details>
+</section>
+
+<footer>Sistema de prompts v1 · pesquisa completa no repositório · preços e limites das ferramentas mudam — confira antes de assinar</footer>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+const CORES_EN={AZUL:"BLUE",BEGE:"BEIGE",MARROM:"BROWN",VERDE:"GREEN",VERMELHO:"RED",PRETO:"BLACK"};
+const SIG_EN={"espelho d'água":"water surface","praia de areia clara com entrada gradual":"light sand beach with gradual zero-entry slope","borda de pedras naturais e limite exato do projeto":"natural stone border and the exact project boundary","vegetação e paisagismo novos":"new planting and landscaping","cascata / queda d'água":"rock waterfall","deck de madeira":"wood deck"};
+const TIPO_EN={"piscina natural de areia estilo praia":"beach-style natural sand-bottom pool","lago ornamental":"ornamental pond","lago ornamental com carpas":"ornamental koi pond","projeto de paisagismo":"landscaping project"};
+const AGUA_EN={"verde-esmeralda cristalina":"crystal-clear emerald green","turquesa translúcida":"translucent turquoise","azul clara natural":"natural light blue","escura espelhada, estilo lago natural":"dark and mirror-like, natural pond style"};
+const ELEM_EN={"praia de areia clara com entrada gradual na água":"light sand beach with gradual zero-entry slope into the water","cascata baixa de pedras naturais":"low natural rock waterfall","bordas de pedras naturais":"natural stone edges","deck de madeira cumaru":"cumaru wood deck","paisagismo tropical com coqueiros, filodendro Xanadu e helicônias":"tropical planting with coconut palms, Philodendron Xanadu and heliconias","iluminação de jardim embutida":"recessed garden lighting"};
+const PRES_EN={"a casa, telhado, janelas e portas":"the house, roof, windows and doors","os muros e cercas":"the walls and fences","o portão":"the gate","o piso e calçadas existentes fora da área do projeto":"existing paving and walkways outside the project area","as construções vizinhas":"the neighboring buildings","as árvores e plantas existentes fora da área do projeto":"existing trees and plants outside the project area"};
+
+const DICAS={
+ gemini:"No app Gemini ou no AI Studio (gemini-3-pro-image): anexe as imagens na ordem indicada e cole o prompt. Não fixe proporção — ele herda a da foto. 2K para apresentação, 4K para fechamento.",
+ chatgpt:"No ChatGPT: anexe as imagens na ordem indicada num chat NOVO por projeto. Confira a casa a cada geração; se algo escorregar, use a ferramenta de seleção (pincel) só na área errada. Reanexe a foto original a cada revisão grande.",
+ higgsfield:"No Higgsfield (AI Image Editor): suba a FOTO LIMPA como base, escolha Nano Banana Pro, pinte com o pincel APENAS a área do projeto, anexe as referências e cole o prompt. Finalize com upscale 4K."};
+
+const ITER=[
+ ["Ajustar cor da água","Mantenha esta imagem exata, mas deixe a água um pouco mais [turquesa/verde]. Não mude mais nada."],
+ ["Reduzir/mover elemento","Mantenha esta imagem exata, mas reduza a cascata pela metade e mova-a para a [esquerda/direita]. Não mude mais nada."],
+ ["Restaurar algo que mudou","Mantenha esta imagem exata, mas restaure [o muro/a fachada] exatamente como na primeira foto que enviei. Não mude mais nada."],
+ ["Corrigir escala","A piscina ficou grande demais: a área real tem [X × Y m]. Reduza o projeto para a escala correta usando o muro como referência, sem alterar mais nada."],
+ ["Entardecer (venda)","Mesma imagem exata, agora em golden hour: luz dourada baixa, sombras longas, reflexos quentes na água. Não altere geometria nem materiais."],
+ ["Noturna (venda)","Mesma imagem exata, à noite: LEDs quentes submersos, balizadores no paisagismo, luzes da casa acesas, céu blue hour. Ative apenas luzes plausíveis; não crie estruturas novas."]];
+
+function montar(){
+  const lang=$('input[name=lang]:checked').value, dest=$('input[name=dest]:checked').value;
+  const pt=lang==='pt';
+  const tipo=$('#tipo').value, medidas=$('#medidas').value.trim(), agua=$('#agua').value;
+  const aereo=$('#foto-tipo').value==='drone';
+  const temRasc=$('#tem-rascunho').checked && dest!=='higgsfield';
+  const elems=$$('.elem:checked').map(e=>pt?e.value:ELEM_EN[e.value]);
+  const extras=$('#extras').value.trim();
+  const nRefs=+$('#refs').value;
+  const pres=$$('.pres:checked').map(e=>pt?e.value:PRES_EN[e.value]);
+  const presExtra=$('#pres-extra').value.trim();
+  const legenda=$$('.cor:checked').map(c=>{
+    const sig=c.closest('.cor-linha').querySelector('[data-sig]').value.trim();
+    return pt?`- ÁREA ${c.dataset.cor} = ${sig};`
+             :`- ${CORES_EN[c.dataset.cor]} AREA = ${SIG_EN[sig]||sig};`;});
+
+  let n=1; const ordem=[]; const idx={};
+  idx.foto=n; ordem.push(pt?`${n}º foto limpa do local`:`${n}: clean site photo`); n++;
+  if(temRasc){idx.rasc=n; ordem.push(pt?`${n}º foto com rascunho`:`${n}: sketched photo`); n++;}
+  if(nRefs>0){idx.r1=n; idx.r2=n+nRefs-1; ordem.push(pt?`${n}º–${n+nRefs-1}º referências do portfólio`:`${n}–${n+nRefs-1}: portfolio references`);}
+  $('#ordem').textContent=(pt?'Anexe nesta ordem: ':'Attach in this order: ')+ordem.join(' · ');
+
+  const T=[];
+  if(pt){
+    T.push(`Você atuará como um motor de renderização fotorrealista (como V-Ray ou Lumion) especializado em paisagismo, lagos ornamentais e piscinas de areia estilo praia.`);
+    T.push(``,`IMAGEM ${idx.foto} é a foto real ${aereo?'aérea (drone) ':''}do local do meu cliente. Ela é a base: o resultado deve ser ESTA MESMA FOTO com o projeto construído.`);
+    if(temRasc){T.push(``,`IMAGEM ${idx.rasc} é a mesma foto com um rascunho desenhado por cima. O desenho é apenas um mapa de POSIÇÃO — ele NÃO deve aparecer no resultado. Legenda do desenho:`,...legenda);}
+    if(nRefs>0){T.push(``,`${nRefs>1?`IMAGENS ${idx.r1} a ${idx.r2} são obras`:`IMAGEM ${idx.r1} é uma obra`} já executada${nRefs>1?'s':''} por mim: use como referência FIEL de estilo, materiais, cor de água e acabamento.`);}
+    let desc=`Construa: ${tipo}${medidas?` de ${medidas}`:''}, com água ${agua}`;
+    if(elems.length)desc+=`, ${elems.join(', ')}`;
+    if(extras)desc+=`. ${extras}`;
+    T.push(``,desc+`.`);
+    if(medidas)T.push(`As medidas reais da área são ${medidas}; respeite a escala usando o muro e a casa como referência.`);
+    let p=[...pres]; if(presExtra)p.push(presExtra);
+    p.push('o céu',aereo?'o ângulo aéreo do drone, o enquadramento e a proporção da foto':'o ângulo e a altura da câmera, o enquadramento e a proporção da foto','a direção do sol e as sombras');
+    T.push(``,`PRESERVE EXATAMENTE, SEM NENHUMA ALTERAÇÃO: ${p.join('; ')}.`);
+    T.push(``,`Resultado: uma única imagem fotorrealista, como uma FOTOGRAFIA REAL do projeto concluído, mesma hora do dia da foto original, alta resolução, sem pessoas, sem textos, sem marca d'água, sem traços de desenho.`);
+    if(dest==='chatgpt')T.push(``,`Não recrie a cena: trate esta tarefa como EDIÇÃO da imagem ${idx.foto}. Formato paisagem 1536×1024.`);
+    if(dest==='gemini')T.push(``,`Não altere a proporção da imagem original.`);
+    if(dest==='higgsfield')T.push(``,`Aplique o projeto apenas na área que pintei com o pincel; tudo fora dela permanece intocado.`);
+  }else{
+    T.push(`Act as a photorealistic rendering engine (like V-Ray or Lumion) specialized in landscaping, ornamental ponds and beach-style sand pools.`);
+    T.push(``,`IMAGE ${idx.foto} is the real ${aereo?'aerial (drone) ':''}photo of my client's site. It is the base: the output must be THIS SAME PHOTO with the project built.`);
+    if(temRasc){T.push(``,`IMAGE ${idx.rasc} is the same photo with a rough sketch drawn on top. The sketch is only a POSITION map — it must NOT appear in the result. Sketch legend:`,...legenda);}
+    if(nRefs>0){T.push(``,`IMAGE${nRefs>1?`S ${idx.r1} to ${idx.r2} are projects`:` ${idx.r1} is a project`} I have actually built: use as FAITHFUL reference for style, materials, water color and finish.`);}
+    let desc=`Build: a ${TIPO_EN[tipo]}${medidas?` of ${medidas}`:''}, with ${AGUA_EN[agua]} water`;
+    if(elems.length)desc+=`, ${elems.join(', ')}`;
+    if(extras)desc+=`. ${extras}`;
+    T.push(``,desc+`.`);
+    if(medidas)T.push(`Real dimensions of the area: ${medidas}; keep the scale using the wall and the house as reference.`);
+    let p=[...pres]; if(presExtra)p.push(presExtra);
+    p.push('the sky',aereo?'the aerial drone angle, framing and aspect ratio':'the camera angle and height, framing and aspect ratio','the sun direction and shadows');
+    T.push(``,`PRESERVE EXACTLY, WITH NO CHANGES: ${p.join('; ')}.`);
+    T.push(``,`Output: one photorealistic image, like a REAL PHOTOGRAPH of the finished project, same time of day as the original photo, high resolution, no people, no text, no watermark, no sketch lines.`);
+    if(dest==='chatgpt')T.push(``,`Do not recreate the scene: treat this task as an EDIT of image ${idx.foto}. Landscape format 1536×1024.`);
+    if(dest==='gemini')T.push(``,`Do not change the aspect ratio of the input image.`);
+    if(dest==='higgsfield')T.push(``,`Apply the project only inside the brushed area; everything outside it stays untouched.`);
+  }
+  $('#saida').value=T.join('\n');
+  $('#dica-dest').textContent=DICAS[dest];
+}
+
+function copiarTexto(txt,btn,rotulo){
+  navigator.clipboard.writeText(txt).then(()=>{
+    const o=btn.textContent; btn.textContent='Copiado ✓'; btn.classList.add('copiado');
+    setTimeout(()=>{btn.textContent=rotulo||o; btn.classList.remove('copiado');},1600);
+  });
+}
+$('#copiar').addEventListener('click',e=>copiarTexto($('#saida').value,e.target,'Copiar prompt'));
+$('#baixar').addEventListener('click',()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([$('#saida').value],{type:'text/plain'}));
+  a.download='prompt-projeto.txt'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+const cont=$('#iteracoes');
+ITER.forEach(([nome,txt])=>{
+  const d=document.createElement('div'); d.className='chip';
+  const b=document.createElement('button'); b.textContent='Copiar';
+  b.addEventListener('click',()=>copiarTexto(txt,b,'Copiar'));
+  const s=document.createElement('span'); s.innerHTML=`<strong style="color:var(--tinta)">${nome}:</strong> ${txt}`;
+  d.append(b,s); cont.append(d);
+});
+
+document.addEventListener('input',montar);
+document.addEventListener('change',montar);
+montar();
+</script>
