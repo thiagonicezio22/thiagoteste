@@ -96,3 +96,19 @@ toca o WF17. Depois da bateria: planilhas restauradas pro estado original
   `giulia_planilhas_fin_versoes` (backup automático de cada edição).
 - Célula que o manual manda atualizar mas é fórmula (ex.: B17 do EPDM
   Gramoterra): o sistema escreve o que pode e avisa — ajuste manual.
+
+## Correções de 31/07 (auditoria da 1ª semana de uso real)
+
+- **Resumo nunca mais sai vazio** no "Confirma?": se o planejador não mandar
+  resumo, o sistema sintetiza um a partir das escritas (bug real: o plano do
+  frete internacional de 27/07 chegou pro Thiago sem descrição).
+- **Toda resposta do WF17 agora entra em `giulia_memoria`** (plano, consulta,
+  aplicação, cancelamento). Antes o WF01 não "lembrava" do que o módulo
+  financeiro tinha dito — causa da conversa confusa de 27/07.
+- **Follow-up de pendentes** (migração 26, `lembrado_em`): o WF14 lembra o
+  Thiago 1×/dia de lançamento aguardando confirmação há 20h+ e cancela com
+  aviso após 7 dias. Bug real: o lançamento do frete ficou 4 dias parado em
+  silêncio.
+- WF01: cap de ações extras por mensagem subiu de 3 pra 9 (lista de 10
+  tarefas perdia 2 em silêncio) e `adiar_tarefa` entrou na whitelist de
+  ações em lote ("É para hoje" só mudava o prazo de 1 tarefa).
