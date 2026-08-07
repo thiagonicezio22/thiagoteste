@@ -1,223 +1,223 @@
 {
-  "name": "GIULIA - 13 Orcamentos Followup",
-  "nodes": [
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "cronExpression",
-              "expression": "0 * * * *"
-            }
-          ]
-        }
-      },
-      "id": "cron-followup",
-      "name": "Cron Horario",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        200,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "giulia-orcamento-followup-tick",
-        "responseMode": "onReceived",
-        "options": {}
-      },
-      "id": "wh-followup",
-      "name": "Webhook manual",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        200,
-        400
-      ],
-      "webhookId": "giulia-orcamento-followup-tick-wh"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Follow-up de orcamentos: 10h locais do dono, 3+ dias sem resposta.\n// Webhook manual aceita {force: '<numero>'} pra teste (ignora hora e NAO marca).\nlet force = '';\ntry { const b = items[0].json.body || items[0].json; force = String(b.force || '').replace(/[^0-9]/g, ''); } catch (e) {}\nconst cols = `o.id, o.dono_numero, o.numero, o.cliente_final, o.valor, o.moeda, o.status, o.validade_dias`;\nconst extras = `d.nome AS dono_nome, d.idioma,\n       EXTRACT(DAY FROM NOW() - o.criado_em)::int AS dias,\n       (NOW() > o.criado_em + make_interval(days => COALESCE(o.validade_dias, 15))) AS vencido`;\nlet sql;\nif (force) {\n  sql = `SELECT ${cols}, ${extras}\nFROM giulia_orcamentos o JOIN giulia_donos d ON d.numero = o.dono_numero\nWHERE o.dono_numero = '${force}' AND o.status IN ('gerado','enviado')\nORDER BY o.criado_em DESC LIMIT 5;`;\n} else {\n  sql = `WITH alvo AS (\n  SELECT o.id FROM giulia_orcamentos o\n  JOIN giulia_donos d ON d.numero = o.dono_numero\n  WHERE o.status IN ('gerado','enviado')\n    AND COALESCE(d.status, 'ativo') = 'ativo'\n    AND (d.numero = '5511910441709' OR EXISTS (SELECT 1 FROM giulia_memoria m WHERE m.from_numero = d.numero AND m.role = 'user' AND m.created_at > NOW() - INTERVAL '5 days'))\n    AND to_char(NOW() AT TIME ZONE d.timezone, 'HH24')::int = 10\n    AND COALESCE(o.ultimo_followup, o.criado_em) < NOW() - INTERVAL '3 days'\n  FOR UPDATE OF o SKIP LOCKED\n  LIMIT 20\n), upd AS (\n  UPDATE giulia_orcamentos o2 SET ultimo_followup = NOW(), atualizado_em = NOW()\n  FROM alvo WHERE o2.id = alvo.id\n  RETURNING o2.id, o2.dono_numero, o2.numero, o2.cliente_final, o2.valor, o2.moeda, o2.status, o2.validade_dias, o2.criado_em\n)\nSELECT u.id, u.dono_numero, u.numero, u.cliente_final, u.valor, u.moeda, u.status, u.validade_dias,\n       d.nome AS dono_nome, d.idioma,\n       EXTRACT(DAY FROM NOW() - u.criado_em)::int AS dias,\n       (NOW() > u.criado_em + make_interval(days => COALESCE(u.validade_dias, 15))) AS vencido\nFROM upd u JOIN giulia_donos d ON d.numero = u.dono_numero;`;\n}\nreturn [{ json: { sql, force: force || null } }];\n"
-      },
-      "id": "montar-claim",
-      "name": "Montar SQL Claim",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        440,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "={{ $json.sql }}",
-        "options": {}
-      },
-      "id": "carregar-alvos",
-      "name": "Carregar Alvos",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2,
-      "position": [
-        660,
-        300
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "qSNNpS1TadimC3ND",
-          "name": "PostgreSQL Julian"
-        }
+ "name": "GIULIA - 13 Orcamentos Followup",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "0 * * * *"
       }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Uma mensagem de follow-up POR DONO (consolida todos os orcamentos do dia)\nconst porDono = {};\nfor (const it of items) {\n  const o = it.json;\n  if (!o || !o.id) continue;\n  (porDono[o.dono_numero] = porDono[o.dono_numero] || []).push(o);\n}\nconst out = [];\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\");\nfor (const dono of Object.keys(porDono)) {\n  const orcs = porDono[dono];\n  const en = String(orcs[0].idioma || 'pt').toLowerCase() === 'en';\n  const linha = o => {\n    const mSym = o.moeda === 'USD' ? '$' : 'R$';\n    const val = (o.valor != null && o.valor !== '')\n      ? mSym + ' ' + String(Math.round(Number(o.valor))).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')\n      : '';\n    return `• ${o.numero} — ${o.cliente_final}${val ? ' (' + val + ')' : ''}, ${o.dias}d sem resposta${o.vencido ? (en ? ' [expired]' : ' [validade vencida]') : ''}`;\n  };\n  let texto;\n  if (orcs.length === 1) {\n    const o = orcs[0];\n    const mSym = o.moeda === 'USD' ? '$' : 'R$';\n    const val = (o.valor != null && o.valor !== '')\n      ? mSym + ' ' + String(Math.round(Number(o.valor))).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')\n      : '';\n    if (en) {\n      texto = `Quote ${o.numero} (${o.cliente_final}${val ? ', ' + val : ''}) has been out ${o.dias} days with no update. Any news? Tell me 'approved' or 'declined' and I log it.`;\n      if (o.vencido) texto += ` Heads up: it is past its validity - want me to generate a fresh one?`;\n    } else {\n      texto = `O orcamento ${o.numero} (${o.cliente_final}${val ? ', ' + val : ''}) ta ha ${o.dias} dias sem resposta. Teve retorno? Me fala 'aprovou' ou 'recusou' que eu atualizo aqui.`;\n      if (o.vencido) texto += ` Detalhe: a validade ja venceu - se quiser eu gero um novo.`;\n    }\n  } else {\n    texto = en\n      ? `Quick follow-up on your open quotes:\\n` + orcs.map(linha).join('\\n') + `\\nAny updates? Tell me per client, e.g. '${orcs[0].cliente_final} approved'.`\n      : `Follow-up dos teus orcamentos em aberto:\\n` + orcs.map(linha).join('\\n') + `\\nTeve retorno de algum? Me fala por cliente, tipo '${orcs[0].cliente_final} aprovou' ou 'recusou'.`;\n  }\n  out.push({ json: {\n    number: dono,\n    texto,\n    memoria_sql: \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + esc(texto) + \"', '\" + esc(dono) + \"');\"\n  } });\n}\nreturn out;\n"
-      },
-      "id": "preparar-msgs",
-      "name": "Preparar Mensagens",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        880,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://engsolucao.uazapi.com/send/text",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "token",
-              "value": "__GIULIA_UAZAPI_TOKEN__"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ number: $json.number, text: $json.texto }) }}",
-        "options": {
-          "timeout": 30000,
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
-        }
-      },
-      "id": "enviar-followup",
-      "name": "Enviar Followup UAZAPI",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1100,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "={{ $('Preparar Mensagens').all()[$itemIndex].json.memoria_sql }}",
-        "options": {}
-      },
-      "id": "salvar-memoria-fu",
-      "name": "Salvar Memoria Followup",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2,
-      "position": [
-        1320,
-        300
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "qSNNpS1TadimC3ND",
-          "name": "PostgreSQL Julian"
-        }
-      }
+     ]
     }
-  ],
-  "connections": {
-    "Cron Horario": {
-      "main": [
-        [
-          {
-            "node": "Montar SQL Claim",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Webhook manual": {
-      "main": [
-        [
-          {
-            "node": "Montar SQL Claim",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Montar SQL Claim": {
-      "main": [
-        [
-          {
-            "node": "Carregar Alvos",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Carregar Alvos": {
-      "main": [
-        [
-          {
-            "node": "Preparar Mensagens",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Preparar Mensagens": {
-      "main": [
-        [
-          {
-            "node": "Enviar Followup UAZAPI",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Enviar Followup UAZAPI": {
-      "main": [
-        [
-          {
-            "node": "Salvar Memoria Followup",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
+   },
+   "id": "cron-followup",
+   "name": "Cron Horario",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    200,
+    200
+   ]
   },
-  "settings": {
-    "executionOrder": "v1",
-    "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "giulia-orcamento-followup-tick",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "wh-followup",
+   "name": "Webhook manual",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    200,
+    400
+   ],
+   "webhookId": "giulia-orcamento-followup-tick-wh"
+  },
+  {
+   "parameters": {
+    "jsCode": "// Follow-up de orcamentos: 10h locais do dono, 3+ dias sem resposta.\n// Webhook manual aceita {force: '<numero>'} pra teste (ignora hora e NAO marca).\nlet force = '';\ntry { const b = items[0].json.body || items[0].json; force = String(b.force || '').replace(/[^0-9]/g, ''); } catch (e) {}\nconst cols = `o.id, o.dono_numero, o.numero, o.cliente_final, o.valor, o.moeda, o.status, o.validade_dias`;\nconst extras = `d.nome AS dono_nome, d.idioma,\n       EXTRACT(DAY FROM NOW() - o.criado_em)::int AS dias,\n       (NOW() > o.criado_em + make_interval(days => COALESCE(o.validade_dias, 15))) AS vencido`;\nlet sql;\nif (force) {\n  sql = `SELECT ${cols}, ${extras}\nFROM giulia_orcamentos o JOIN giulia_donos d ON d.numero = o.dono_numero\nWHERE o.dono_numero = '${force}' AND o.status IN ('gerado','enviado')\nORDER BY o.criado_em DESC LIMIT 5;`;\n} else {\n  sql = `WITH alvo AS (\n  SELECT o.id FROM giulia_orcamentos o\n  JOIN giulia_donos d ON d.numero = o.dono_numero\n  WHERE o.status IN ('gerado','enviado')\n    AND COALESCE(d.status, 'ativo') = 'ativo'\n    AND (d.numero = '5511910441709' OR EXISTS (SELECT 1 FROM giulia_memoria m WHERE m.from_numero = d.numero AND m.role = 'user' AND m.created_at > NOW() - INTERVAL '5 days'))\n    AND to_char(NOW() AT TIME ZONE d.timezone, 'HH24')::int = 10\n    AND COALESCE(o.ultimo_followup, o.criado_em) < NOW() - INTERVAL '3 days'\n  FOR UPDATE OF o SKIP LOCKED\n  LIMIT 20\n), upd AS (\n  UPDATE giulia_orcamentos o2 SET ultimo_followup = NOW(), atualizado_em = NOW()\n  FROM alvo WHERE o2.id = alvo.id\n  RETURNING o2.id, o2.dono_numero, o2.numero, o2.cliente_final, o2.valor, o2.moeda, o2.status, o2.validade_dias, o2.criado_em\n)\nSELECT u.id, u.dono_numero, u.numero, u.cliente_final, u.valor, u.moeda, u.status, u.validade_dias,\n       d.nome AS dono_nome, d.idioma,\n       EXTRACT(DAY FROM NOW() - u.criado_em)::int AS dias,\n       (NOW() > u.criado_em + make_interval(days => COALESCE(u.validade_dias, 15))) AS vencido\nFROM upd u JOIN giulia_donos d ON d.numero = u.dono_numero;`;\n}\nreturn [{ json: { sql, force: force || null } }];\n"
+   },
+   "id": "montar-claim",
+   "name": "Montar SQL Claim",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "carregar-alvos",
+   "name": "Carregar Alvos",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    660,
+    300
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "// Uma mensagem de follow-up POR DONO (consolida todos os orcamentos do dia)\nconst porDono = {};\nfor (const it of items) {\n  const o = it.json;\n  if (!o || !o.id) continue;\n  (porDono[o.dono_numero] = porDono[o.dono_numero] || []).push(o);\n}\nconst out = [];\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\");\nfor (const dono of Object.keys(porDono)) {\n  const orcs = porDono[dono];\n  const en = String(orcs[0].idioma || 'pt').toLowerCase() === 'en';\n  const linha = o => {\n    const mSym = o.moeda === 'USD' ? '$' : 'R$';\n    const val = (o.valor != null && o.valor !== '')\n      ? mSym + ' ' + String(Math.round(Number(o.valor))).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')\n      : '';\n    return `• ${o.numero} — ${o.cliente_final}${val ? ' (' + val + ')' : ''}, ${o.dias}d sem resposta${o.vencido ? (en ? ' [expired]' : ' [validade vencida]') : ''}`;\n  };\n  let texto;\n  if (orcs.length === 1) {\n    const o = orcs[0];\n    const mSym = o.moeda === 'USD' ? '$' : 'R$';\n    const val = (o.valor != null && o.valor !== '')\n      ? mSym + ' ' + String(Math.round(Number(o.valor))).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')\n      : '';\n    if (en) {\n      texto = `Quote ${o.numero} (${o.cliente_final}${val ? ', ' + val : ''}) has been out ${o.dias} days with no update. Any news? Tell me 'approved' or 'declined' and I log it.`;\n      if (o.vencido) texto += ` Heads up: it is past its validity - want me to generate a fresh one?`;\n    } else {\n      texto = `O orcamento ${o.numero} (${o.cliente_final}${val ? ', ' + val : ''}) ta ha ${o.dias} dias sem resposta. Teve retorno? Me fala 'aprovou' ou 'recusou' que eu atualizo aqui.`;\n      if (o.vencido) texto += ` Detalhe: a validade ja venceu - se quiser eu gero um novo.`;\n    }\n  } else {\n    texto = en\n      ? `Quick follow-up on your open quotes:\\n` + orcs.map(linha).join('\\n') + `\\nAny updates? Tell me per client, e.g. '${orcs[0].cliente_final} approved'.`\n      : `Follow-up dos teus orcamentos em aberto:\\n` + orcs.map(linha).join('\\n') + `\\nTeve retorno de algum? Me fala por cliente, tipo '${orcs[0].cliente_final} aprovou' ou 'recusou'.`;\n  }\n  out.push({ json: {\n    number: dono,\n    texto,\n    memoria_sql: \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + esc(texto) + \"', '\" + esc(dono) + \"');\"\n  } });\n}\nreturn out;\n"
+   },
+   "id": "preparar-msgs",
+   "name": "Preparar Mensagens",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    880,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://engsolucao.uazapi.com/send/text",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "token",
+       "value": "__GIULIA_UAZAPI_TOKEN__"
+      },
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ number: $json.number, text: $json.texto }) }}",
+    "options": {
+     "timeout": 30000,
+     "response": {
+      "response": {
+       "neverError": true
+      }
+     }
+    }
+   },
+   "id": "enviar-followup",
+   "name": "Enviar Followup UAZAPI",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1100,
+    300
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 3000
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $('Preparar Mensagens').all()[$itemIndex].json.memoria_sql }}",
+    "options": {}
+   },
+   "id": "salvar-memoria-fu",
+   "name": "Salvar Memoria Followup",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    1320,
+    300
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
   }
+ ],
+ "connections": {
+  "Cron Horario": {
+   "main": [
+    [
+     {
+      "node": "Montar SQL Claim",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook manual": {
+   "main": [
+    [
+     {
+      "node": "Montar SQL Claim",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar SQL Claim": {
+   "main": [
+    [
+     {
+      "node": "Carregar Alvos",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Carregar Alvos": {
+   "main": [
+    [
+     {
+      "node": "Preparar Mensagens",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Preparar Mensagens": {
+   "main": [
+    [
+     {
+      "node": "Enviar Followup UAZAPI",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar Followup UAZAPI": {
+   "main": [
+    [
+     {
+      "node": "Salvar Memoria Followup",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "ltVUUCOCDYKMmtnT"
+ }
 }
