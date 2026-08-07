@@ -169,7 +169,10 @@
      "name": "OpenAI Julian"
     }
    },
-   "continueOnFail": true
+   "continueOnFail": true,
+   "retryOnFail": true,
+   "maxTries": 2,
+   "waitBetweenTries": 2000
   },
   {
    "parameters": {
@@ -334,7 +337,11 @@
    "position": [
     2040,
     400
-   ]
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 2000,
+   "onError": "continueRegularOutput"
   },
   {
    "parameters": {
