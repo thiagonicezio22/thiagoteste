@@ -14,6 +14,7 @@ flash/pro). O dono é Thiago (5511910441709).
   EXCLUSIVO do número do Thiago (gate em 3 camadas; nunca afrouxar).
 - **docs/MANUAL-IA-FINANCEIRO.md** — regras das 4 planilhas dele.
 - **docs/TRIALS-ACESSO.md** — trials de pilotos e modo eco.
+- **docs/FEATURE-EMAIL.md** — email contato@thiagonicezio.com (só Thiago).
 
 ## Regras de ouro do projeto
 
