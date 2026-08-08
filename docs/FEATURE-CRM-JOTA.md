@@ -39,3 +39,21 @@ completa uma vez** — o import 2.0 enriquece tudo sem duplicar.
 - Exportar a base em Excel (motor premium já existe).
 - Limpeza das ~150 pessoas da janela LLM de 16/07 (criado_em <
   2026-07-17 10:00) após o reenvio confirmar a base.
+
+## Módulo Expedições (07/08, 2ª onda — testado, aguardando liberação)
+
+Tabelas `giulia_expedicoes` + `giulia_expedicao_inscritos` (migração 30).
+Ações (prompt Jota + Thiago): `criar_expedicao`, `listar_expedicoes`
+(ocupação + contagem regressiva), `inscrever_expedicao` (pessoa OU
+"família do fulano" — puxa piloto + acompanhantes vinculados da base,
+copia tipo/telefone; exige match único; avisa lotação/últimas vagas),
+`lista_inscritos` (✅/⬜ pagos + telefones), `marcar_pago_expedicao`,
+`cancelar_inscricao`. Briefing (WF07): seção "Expedições chegando" com
+dias faltando/inscritos/pagos (janela 60 dias). Extra: mensagem de
+parabéns pronta pra encaminhar (via prompt, assinada com o negócio do
+dono) e 🎉 em idade redonda.
+
+Bateria 07/08: 9/9 — criar, inscrever família (+3), total/vagas com
+aviso de lotação, dedupe honesto, pago, cancelar, listagem com countdown,
+subquery do briefing, parabéns. Corrigidos na bateria: total que não via
+as próprias inserções (snapshot) e telefone sem máscara na lista.
