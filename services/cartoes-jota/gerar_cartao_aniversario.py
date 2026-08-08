@@ -9,6 +9,8 @@ AZUL = (63, 132, 213)      # azul OffRoad
 BRANCO = (240, 244, 249)
 CINZA = (150, 165, 185)
 PRETO = (10, 14, 20)
+NEON = (57, 255, 20)       # verde neon off-road
+NEON_ESC = (30, 160, 20)
 
 W = H = 1200
 img = Image.new('RGB', (W, H), NAVY)
@@ -26,8 +28,9 @@ def hazard(y0, altura):
     faixa = Image.new('RGB', (W + 80, altura), PRETO)
     fd = ImageDraw.Draw(faixa)
     passo = 46
-    for x in range(-altura, W + 120, passo):
-        fd.polygon([(x, altura), (x + altura, 0), (x + altura + passo // 2, 0), (x + passo // 2, altura)], fill=AZUL)
+    for idx, x in enumerate(range(-altura, W + 120, passo)):
+        cor = NEON if idx % 3 == 2 else AZUL
+        fd.polygon([(x, altura), (x + altura, 0), (x + altura + passo // 2, 0), (x + passo // 2, altura)], fill=cor)
     img.paste(faixa.crop((40, 0, W + 40, altura)), (0, y0))
 
 hazard(0, 26)
@@ -59,18 +62,30 @@ while True:
     if d.textlength("ANIVERSÁRIO!", font=f_tit) <= W - 150: break
     tam -= 4
 d.text((72, 340), "FELIZ", font=f_tit, fill=BRANCO)
-d.text((72, 340 + tam + 18), "ANIVERSÁRIO!", font=f_tit, fill=AZUL)
+# gradiente horizontal azul -> neon aplicado via mascara do texto
+txt2 = "ANIVERSÁRIO!"
+w2 = int(d.textlength(txt2, font=f_tit)) + 8
+h2 = tam + 40
+mask = Image.new('L', (w2, h2), 0)
+ImageDraw.Draw(mask).text((0, 0), txt2, font=f_tit, fill=255)
+grad = Image.new('RGB', (w2, h2))
+gd = ImageDraw.Draw(grad)
+for x in range(w2):
+    t = x / max(1, w2 - 1)
+    cor = tuple(int(AZUL[i] + (NEON[i] - AZUL[i]) * t) for i in range(3))
+    gd.line([(x, 0), (x, h2)], fill=cor)
+img.paste(grad, (72, 340 + tam + 18), mask)
 
 # ---- carimbo tracejado (estilo TEMPORADA 2026) ----
 bx, by, bw, bh = 72, 700, 560, 78
 for i in range(0, bw, 18):
-    d.line([(bx + i, by), (bx + min(i + 10, bw), by)], fill=AZUL, width=4)
-    d.line([(bx + i, by + bh), (bx + min(i + 10, bw), by + bh)], fill=AZUL, width=4)
+    d.line([(bx + i, by), (bx + min(i + 10, bw), by)], fill=NEON, width=4)
+    d.line([(bx + i, by + bh), (bx + min(i + 10, bw), by + bh)], fill=NEON, width=4)
 for i in range(0, bh, 18):
-    d.line([(bx, by + i), (bx, by + min(i + 10, bh)), ], fill=AZUL, width=4)
-    d.line([(bx + bw, by + i), (bx + bw, by + min(i + 10, bh))], fill=AZUL, width=4)
+    d.line([(bx, by + i), (bx, by + min(i + 10, bh)), ], fill=NEON, width=4)
+    d.line([(bx + bw, by + i), (bx + bw, by + min(i + 10, bh))], fill=NEON, width=4)
 f_car = fonte(MONO_B, 40)
-d.text((bx + 38, by + 18), "KM +1 · NOVA JORNADA", font=f_car, fill=AZUL)
+d.text((bx + 38, by + 18), "KM +1 · NOVA JORNADA", font=f_car, fill=NEON)
 
 # ---- mensagem ----
 f_msg = fonte(SANS, 40)
@@ -82,6 +97,7 @@ d.text((72, 962), "o 4x4 alcança.", font=f_msg, fill=BRANCO)
 f_ass = fonte(MONO_B, 30)
 ass = "— EQUIPE JOTA EXPEDIÇÕES OFF-ROAD"
 d.text((72, 1075), ass, font=f_ass, fill=AZUL)
+d.line([(72, 1058), (352, 1058)], fill=NEON, width=5)
 
 img.save('cartao-aniversario-jota.png', optimize=True)
 print('OK cartao-aniversario-jota.png', img.size)

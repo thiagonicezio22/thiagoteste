@@ -70,3 +70,18 @@ assinatura do negócio) — pronto pra encaminhar. Roteador ganhou o tipo
 CARTAO (Carregar Cartao → Tem Cartao? → Enviar Cartao UAZAPI). Testado
 e2e: imagem + legenda entregues. Mesmo pipeline serve pra próximas artes
 (voucher, capa de expedição, save-the-date).
+
+## Artes dinâmicas em PDF + cartão v2 neon (07/08, 4ª onda)
+
+- Cartão de aniversário **v2**: verde neon mesclado (gradiente azul→neon
+  no título, faixas alternadas, carimbo neon); legenda SEMPRE assinada
+  "Equipe Jota Expedições Off-Road" (prompt + fallback determinístico).
+- **capa_expedicao**: PDF de divulgação gerado em runtime pelo motor dos
+  orçamentos — fundo JPEG da marca (giulia_config CAPA_EXP_BG/LAYOUT) +
+  nome, destino, data com countdown, vagas livres e valor da expedição.
+- **voucher_inscricao**: PDF por inscrito com nome, expedição, data e
+  status do pagamento (CONFIRMADA-PAGA / RESERVADO).
+- Roteador tipo ARTE: Executar Arte SQL → Gerar Arte PDF (pdf-writer
+  embutido) → Enviar Arte UAZAPI (documento) / aviso quando não achar.
+- Testado e2e: os 2 PDFs gerados, entregues e conferidos visualmente
+  (render). WinAnsi: artes sem emoji no PDF (legendas podem ter).
