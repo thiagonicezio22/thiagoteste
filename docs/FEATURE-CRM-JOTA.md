@@ -57,3 +57,16 @@ Bateria 07/08: 9/9 — criar, inscrever família (+3), total/vagas com
 aviso de lotação, dedupe honesto, pago, cancelar, listagem com countdown,
 subquery do briefing, parabéns. Corrigidos na bateria: total que não via
 as próprias inserções (snapshot) e telefone sem máscara na lista.
+
+## Cartão de aniversário visual (07/08, 3ª onda)
+
+Cartão PNG 1200×1200 na identidade da "Proposta de Parceria 2026 OffRoad
+Azul" do Jota (navy + azul, hazard stripes, coordenadas da Canastra,
+carimbo "KM +1", logo hexagonal extraído do PDF dele). Gerador:
+`services/cartoes-jota/gerar_cartao_aniversario.py` (PIL). A arte fica
+em `giulia_config` (chave `CARTAO_ANIV_<dono>`); ação `cartao_parabens`
+manda a IMAGEM no chat do dono com legenda personalizada da IA (nome +
+assinatura do negócio) — pronto pra encaminhar. Roteador ganhou o tipo
+CARTAO (Carregar Cartao → Tem Cartao? → Enviar Cartao UAZAPI). Testado
+e2e: imagem + legenda entregues. Mesmo pipeline serve pra próximas artes
+(voucher, capa de expedição, save-the-date).
