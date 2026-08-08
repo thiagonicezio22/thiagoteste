@@ -85,3 +85,13 @@ e2e: imagem + legenda entregues. Mesmo pipeline serve pra próximas artes
   embutido) → Enviar Arte UAZAPI (documento) / aviso quando não achar.
 - Testado e2e: os 2 PDFs gerados, entregues e conferidos visualmente
   (render). WinAnsi: artes sem emoji no PDF (legendas podem ter).
+
+## Liberação (08/08)
+
+Anúncio completo enviado ao Jota pela assistente (aprovado pelo Thiago):
+relatório novo, busca, painel, módulo expedições, cartão (com exemplo
+visual anexado), capa e voucher — mais o pedido de reenvio da planilha
+completa (o import 2.0 enriquece sem duplicar). Registrado na memória
+da conversa dele. Próximo marco: quando ele reenviar o arquivo, conferir
+a importação e depois limpar as ~150 pessoas suspeitas da janela LLM de
+16/07 (criado_em < 2026-07-17 10:00).
