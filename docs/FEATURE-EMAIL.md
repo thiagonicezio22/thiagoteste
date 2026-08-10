@@ -40,3 +40,17 @@ Gate negativo (dono João AA no webhook) → bloqueado no Preparar Envio.
 - Trocar senha: atualizar as DUAS credenciais no n8n (IMAP
   SPlSrP20IjwICGGH, SMTP jCec0J7EjuErLvg7) e a `giulia_config`.
 - Migração 28: `giulia_emails` + `giulia_email_pendentes`.
+
+
+## Histórico de emails (listar_emails, 10/08)
+
+Ação `listar_emails` (só Thiago): lê `giulia_email_pendentes` (enviados)
+e `giulia_emails` (recebidos) e devolve a lista real — destinatário/
+remetente, assunto, data (SP). Parâmetros `tipo` (enviados|recebidos|
+todos; padrão enviados) e `periodo` (hoje|semana|mes|tudo). Muitos
+gatilhos no prompt ("puxa o histórico de emails", "que emails mandei",
+"meus emails"...) porque o pedido do Thiago não casava com nenhuma ação.
+Gate: outro dono recai em apenas_responder. Testado com 4 formulações +
+recebidos + gate. Registros de teste antigos (assuntos "Teste da
+assistente"/"Visual novo"/"Formatação e acentuação"/"Urgent: Fiber
+boxes...") removidos do log de enviados para não poluir o histórico real.
