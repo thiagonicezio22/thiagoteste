@@ -112,3 +112,37 @@ toca o WF17. Depois da bateria: planilhas restauradas pro estado original
 - WF01: cap de ações extras por mensagem subiu de 3 pra 9 (lista de 10
   tarefas perdia 2 em silêncio) e `adiar_tarefa` entrou na whitelist de
   ações em lote ("É para hoje" só mudava o prazo de 1 tarefa).
+
+
+## Atualização do manual — 20/08/2026 (v2)
+
+Manual mestre substituído (`docs/MANUAL-IA-FINANCEIRO.md`) e re-embutido no
+WF17. Mudanças estruturais:
+
+- **5 planilhas** (eram 4): entram `Horizon Paraguai - Financeiro.xlsx`
+  (3 sócios 30/30/40, base US$) e `Financeiro Pessoal - Thiago.xlsx`
+  (Entradas/Saídas/Dívidas). `EPDM - Gramoterra e Coral Home.xlsx` passa a
+  OBSOLETO oficial.
+- **Horizon Brasil**: saldo devedor agora é **equalização 50/50**
+  ((aportes André − aportes Thiago) ÷ 2 − devolvido), câmbio 5,20,
+  contabilidade 250/mês, `Acerto Sócios` **B20** (era B18).
+- **Obras**: aba **Rei dos Motores** no lugar de "Obra em Branco 2";
+  cronograma com E21:E23 e resultado I56:I64.
+- FIN_CONFIG reescrito com as zonas de leitura/escrita das 5 planilhas
+  (Paraguai: Aportes 12–56, Despesas 12–61; Pessoal: Entradas 12–111,
+  Saídas 12–211, Dívidas 12–41 com C/G fórmulas).
+
+### Controle de versão da cópia (migração 31)
+
+Coluna `giulia_planilhas_fin.defasada`. Quando o Thiago edita a planilha
+por fora, a cópia do sistema fica marcada e:
+- o prompt recebe um **inventário de arquivos** (registrado/em dia,
+  registrado/defasado, não recebido);
+- o plano sai com aviso de defasagem e a aplicação avisa de novo;
+- arquivo do manual ainda não recebido → resposta clara pedindo o .xlsx,
+  em vez de erro técnico.
+
+Estado em 21/08: lojao, horizon e obras marcados **defasados**; paraguai e
+pessoal **não recebidos**. Teste real confirmou: a IA já usa a regra nova
+de equalização, mas com os números da cópia velha — só o reenvio dos
+arquivos fecha a lacuna.
