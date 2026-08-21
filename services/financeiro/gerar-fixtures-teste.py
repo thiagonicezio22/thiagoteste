@@ -70,8 +70,13 @@ def lojao(caminho):
         vendas.cell(row=l, column=10, value=f'=G{l}-I{l}')
         vendas.cell(row=l, column=11, value=f'=IF(F{l}=0,0,J{l}/F{l})')
         vendas.cell(row=l, column=12, value=f'=IF(B{l}="","",TEXT(B{l},"MMM/YY"))')
-    # linhas 31..71 vazias mas ja com formulas H..L e estilo (igual ao arquivo real)
+    # linhas 31..71 vazias mas ja com formulas H..L e estilo (igual ao arquivo real).
+    # As celulas de data/moeda ja carregam o number_format: e isso que faz um serial
+    # gravado depois pelo xlsx-patch aparecer como DATA no Excel.
     for l in range(31, 72):
+        vendas.cell(row=l, column=2).number_format = 'DD/MM/YYYY'
+        vendas.cell(row=l, column=6).number_format = '#,##0.00'
+        vendas.cell(row=l, column=7).number_format = '#,##0.00'
         vendas.cell(row=l, column=8, value=f'=IF(OR(F{l}="",G{l}=""),"",F{l}-G{l})')
         vendas.cell(row=l, column=9, value=f"=IFERROR(VLOOKUP(E{l},'Custos ENG'!$B$9:$D$51,3,FALSE),0)")
         vendas.cell(row=l, column=10, value=f'=IF(G{l}="","",G{l}-I{l})')

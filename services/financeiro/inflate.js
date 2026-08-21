@@ -441,12 +441,13 @@ function converterParaStore(bufZip) {
 
   const partes = [];
   let off = 0;
-  const novosOffsets = new Map();
 
-  // headers locais na ordem FISICA original do arquivo (nao a do central directory)
+  // headers locais na ordem FISICA original do arquivo (nao a do central directory).
+  // O novo offset vai no proprio objeto da entrada, e nao num Map por nome: zip aceita
+  // nomes repetidos e um Map faria as duas entradas apontarem para o mesmo lugar.
   const ordemLocal = entradas.slice().sort((a, b) => a.lho - b.lho);
   for (const e of ordemLocal) {
-    novosOffsets.set(e.nome, off);
+    e.novoOffset = off;
     const lh = Buffer.from(e.cabecalhoLocal);
     lh.writeUInt16LE(lh.readUInt16LE(6) & ~0x08, 6); // desliga bit 3: sem data descriptor
     lh.writeUInt16LE(0, 8);                          // metodo = STORE
@@ -466,7 +467,7 @@ function converterParaStore(bufZip) {
     cd.writeUInt32LE(e.crc, 16);
     cd.writeUInt32LE(e.conteudo.length, 20);
     cd.writeUInt32LE(e.conteudo.length, 24);
-    cd.writeUInt32LE(novosOffsets.get(e.nome), 42);
+    cd.writeUInt32LE(e.novoOffset, 42);
     partes.push(cd);
     off += cd.length;
   }
@@ -730,24 +731,31 @@ for nome, orig, conv in alvos:
         ok(j.abas_iguais && j.celulas_divergentes === 0,
           `${j.arquivo}: ${j.abas.length} abas, ${fmt(j.celulas_comparadas)} celulas identicas ao original`,
           `${j.formulas} formulas preservadas | abas: ${j.abas.join(', ')}`);
-        ok(JSON.stringify(j.graficos) === JSON.stringify(j.graficos_orig) && Object.keys(j.graficos).length > 0,
-          `${j.arquivo}: graficos preservados`, JSON.stringify(j.graficos));
+        // contagem esperada por arquivo (o epdm-antigo, espelho antigo, nao tem grafico)
+        const esperado = { lojao: { DASHBOARD: 1 }, horizon: { Dashboard: 1 },
+          'controle-obras': { 'Resumo Geral': 2 }, 'epdm-antigo': {} }[j.arquivo];
+        ok(JSON.stringify(j.graficos) === JSON.stringify(j.graficos_orig) &&
+           JSON.stringify(j.graficos) === JSON.stringify(esperado),
+          `${j.arquivo}: graficos preservados`,
+          `${JSON.stringify(j.graficos)} (esperado ${JSON.stringify(esperado)})`);
       }
     }
     // zipfile: CRC integro e 100% STORE
     const rz = rodarPython(`
-import zipfile
+import zipfile, json
 for nome in ${JSON.stringify(ARQUIVOS)}:
     p = r'${DIR}/' + nome + '.js-store.xlsx'
     z = zipfile.ZipFile(p)
-    ruim = z.testzip()
-    print(nome, 'crc_ok' if ruim is None else 'CRC RUIM ' + str(ruim),
-          'metodos', sorted(set(i.compress_type for i in z.infolist())),
-          'entradas', len(z.infolist()))
+    metodos = sorted(set(i.compress_type for i in z.infolist()))
+    print(json.dumps({'nome': nome, 'crc_ok': z.testzip() is None,
+                      'so_store': metodos == [0], 'metodos': metodos,
+                      'entradas': len(z.infolist())}))
 `);
-    ok(rz.status === 0 && !rz.out.includes('CRC RUIM') && !/metodos \[.*8/.test(rz.out),
-      'zipfile: CRC integro e 100% STORE nos 5 convertidos');
-    console.log('    (zipfile) ' + rz.out.replace(/\n/g, '\n    (zipfile) '));
+    const linhasZip = rz.status === 0 ? rz.out.split('\n').map((l) => JSON.parse(l)) : [];
+    ok(rz.status === 0 && linhasZip.length === ARQUIVOS.length &&
+       linhasZip.every((j) => j.crc_ok && j.so_store),
+      'zipfile: CRC integro e 100% STORE nos 5 convertidos',
+      linhasZip.map((j) => `${j.nome}:${j.entradas} entradas`).join(' | ') || rz.err.slice(0, 200));
   }
 
   // =========================================================================
@@ -995,6 +1003,88 @@ print('ok')
     if (bz.status === 0) {
       esperaErro('metodo bzip2 (12) recusado', () => converterParaStore(carregar('_bzip.xlsx')), 'metodo de compressao');
     }
+  }
+
+  // =========================================================================
+  // (i) data descriptor (flag bit 3): zips gravados em streaming deixam
+  //     crc/tamanhos zerados no local header. Muito comum em geradores de xlsx.
+  // =========================================================================
+  console.log('\n[i. zip com data descriptor (flag bit 3)]');
+  {
+    const r = rodarPython(`
+import zipfile, zlib, struct, os
+src = r'${path.join(DIR, 'lojao.xlsx')}'
+dst = r'${path.join(DIR, '_descriptor.xlsx')}'
+zin = zipfile.ZipFile(src)
+itens = [(i.filename, zin.read(i.filename)) for i in zin.infolist()]
+with open(dst, 'wb') as fh:
+    centrais = []
+    for fn, raw in itens:
+        co = zlib.compressobj(6, zlib.DEFLATED, -15)
+        comp = co.compress(raw) + co.flush()
+        crc = zlib.crc32(raw) & 0xffffffff
+        nb = fn.encode('utf-8')
+        off = fh.tell()
+        # flag bit 3 ligado: crc e tamanhos ZERADOS no local header
+        fh.write(struct.pack('<IHHHHHIIIHH', 0x04034b50, 20, 0x08, 8, 0, 0x5a21, 0, 0, 0, len(nb), 0))
+        fh.write(nb); fh.write(comp)
+        # data descriptor depois dos dados (com assinatura opcional)
+        fh.write(struct.pack('<IIII', 0x08074b50, crc, len(comp), len(raw)))
+        centrais.append(struct.pack('<IHHHHHHIIIHHHHHII', 0x02014b50, 20, 20, 0x08, 8, 0, 0x5a21,
+                                    crc, len(comp), len(raw), len(nb), 0, 0, 0, 0, 0, off) + nb)
+    ini = fh.tell()
+    for c in centrais: fh.write(c)
+    tam = fh.tell() - ini
+    fh.write(struct.pack('<IHHHHIIH', 0x06054b50, 0, 0, len(centrais), len(centrais), tam, ini, 0))
+z = zipfile.ZipFile(dst)
+print('flags', sorted(set(i.flag_bits & 0x08 for i in z.infolist())), 'crc_ok', z.testzip() is None)
+`);
+    ok(r.status === 0 && r.out.includes('flags [8]') && r.out.includes('crc_ok True'),
+      'gerou zip com data descriptor', r.out || r.err.split('\n').slice(-2).join(' '));
+    if (r.status === 0) {
+      const conv = converterParaStore(carregar('_descriptor.xlsx'));
+      const gab = new Map(entradasStore(carregar('lojao.store.xlsx')).map((e) => [e.nome, e]));
+      const saiu = entradasStore(conv);
+      ok(saiu.length === gab.size && saiu.every((e) => e.metodo === 0 && e.dados.equals(gab.get(e.nome).dados)),
+        'conteudo correto apesar do local header zerado', `${saiu.length} entradas`);
+      ok(saiu.every((e) => e.crc !== 0 && e.uncompSize === gab.get(e.nome).uncompSize),
+        'saida com crc/tamanhos reais e bit 3 desligado');
+      const patch = require('./xlsx-patch.js');
+      ok(patch.lerEntradas(conv).size === saiu.length, 'xlsx-patch aceita a saida');
+    }
+  }
+
+  // =========================================================================
+  // (j) sandbox n8n: sem require, sem process, sem fs, sem zlib — so Buffer.
+  //     Reproduz o Code node onde o modulo vai rodar de verdade.
+  // =========================================================================
+  console.log('\n[j. sandbox estilo n8n Code node]');
+  {
+    const vm = require('vm');
+    const fonte = fs.readFileSync(__filename, 'utf8').split('if (require.main === module)')[0];
+    const ctx = { Buffer, module: { exports: {} } };
+    ctx.exports = ctx.module.exports;
+    vm.createContext(ctx);
+    vm.runInContext(fonte, ctx, { filename: 'inflate-sandbox.js' });
+
+    ok(ctx.require === undefined && ctx.process === undefined &&
+       ctx.fs === undefined && ctx.zlib === undefined,
+      'sandbox sem require/process/fs/zlib');
+    const api = ctx.module.exports;
+    ok(typeof api.inflateRaw === 'function' && typeof api.converterParaStore === 'function',
+      'modulo carrega sem nenhum require', Object.keys(api).join(', '));
+
+    let ruins = 0, entradas = 0;
+    for (const nome of PRINCIPAIS) {
+      const conv = api.converterParaStore(carregar(nome + '.xlsx'));
+      const gab = new Map(entradasStore(carregar(nome + '.store.xlsx')).map((e) => [e.nome, e]));
+      for (const e of entradasStore(conv)) {
+        entradas++;
+        if (e.metodo !== 0 || !e.dados.equals(gab.get(e.nome).dados)) ruins++;
+      }
+    }
+    ok(ruins === 0, 'converterParaStore roda identico dentro do sandbox',
+      `${entradas} entradas em ${PRINCIPAIS.length} arquivos, ${ruins} divergencias`);
   }
 
   console.log(falhas === 0 ? '\nTODOS OS TESTES PASSARAM' : `\n${falhas} TESTE(S) FALHARAM`);

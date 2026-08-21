@@ -146,3 +146,36 @@ Estado em 21/08: lojao, horizon e obras marcados **defasados**; paraguai e
 pessoal **não recebidos**. Teste real confirmou: a IA já usa a regra nova
 de equalização, mas com os números da cópia velha — só o reenvio dos
 arquivos fecha a lacuna.
+
+
+## Upload de planilha pelo WhatsApp (21/08)
+
+Fecha o ciclo: o Thiago edita as planilhas no computador e agora **manda o
+.xlsx no WhatsApp** — a assistente registra sozinha.
+
+- **`services/financeiro/inflate.js`**: INFLATE (RFC 1951) em JS puro —
+  stored/fixed/dynamic Huffman, back-reference sobreposta, data descriptor.
+  Existe porque o Excel salva xlsx com DEFLATE e o n8n bloqueia `zlib`.
+  `converterParaStore()` transforma o xlsx do Excel no formato STORE que o
+  motor de edição exige. Validação: 3.456 casos contra o `zlib` nativo
+  (0 divergências), 200 zips (10 níveis × 5 estratégias), conteúdo byte a
+  byte vs gabarito Python, CRC contra o header original, openpyxl
+  (fórmulas + gráficos), sandbox sem require/fs/zlib, 6 casos de corrupção.
+  Tempo: 2–3 ms nos arquivos reais, 46 ms num de 5 MB.
+  **Verificação cruzada independente** (Python zipfile + openpyxl, fora do
+  harness do autor): 4/4 arquivos idênticos, 0 células divergentes.
+- **WF17 modo `registrar`**: recebe base64, converte para STORE, **detecta
+  qual das 5 planilhas é pelas abas** (≥60% de match; a legenda do Thiago é
+  só desempate), guarda backup da versão anterior, faz upsert com
+  `defasada = false` e responde com abas encontradas/faltando.
+- **WF01 ação `atualizar_planilha_fin`**: pega o binário da mensagem
+  (best-effort, sem mexer na topologia do ramo de planilha para não afetar
+  a importação do CRM), roteia como FINANCEIRO modo registrar. Sem arquivo
+  na mensagem, responde pedindo o documento em vez de chamar o WF17.
+
+Teste real: `lojao.xlsx` comprimido (22 KB base64) → registrado em 8 s,
+5/5 abas, backup criado, fórmulas e gráfico preservados no que ficou no
+banco. Estado de teste revertido depois (as 3 seguem marcadas defasadas).
+**Não testado ainda**: a extração do binário de uma mensagem real do
+WhatsApp (depende do primeiro envio do Thiago) — se vier vazia, a resposta
+já orienta a reenviar como documento.
