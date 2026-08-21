@@ -486,5 +486,517 @@ module.exports = { inflateRaw, converterParaStore, crc32 };
 // Harness de teste (roda com: node inflate.js) — fs/child_process SO aqui dentro.
 // ---------------------------------------------------------------------------
 if (require.main === module) {
-  require('./inflate.test.js')(module.exports);
+  const fs = require('fs');
+  const path = require('path');
+  const zlib = require('zlib'); // SO no harness: oraculo independente. Producao nunca toca nisso.
+  const { spawnSync } = require('child_process');
+
+  const DIR = process.env.FIN_DIR ||
+    '/tmp/claude-0/-home-user-thiagoteste/46e0e517-f29e-5e6f-b738-f2e0a8076033/scratchpad/fin';
+  const AQUI = __dirname;
+
+  let falhas = 0;
+  function ok(cond, rotulo, detalhe) {
+    if (cond) console.log(`  PASS ${rotulo}${detalhe ? ' — ' + detalhe : ''}`);
+    else { falhas++; console.log(`  FAIL ${rotulo}${detalhe ? ' — ' + detalhe : ''}`); }
+  }
+  function carregar(nome) { return fs.readFileSync(path.join(DIR, nome)); }
+  function rodarPython(codigo) {
+    const r = spawnSync('python3', ['-'], { input: codigo, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    return { out: (r.stdout || '').trim(), err: (r.stderr || '').trim(), status: r.status };
+  }
+  const fmt = (n) => n.toLocaleString('pt-BR');
+
+  // Leitor de zip STORE independente (nao usa o codigo em teste) para conferir a saida.
+  function entradasStore(buf) {
+    let eocd = -1;
+    for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65535); i--) {
+      if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('EOCD nao encontrado');
+    const total = buf.readUInt16LE(eocd + 10);
+    let p = buf.readUInt32LE(eocd + 16);
+    const lista = [];
+    for (let i = 0; i < total; i++) {
+      const metodo = buf.readUInt16LE(p + 10);
+      const crc = buf.readUInt32LE(p + 16);
+      const compSize = buf.readUInt32LE(p + 20);
+      const uncompSize = buf.readUInt32LE(p + 24);
+      const nameLen = buf.readUInt16LE(p + 28);
+      const extraLen = buf.readUInt16LE(p + 30);
+      const commentLen = buf.readUInt16LE(p + 32);
+      const lho = buf.readUInt32LE(p + 42);
+      const nome = buf.toString('utf8', p + 46, p + 46 + nameLen);
+      const dataOff = lho + 30 + buf.readUInt16LE(lho + 26) + buf.readUInt16LE(lho + 28);
+      lista.push({
+        nome, metodo, crc, compSize, uncompSize, lho,
+        dados: buf.subarray(dataOff, dataOff + compSize),
+        hora: buf.readUInt16LE(p + 12), data: buf.readUInt16LE(p + 14),
+        externo: buf.readUInt32LE(p + 38),
+      });
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+    return lista;
+  }
+
+  const ARQUIVOS = ['lojao', 'horizon', 'controle-obras', 'epdm-antigo', 'stress-grande'];
+  const PRINCIPAIS = ['lojao', 'horizon', 'controle-obras', 'epdm-antigo'];
+
+  // ---- fixtures: gera se nao existirem (o scratchpad e reciclado periodicamente) ----
+  if (!ARQUIVOS.every((n) => fs.existsSync(path.join(DIR, n + '.xlsx')) &&
+                             fs.existsSync(path.join(DIR, n + '.store.xlsx')))) {
+    console.log('== Gerando fixtures (openpyxl) ==');
+    const g = spawnSync('python3', [path.join(AQUI, 'gerar-fixtures-teste.py'), DIR], { encoding: 'utf8' });
+    if (g.status !== 0) {
+      console.log('NAO FOI POSSIVEL GERAR OS FIXTURES:\n' + (g.stderr || ''));
+      process.exit(1);
+    }
+    console.log(g.stdout.trim().split('\n').map((l) => '  ' + l).join('\n'));
+  }
+
+  console.log('\n== Testes inflate (RFC 1951) ==');
+
+  // =========================================================================
+  // (0) Conformidade do inflateRaw contra o zlib (oraculo independente).
+  //     Cobre BTYPE 00/01/10, todas as estrategias e sobreposicao patologica.
+  // =========================================================================
+  console.log('[0. conformidade RFC 1951 vs zlib]');
+  {
+    const estrategias = [
+      ['DEFAULT', zlib.constants.Z_DEFAULT_STRATEGY], ['FILTERED', zlib.constants.Z_FILTERED],
+      ['HUFFMAN_ONLY', zlib.constants.Z_HUFFMAN_ONLY], ['RLE', zlib.constants.Z_RLE],
+      ['FIXED', zlib.constants.Z_FIXED],
+    ];
+    let s = 12345;
+    const prng = () => (s = (s * 1103515245 + 12345) >>> 0);
+    const ruido = Buffer.alloc(300000);
+    for (let i = 0; i < ruido.length; i++) ruido[i] = (prng() >>> 16) & 255;
+
+    const amostras = {
+      vazio: Buffer.alloc(0),
+      umByte: Buffer.from([0x41]),
+      zeros64k: Buffer.alloc(65536),                                  // distancia 1: sobreposicao maxima
+      rle100k: Buffer.alloc(100000, 0x5A),
+      repetido: Buffer.from('abcabcabc'.repeat(20000)),               // sobreposicao dist=3
+      xmlish: Buffer.from('<row r="12"><c r="A12" s="5"><v>1</v></c></row>'.repeat(4000)),
+      utf8: Buffer.from('GERADOR DE OZÔNIO — André, Maricá, Configurações. '.repeat(3000), 'utf8'),
+      ruido,                                                          // incompressivel: forca blocos stored
+    };
+
+    let casos = 0, ruins = 0;
+    const testar = (dados, opts) => {
+      casos++;
+      const comp = zlib.deflateRawSync(dados, opts);
+      try {
+        const saida = inflateRaw(comp, dados.length);
+        if (!Buffer.from(saida).equals(Buffer.from(dados))) ruins++;
+      } catch (e) { ruins++; }
+    };
+    for (const dados of Object.values(amostras)) {
+      for (let nivel = 0; nivel <= 9; nivel++) {
+        for (const [, est] of estrategias) testar(dados, { level: nivel, strategy: est });
+      }
+      for (const wb of [9, 10, 12, 15]) testar(dados, { windowBits: wb, level: 9 });
+      for (const ml of [1, 4, 9]) testar(dados, { memLevel: ml, level: 9 });
+    }
+    for (let t = 0; t < 3000; t++) {   // fuzz: bordas de bloco e arvores incompletas
+      const n = t % 300;
+      const b = Buffer.alloc(n);
+      for (let i = 0; i < n; i++) b[i] = (t % 3 === 0) ? ((prng() >>> 16) & 3) : ((prng() >>> 16) & 255);
+      testar(b, { level: t % 10, strategy: estrategias[t % 5][1] });
+    }
+    ok(ruins === 0, 'inflateRaw == zlib.inflateRaw', `${fmt(casos)} casos (niveis 0-9 x 5 estrategias x 8 perfis + windowBits/memLevel + 3000 fuzz), ${ruins} divergencias`);
+
+    // blocos stored explicitos (BTYPE=00) e Huffman fixo (BTYPE=01) confirmados no fluxo
+    const soStored = zlib.deflateRawSync(ruido.subarray(0, 200000), { level: 0 });
+    ok((soStored[0] & 0x06) === 0, 'BTYPE=00 (stored) exercitado', `primeiro bloco tipo ${(soStored[0] >> 1) & 3}`);
+    ok(inflateRaw(soStored, 200000).equals(ruido.subarray(0, 200000)), 'bloco stored 200.000 bytes exato');
+    const soFixo = zlib.deflateRawSync(Buffer.from('aaaa bbbb aaaa bbbb'), { strategy: zlib.constants.Z_FIXED });
+    ok(((soFixo[0] >> 1) & 3) === 1, 'BTYPE=01 (huffman fixo) exercitado', `tipo ${(soFixo[0] >> 1) & 3}`);
+    const dinamico = zlib.deflateRawSync(amostras.xmlish, { level: 9 });
+    ok(((dinamico[0] >> 1) & 3) === 2, 'BTYPE=10 (huffman dinamico) exercitado', `tipo ${(dinamico[0] >> 1) & 3}`);
+
+    // sobreposicao: dist < comprimento tem que copiar byte a byte
+    const overlap = inflateRaw(zlib.deflateRawSync(Buffer.from('XY'.repeat(50000))), 100000);
+    ok(overlap.length === 100000 && overlap.toString().startsWith('XYXYXY') &&
+       overlap[99998] === 0x58 && overlap[99999] === 0x59, 'back-reference com sobreposicao (dist=2 < len)');
+  }
+
+  // =========================================================================
+  // (a) converterParaStore: conteudo de CADA entrada identico ao gabarito Python
+  // =========================================================================
+  console.log('\n[a. conteudo vs gabarito .store.xlsx (byte a byte)]');
+  const convertidos = {};
+  for (const nome of ARQUIVOS) {
+    const bufDeflate = carregar(nome + '.xlsx');
+    const bufGabarito = carregar(nome + '.store.xlsx');
+    const saida = converterParaStore(bufDeflate);
+    convertidos[nome] = saida;
+    fs.writeFileSync(path.join(DIR, nome + '.js-store.xlsx'), saida);
+
+    const gab = entradasStore(bufGabarito);
+    const nova = entradasStore(saida);
+    const orig = entradasStore(bufDeflate);
+
+    const mapaGab = new Map(gab.map((e) => [e.nome, e]));
+    let divergentes = [];
+    let bytesConferidos = 0;
+    for (const e of nova) {
+      const g = mapaGab.get(e.nome);
+      if (!g) { divergentes.push(e.nome + ' (ausente no gabarito)'); continue; }
+      if (!e.dados.equals(g.dados)) divergentes.push(e.nome);
+      else bytesConferidos += e.dados.length;
+    }
+    const ordemIgual = JSON.stringify(nova.map((e) => e.nome)) === JSON.stringify(orig.map((e) => e.nome));
+    const todosStore = nova.every((e) => e.metodo === 0);
+    ok(divergentes.length === 0 && nova.length === gab.length && ordemIgual && todosStore,
+      `${nome}: ${nova.length} entradas identicas ao gabarito`,
+      `${fmt(bytesConferidos)} bytes conferidos${divergentes.length ? ', divergem: ' + divergentes.join(',') : ''}`);
+
+    // metadados preservados (data/hora, atributos externos)
+    const mapaOrig = new Map(orig.map((e) => [e.nome, e]));
+    const metaOk = nova.every((e) => {
+      const o = mapaOrig.get(e.nome);
+      return o && o.hora === e.hora && o.data === e.data && o.externo === e.externo;
+    });
+    ok(metaOk, `${nome}: data/hora e atributos externos preservados`);
+  }
+
+  // =========================================================================
+  // (b) CRC32 de cada entrada da saida == CRC do header ORIGINAL
+  // =========================================================================
+  console.log('\n[b. CRC32 vs header original (prova independente do inflate)]');
+  for (const nome of ARQUIVOS) {
+    const orig = entradasStore(carregar(nome + '.xlsx'));
+    const nova = entradasStore(convertidos[nome]);
+    const mapaOrig = new Map(orig.map((e) => [e.nome, e]));
+    let ruins = [];
+    for (const e of nova) {
+      const o = mapaOrig.get(e.nome);
+      const calculado = crc32(e.dados);
+      if (calculado !== o.crc) ruins.push(`${e.nome}: ${calculado.toString(16)} != ${o.crc.toString(16)}`);
+      if (e.crc !== o.crc) ruins.push(`${e.nome}: header de saida ${e.crc.toString(16)} != ${o.crc.toString(16)}`);
+      if (e.uncompSize !== o.uncompSize) ruins.push(`${e.nome}: tamanho ${e.uncompSize} != ${o.uncompSize}`);
+    }
+    ok(ruins.length === 0, `${nome}: CRC + tamanho de ${nova.length} entradas batem com o original`,
+      ruins.length ? ruins.slice(0, 3).join(' | ') : `ex: ${nova[0].nome} crc=${nova[0].crc.toString(16)}`);
+  }
+
+  // =========================================================================
+  // (c) openpyxl: abas, TODAS as celulas, formulas e graficos
+  // =========================================================================
+  console.log('\n[c. openpyxl: abas, celulas, formulas, graficos]');
+  {
+    const alvos = PRINCIPAIS.map((n) => `(${JSON.stringify(n)}, r'${path.join(DIR, n + '.xlsx')}', r'${path.join(DIR, n + '.js-store.xlsx')}')`).join(',\n  ');
+    const py = `
+import openpyxl, json, warnings
+warnings.simplefilter('ignore')
+alvos = [
+  ${alvos}
+]
+for nome, orig, conv in alvos:
+    a = openpyxl.load_workbook(orig, data_only=False)
+    b = openpyxl.load_workbook(conv, data_only=False)
+    res = {'arquivo': nome}
+    res['abas_iguais'] = a.sheetnames == b.sheetnames
+    res['abas'] = a.sheetnames
+    dif, cels, formulas = 0, 0, 0
+    for s in a.sheetnames:
+        wa, wbb = a[s], b[s]
+        if wa.max_row != wbb.max_row or wa.max_column != wbb.max_column:
+            dif += 1
+            continue
+        for ra, rb in zip(wa.iter_rows(), wbb.iter_rows()):
+            for ca, cb in zip(ra, rb):
+                if ca.value != cb.value or ca.data_type != cb.data_type:
+                    dif += 1
+                if ca.value is not None:
+                    cels += 1
+                    if isinstance(ca.value, str) and ca.value.startswith('='):
+                        formulas += 1
+    res['celulas_divergentes'] = dif
+    res['celulas_comparadas'] = cels
+    res['formulas'] = formulas
+    res['graficos'] = {s: len(b[s]._charts) for s in b.sheetnames if len(b[s]._charts)}
+    res['graficos_orig'] = {s: len(a[s]._charts) for s in a.sheetnames if len(a[s]._charts)}
+    print(json.dumps(res, ensure_ascii=False))
+`;
+    const r = rodarPython(py);
+    if (r.status !== 0) {
+      ok(false, 'openpyxl falhou', r.err.split('\n').slice(-3).join(' | '));
+    } else {
+      for (const linha of r.out.split('\n')) {
+        const j = JSON.parse(linha);
+        ok(j.abas_iguais && j.celulas_divergentes === 0,
+          `${j.arquivo}: ${j.abas.length} abas, ${fmt(j.celulas_comparadas)} celulas identicas ao original`,
+          `${j.formulas} formulas preservadas | abas: ${j.abas.join(', ')}`);
+        ok(JSON.stringify(j.graficos) === JSON.stringify(j.graficos_orig) && Object.keys(j.graficos).length > 0,
+          `${j.arquivo}: graficos preservados`, JSON.stringify(j.graficos));
+      }
+    }
+    // zipfile: CRC integro e 100% STORE
+    const rz = rodarPython(`
+import zipfile
+for nome in ${JSON.stringify(ARQUIVOS)}:
+    p = r'${DIR}/' + nome + '.js-store.xlsx'
+    z = zipfile.ZipFile(p)
+    ruim = z.testzip()
+    print(nome, 'crc_ok' if ruim is None else 'CRC RUIM ' + str(ruim),
+          'metodos', sorted(set(i.compress_type for i in z.infolist())),
+          'entradas', len(z.infolist()))
+`);
+    ok(rz.status === 0 && !rz.out.includes('CRC RUIM') && !/metodos \[.*8/.test(rz.out),
+      'zipfile: CRC integro e 100% STORE nos 5 convertidos');
+    console.log('    (zipfile) ' + rz.out.replace(/\n/g, '\n    (zipfile) '));
+  }
+
+  // =========================================================================
+  // (d) o motor existente aceita a saida (nao pode dar "nao esta em formato STORE")
+  // =========================================================================
+  console.log('\n[d. xlsx-patch.js aceita a saida]');
+  {
+    const patch = require('./xlsx-patch.js');
+    // antes: o motor REJEITA o xlsx comprimido do Excel — este e o problema que resolvemos
+    try {
+      patch.lerEntradas(carregar('lojao.xlsx'));
+      ok(false, 'lerEntradas no xlsx DEFLATE deveria falhar');
+    } catch (e) {
+      ok(e.message.includes('STORE'), 'antes: motor rejeita o xlsx DEFLATE do Excel', e.message);
+    }
+    for (const nome of ARQUIVOS) {
+      try {
+        const ents = patch.lerEntradas(convertidos[nome]);
+        ok(ents.has('xl/workbook.xml') && ents.size > 0,
+          `depois: lerEntradas(${nome}) ok`, `${ents.size} entradas`);
+      } catch (e) {
+        ok(false, `depois: lerEntradas(${nome})`, e.message);
+      }
+    }
+    // lerCelulas de verdade, com acentos no nome da aba e valores conhecidos
+    const v = patch.lerCelulas(convertidos.lojao, 'VENDAS', 'A12:G12');
+    ok(v.A12 && v.A12.valor === 1 && v.D12 && v.D12.valor === 'GERADOR DE OZÔNIO' &&
+       v.C12 && v.C12.valor === '2000017343244900' && v.E12 && v.E12.valor === 3000,
+      'lerCelulas(lojao, VENDAS, A12:G12)', JSON.stringify({ A12: v.A12.valor, C12: v.C12.valor, D12: v.D12.valor, E12: v.E12.valor }));
+    const f = patch.lerCelulas(convertidos.lojao, 'VENDAS', ['H12']);
+    ok(f.H12 && f.H12.tipo === 'formula' && f.H12.formula === 'F12-G12', 'formula lida apos conversao', JSON.stringify(f.H12));
+    const ap = patch.lerCelulas(convertidos.horizon, 'Aportes Sócios', 'A12:E12');
+    ok(ap.B12 && ap.B12.valor === 'Thiago' && ap.E12 && typeof ap.E12.valor === 'number',
+      "lerCelulas(horizon, 'Aportes Sócios') — aba com acento", JSON.stringify({ B12: ap.B12.valor, E12: ap.E12.valor }));
+    const ob = patch.lerCelulas(convertidos['controle-obras'], 'RJ Maricá', ['C8', 'C9']);
+    ok(ob.C8 && ob.C8.valor === 'Sítio Maricá' && ob.C9 && ob.C9.valor === 'Maricá / RJ',
+      "lerCelulas(controle-obras, 'RJ Maricá')", JSON.stringify({ C8: ob.C8.valor, C9: ob.C9.valor }));
+    // o fluxo completo do n8n: Excel manda DEFLATE -> converte -> PATCHA -> le de volta
+    const patchado = patch.patchCelulas(convertidos.lojao, 'VENDAS', [
+      { ref: 'A31', valor: 20, tipo: 'numero' },
+      { ref: 'B31', valor: '28/07/2026', tipo: 'data' },
+      { ref: 'D31', valor: 'GERADOR DE OZÔNIO', tipo: 'texto' },
+    ]);
+    const relido = patch.lerCelulas(patchado, 'VENDAS', 'A31:D31');
+    ok(relido.A31.valor === 20 && relido.B31.valor === 46231 && relido.D31.valor === 'GERADOR DE OZÔNIO',
+      'fluxo completo: DEFLATE -> STORE -> patchCelulas -> releitura',
+      JSON.stringify({ A31: relido.A31.valor, B31: relido.B31.valor, D31: relido.D31.valor }));
+    fs.writeFileSync(path.join(DIR, 'lojao.js-store.patched.xlsx'), patchado);
+    const vp = rodarPython(`
+import openpyxl, datetime, warnings
+warnings.simplefilter('ignore')
+wb = openpyxl.load_workbook(r'${path.join(DIR, 'lojao.js-store.patched.xlsx')}', data_only=False)
+v = wb['VENDAS']
+print('A31', v['A31'].value)
+print('B31_data', isinstance(v['B31'].value, datetime.datetime) and v['B31'].value.date() == datetime.date(2026,7,28))
+print('D31', repr(v['D31'].value))
+print('H31_f', repr(v['H31'].value))
+print('graficos', len(wb['DASHBOARD']._charts))
+`);
+    ok(vp.status === 0 && vp.out.includes('A31 20') && vp.out.includes('B31_data True') &&
+       vp.out.includes('graficos 1') && vp.out.includes("H31_f '=IF(OR(F31"),
+      'openpyxl confirma o arquivo patchado (data, texto, formula e grafico)', vp.out.replace(/\n/g, ' | '));
+  }
+
+  // =========================================================================
+  // (e) idempotencia: converter um zip que JA e STORE
+  // =========================================================================
+  console.log('\n[e. idempotencia sobre zip ja STORE]');
+  for (const nome of PRINCIPAIS) {
+    const jaStore = carregar(nome + '.store.xlsx');
+    const r1 = converterParaStore(jaStore);
+    const r2 = converterParaStore(r1);
+    const gab = new Map(entradasStore(jaStore).map((e) => [e.nome, e]));
+    const saiu = entradasStore(r1);
+    const conteudoIgual = saiu.every((e) => gab.has(e.nome) && e.dados.equals(gab.get(e.nome).dados));
+    ok(conteudoIgual && saiu.length === gab.size, `${nome}.store: conteudo preservado`, `${saiu.length} entradas`);
+    ok(r1.equals(r2), `${nome}.store: converter 2x da o MESMO byte`, `${fmt(r1.length)} bytes`);
+  }
+  // zip misto (metade STORE, metade DEFLATE) — caso real de arquivo remontado
+  {
+    const misto = rodarPython(`
+import zipfile
+src = r'${path.join(DIR, 'lojao.xlsx')}'
+dst = r'${path.join(DIR, 'lojao.misto.xlsx')}'
+zin = zipfile.ZipFile(src)
+with zipfile.ZipFile(dst, 'w') as zout:
+    for i, info in enumerate(zin.infolist()):
+        novo = zipfile.ZipInfo(info.filename, date_time=info.date_time)
+        novo.compress_type = zipfile.ZIP_STORED if i % 2 else zipfile.ZIP_DEFLATED
+        novo.external_attr = info.external_attr
+        zout.writestr(novo, zin.read(info.filename))
+z = zipfile.ZipFile(dst)
+print('metodos', sorted(set(i.compress_type for i in z.infolist())))
+`);
+    ok(misto.status === 0 && misto.out.includes('[0, 8]'), 'gerou zip misto STORE+DEFLATE', misto.out);
+    const conv = converterParaStore(carregar('lojao.misto.xlsx'));
+    const gab = new Map(entradasStore(carregar('lojao.store.xlsx')).map((e) => [e.nome, e]));
+    const saiu = entradasStore(conv);
+    ok(saiu.every((e) => e.metodo === 0 && e.dados.equals(gab.get(e.nome).dados)),
+      'zip misto convertido: todas as entradas STORE e corretas', `${saiu.length} entradas`);
+  }
+
+  // =========================================================================
+  // (f) tempo e pico de memoria (medidos em processo filho: maxRSS real)
+  // =========================================================================
+  console.log('\n[f. tempo e pico de memoria]');
+  {
+    const script = `
+const fs = require('fs');
+const { converterParaStore } = require(${JSON.stringify(path.join(AQUI, 'inflate.js'))});
+const buf = fs.readFileSync(process.argv[2]);
+const base = process.resourceUsage().maxRSS;
+const t0 = process.hrtime.bigint();
+let saida;
+const N = Number(process.argv[3]);
+for (let i = 0; i < N; i++) saida = converterParaStore(buf);
+const t1 = process.hrtime.bigint();
+console.log(JSON.stringify({
+  entrada: buf.length, saida: saida.length,
+  ms: Number(t1 - t0) / 1e6 / N,
+  maxRssMB: process.resourceUsage().maxRSS / 1024,
+  baseRssMB: base / 1024,
+}));
+`;
+    const scriptPath = path.join(DIR, '_medir.js');
+    fs.writeFileSync(scriptPath, script);
+    console.log('    arquivo            comprimido    expandido    tempo      MB/s    pico RSS');
+    for (const nome of ARQUIVOS) {
+      const reps = nome === 'stress-grande' ? 3 : 20;
+      const r = spawnSync('node', [scriptPath, path.join(DIR, nome + '.xlsx'), String(reps)], { encoding: 'utf8' });
+      if (r.status !== 0) { ok(false, `medicao ${nome}`, (r.stderr || '').slice(0, 300)); continue; }
+      const m = JSON.parse(r.stdout.trim());
+      const mbs = (m.saida / 1048576) / (m.ms / 1000);
+      console.log(`    ${nome.padEnd(18)} ${fmt(m.entrada).padStart(9)} B ${fmt(m.saida).padStart(10)} B ` +
+                  `${m.ms.toFixed(1).padStart(7)} ms ${mbs.toFixed(0).padStart(6)} ${m.maxRssMB.toFixed(0).padStart(8)} MB`);
+      ok(m.ms < (nome === 'stress-grande' ? 3000 : 300), `${nome}: tempo dentro do orcamento do n8n`, `${m.ms.toFixed(1)} ms`);
+    }
+  }
+
+  // =========================================================================
+  // (g) matriz de compressao: o MESMO xlsx recomprimido em todos os niveis/estrategias
+  // =========================================================================
+  console.log('\n[g. matriz de compressao sobre xlsx real]');
+  {
+    const py = `
+import zipfile, zlib, os, json
+DIR = r'${DIR}'
+combos = []
+for nivel in range(10):
+    for est_nome, est in [('DEFAULT', zlib.Z_DEFAULT_STRATEGY), ('FILTERED', zlib.Z_FILTERED),
+                          ('HUFFMAN_ONLY', zlib.Z_HUFFMAN_ONLY), ('RLE', zlib.Z_RLE), ('FIXED', zlib.Z_FIXED)]:
+        combos.append((nivel, est_nome, est))
+saidas = []
+for nome in ${JSON.stringify(PRINCIPAIS)}:
+    zin = zipfile.ZipFile(os.path.join(DIR, nome + '.xlsx'))
+    dados = [(i.filename, i.date_time, zin.read(i.filename)) for i in zin.infolist()]
+    for nivel, est_nome, est in combos:
+        dst = os.path.join(DIR, '_matriz.xlsx')
+        # escreve o zip na mao para controlar nivel/estrategia do deflate
+        with open(dst, 'wb') as fh:
+            centrais, offs = [], []
+            for fn, dt, raw in dados:
+                co = zlib.compressobj(nivel, zlib.DEFLATED, -15, 9, est)
+                comp = co.compress(raw) + co.flush()
+                metodo = 8 if len(comp) < len(raw) else 0
+                if metodo == 0: comp = raw
+                crc = zlib.crc32(raw) & 0xffffffff
+                nome_b = fn.encode('utf-8')
+                offs.append(fh.tell())
+                dosdate = ((dt[0]-1980)<<9)|(dt[1]<<5)|dt[2]
+                dostime = (dt[3]<<11)|(dt[4]<<5)|(dt[5]//2)
+                import struct
+                fh.write(struct.pack('<IHHHHHIIIHH', 0x04034b50, 20, 0, metodo, dostime, dosdate,
+                                     crc, len(comp), len(raw), len(nome_b), 0) + nome_b + comp)
+                centrais.append(struct.pack('<IHHHHHHIIIHHHHHII', 0x02014b50, 20, 20, 0, metodo, dostime,
+                                            dosdate, crc, len(comp), len(raw), len(nome_b), 0, 0, 0, 0, 0, offs[-1]) + nome_b)
+            import struct
+            cd_ini = fh.tell()
+            for c in centrais: fh.write(c)
+            cd_tam = fh.tell() - cd_ini
+            fh.write(struct.pack('<IHHHHIIH', 0x06054b50, 0, 0, len(centrais), len(centrais), cd_tam, cd_ini, 0))
+        os.rename(dst, os.path.join(DIR, f'_matriz_{nome}_{nivel}_{est_nome}.xlsx'))
+        saidas.append(f'_matriz_{nome}_{nivel}_{est_nome}.xlsx')
+print(json.dumps(saidas))
+`;
+    const r = rodarPython(py);
+    if (r.status !== 0) {
+      ok(false, 'geracao da matriz de compressao', r.err.split('\n').slice(-3).join(' | '));
+    } else {
+      const arqs = JSON.parse(r.out.split('\n').pop());
+      let ruins = [];
+      let totalEntradas = 0;
+      const gabaritos = {};
+      for (const n of PRINCIPAIS) gabaritos[n] = new Map(entradasStore(carregar(n + '.store.xlsx')).map((e) => [e.nome, e]));
+      for (const a of arqs) {
+        const base = a.match(/^_matriz_(.+?)_(\d+)_(\w+)\.xlsx$/);
+        try {
+          const conv = converterParaStore(carregar(a));
+          const saiu = entradasStore(conv);
+          const gab = gabaritos[base[1]];
+          for (const e of saiu) {
+            totalEntradas++;
+            if (e.metodo !== 0 || !e.dados.equals(gab.get(e.nome).dados)) ruins.push(a + ':' + e.nome);
+          }
+        } catch (err) { ruins.push(a + ' EXCECAO ' + err.message); }
+        fs.unlinkSync(path.join(DIR, a));
+      }
+      ok(ruins.length === 0,
+        `${arqs.length} zips recomprimidos (4 xlsx x 10 niveis x 5 estrategias) conferem`,
+        `${fmt(totalEntradas)} entradas verificadas${ruins.length ? ', ruins: ' + ruins.slice(0, 3).join(',') : ''}`);
+    }
+  }
+
+  // =========================================================================
+  // (h) erros: dados corrompidos precisam falhar alto, nunca devolver lixo
+  // =========================================================================
+  console.log('\n[h. deteccao de corrupcao]');
+  {
+    const esperaErro = (rotulo, fn, trecho) => {
+      try { fn(); ok(false, rotulo + ' deveria lancar erro'); }
+      catch (e) { ok(!trecho || e.message.includes(trecho), rotulo, e.message.slice(0, 110)); }
+    };
+    esperaErro('BTYPE=11 reservado', () => inflateRaw(Buffer.from([0x07, 0x00, 0x00, 0x00]), 10), 'BTYPE=11');
+    esperaErro('deflate truncado', () => inflateRaw(zlib.deflateRawSync(Buffer.alloc(50000, 65)).subarray(0, 20), 50000));
+    esperaErro('tamanho declarado errado', () => inflateRaw(zlib.deflateRawSync(Buffer.from('abc')), 999), 'zip declara');
+    esperaErro('bloco stored com NLEN errado',
+      () => { const b = Buffer.from([0x01, 0x05, 0x00, 0x00, 0x00, 1, 2, 3, 4, 5]); return inflateRaw(b); }, 'NLEN');
+    // byte estragado no meio de uma entrada: ou o inflate acusa, ou o CRC pega
+    const corrompido = Buffer.from(carregar('lojao.xlsx'));
+    const ents = entradasStore(corrompido);
+    const alvo = ents.find((e) => e.compSize > 500);
+    const posByte = corrompido.indexOf(alvo.dados) + 100;
+    corrompido[posByte] ^= 0xFF;
+    esperaErro('byte corrompido no meio do deflate', () => converterParaStore(corrompido));
+    // metodo nao suportado
+    const bz = rodarPython(`
+import zipfile, os
+src = r'${path.join(DIR, 'epdm-antigo.xlsx')}'
+dst = r'${path.join(DIR, '_bzip.xlsx')}'
+zin = zipfile.ZipFile(src)
+with zipfile.ZipFile(dst, 'w', compression=zipfile.ZIP_BZIP2) as zout:
+    for i in zin.infolist(): zout.writestr(i.filename, zin.read(i.filename))
+print('ok')
+`);
+    if (bz.status === 0) {
+      esperaErro('metodo bzip2 (12) recusado', () => converterParaStore(carregar('_bzip.xlsx')), 'metodo de compressao');
+    }
+  }
+
+  console.log(falhas === 0 ? '\nTODOS OS TESTES PASSARAM' : `\n${falhas} TESTE(S) FALHARAM`);
+  process.exit(falhas === 0 ? 0 : 1);
 }
