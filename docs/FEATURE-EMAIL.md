@@ -54,3 +54,51 @@ Gate: outro dono recai em apenas_responder. Testado com 4 formulações +
 recebidos + gate. Registros de teste antigos (assuntos "Teste da
 assistente"/"Visual novo"/"Formatação e acentuação"/"Urgent: Fiber
 boxes...") removidos do log de enviados para não poluir o histórico real.
+
+
+## Anexos dos emails (23/08) — o que quebrou e o que mudou
+
+**Falha real, 23/08 12:31.** Thiago pediu "Quero o anexo do e-mail você
+consegue enviar ?" (sobre o email da Mobenfilm que ela tinha acabado de
+traduzir) e a assistente respondeu *"Consigo sim. Vou pegar o PDF da
+invoice que o Kip mandou e já te envio aqui."* — dois erros no mesmo
+recado: contexto trocado (Kip/invoice em vez de Mobenfilm/catálogo) e
+uma promessa impossível. Nada foi enviado, porque **anexo não existia no
+sistema**: o IMAP não baixava, não havia tabela pra guardar e o WF01 não
+tinha ação nenhuma de anexo. Ela prometeu porque o prompt não dizia que
+aquilo estava fora do alcance dela.
+
+**Correção (migração 32 + WF18 + WF01).**
+
+- `giulia_email_anexos` (email_id, nome, mime, tamanho, conteudo_b64).
+- **WF18**: IMAP com `downloadAttachments: true`; `Preparar Email
+  Recebido` lê o binário com `await this.helpers.getBinaryDataBuffer()`
+  — o n8n guarda binário **fora da memória** e `binary.data.data` vinha
+  com 10 bytes de referência (bug real do 1º teste). Descarta referência
+  quebrada (<20 bytes) em vez de gravar lixo. Limite de 15 MB pra
+  guardar; acima disso só cita o nome. O aviso no WhatsApp lista os
+  anexos e avisa que dá pra pedir o arquivo.
+- **WF01 `enviar_anexo_email`** (só Thiago, mesmo gate de 3 camadas):
+  busca por `remetente_match`/`assunto_match`, manda o documento pela
+  UAZAPI `/send/media`. Sem anexo guardado, responde a verdade: *"Não
+  achei anexo guardado pra esse email. Só consigo reenviar anexos de
+  emails que chegaram a partir de 23/08..."*. O prompt agora carrega essa
+  regra de honestidade, pra ela não prometer arquivo que não tem.
+- O ramo ANEXO é **terminal**: manda UM recado só (o documento com
+  legenda **ou** o aviso honesto) e grava na `giulia_memoria` o que foi
+  realmente enviado, via nó `Memoria Anexo`. Antes o `Responder UAZAPI`
+  ainda mandava um "deixa eu procurar esse anexo" **depois** do arquivo.
+
+**Validação (23/08).** SMTP → IMAP → base64 → Postgres → WhatsApp com PDF
+de 404 bytes: sha256 idêntico nas duas pontas (`053d8333839f2a7f`), e a
+própria UAZAPI devolveu `fileLength: 404` + `fileSHA256` batendo com o
+original. Ramo "não achei" testado com o email da Mobenfilm (sem anexo
+guardado). Gate: outro dono / dono vazio / número formatado → todos caem
+em `apenas_responder`. Injeção de SQL na busca (`'; DROP TABLE
+giulia_emails; --`) escapada — tabela intacta. Regressão no ramo normal
+(listar_lembretes) OK. Rastros de teste apagados (emails, anexos e 14
+linhas de memória).
+
+**Limite honesto:** email que chegou antes de 23/08/2026 não tem anexo
+guardado — inclusive o da Mobenfilm que gerou a reclamação. Pra esses, a
+saída é pedir reenvio ao remetente.
