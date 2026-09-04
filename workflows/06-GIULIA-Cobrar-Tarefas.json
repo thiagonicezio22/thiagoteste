@@ -7,13 +7,13 @@
      "interval": [
       {
        "field": "cronExpression",
-       "expression": "0 7,11,15,18 * * *"
+       "expression": "0 7,16 * * *"
       }
      ]
     }
    },
    "id": "cron",
-   "name": "Cron 8h/12h/16h/19h Brasilia",
+   "name": "Cron 8h/17h Brasilia",
    "type": "n8n-nodes-base.scheduleTrigger",
    "typeVersion": 1.2,
    "position": [
@@ -62,7 +62,7 @@
   },
   {
    "parameters": {
-    "jsCode": "// Monta UMA mensagem POR DONO agregando tarefas due\nconst tarefasAll = items.filter(i => i.json && i.json.titulo);\nif (!tarefasAll.length) return [];\n\nconst porDono = {};\nfor (const t of tarefasAll) { (porDono[t.json.dono_numero] ||= []).push(t.json); }\n\nconst out = [];\nconst allIds = [];\nfor (const [dono, tarefas] of Object.entries(porDono)) {\n  const tz = tarefas[0].timezone || 'America/Sao_Paulo';\n  const horaLocal = parseInt(new Date().toLocaleString('sv-SE', { timeZone: tz }).substring(11,13), 10);\n  let saudacao = horaLocal < 12 ? 'Bom dia' : (horaLocal < 18 ? 'Boa tarde' : 'Boa noite');\n\n  const atrasadas = tarefas.filter(t => t.urgencia === 'atrasada');\n  const hoje = tarefas.filter(t => t.urgencia === 'hoje');\n  const outras = tarefas.filter(t => t.urgencia === 'normal');\n\n  let partes = [];\n  if (atrasadas.length) partes.push('Atrasadas (passou do prazo):\\n' + atrasadas.slice(0,5).map(t => `- #${t.id} ${t.titulo}`).join('\\n') + (atrasadas.length > 5 ? `\\n...e mais ${atrasadas.length-5}` : ''));\n  if (hoje.length) partes.push('Pra hoje:\\n' + hoje.slice(0,5).map(t => `- #${t.id} ${t.titulo}`).join('\\n') + (hoje.length > 5 ? `\\n...e mais ${hoje.length-5}` : ''));\n  if (outras.length) partes.push((atrasadas.length || hoje.length ? 'Outras pendentes:' : 'Pendentes:') + '\\n' + outras.slice(0,5).map(t => `- #${t.id} ${t.titulo}`).join('\\n') + (outras.length > 5 ? `\\n...e mais ${outras.length-5}` : ''));\n\n  let abertura;\n  if (atrasadas.length) abertura = `${saudacao}, oh, tem ${atrasadas.length} tarefa${atrasadas.length>1?'s':''} atrasada${atrasadas.length>1?'s':''}.`;\n  else if (hoje.length) abertura = `${saudacao}. Hoje tem ${hoje.length} pra fazer.`;\n  else abertura = `${saudacao}, te lembrando das pendentes.`;\n\n  const fechamento = tarefas.length === 1\n    ? '\\n\\nJa fez? Manda \"feito\" se ja resolveu ou \"adia\" pra empurrar.'\n    : '\\n\\nPra dar baixa: \"fiz a ' + tarefas[0].id + '\", \"fiz a X e a Y\" ou \"fiz todas\". Pra empurrar: \"adia a X\". Audio tambem vale.';\n\n  const texto = abertura + '\\n\\n' + partes.join('\\n\\n') + fechamento;\n  const ids = tarefas.map(t => t.id);\n  allIds.push(...ids);\n  out.push({ json: { send_to: dono, send_text: texto } });\n}\n\n// SQL unico pra atualizar todas cobradas\nconst idsUrgentes = [], idsNormais = [];\nfor (const [dono, tarefas] of Object.entries(porDono)) {\n  for (const t of tarefas) (t.urgencia === 'normal' ? idsNormais : idsUrgentes).push(t.id);\n}\nconst upds = [];\nif (idsUrgentes.length) upds.push(`UPDATE giulia_tarefas SET ultima_cobranca_em = NOW(), cobranca_count = cobranca_count + 1, proxima_cobranca_em = NOW() + INTERVAL '4 hours' WHERE id IN (${idsUrgentes.join(',')});`);\nif (idsNormais.length) upds.push(`UPDATE giulia_tarefas SET ultima_cobranca_em = NOW(), cobranca_count = cobranca_count + 1, proxima_cobranca_em = NOW() + INTERVAL '24 hours' WHERE id IN (${idsNormais.join(',')});`);\nconst sqlUpdate = upds.join('\\n') || 'SELECT 1;';\nout.forEach(o => o.json.sql_update = sqlUpdate);\nreturn out;"
+    "jsCode": "// Monta UMA mensagem POR DONO agregando tarefas due\nconst tarefasAll = items.filter(i => i.json && i.json.titulo);\nif (!tarefasAll.length) return [];\n\nconst porDono = {};\nfor (const t of tarefasAll) { (porDono[t.json.dono_numero] ||= []).push(t.json); }\n\nconst out = [];\nconst allIds = [];\nfor (const [dono, tarefas] of Object.entries(porDono)) {\n  const tz = tarefas[0].timezone || 'America/Sao_Paulo';\n  const horaLocal = parseInt(new Date().toLocaleString('sv-SE', { timeZone: tz }).substring(11,13), 10);\n  let saudacao = horaLocal < 12 ? 'Bom dia' : (horaLocal < 18 ? 'Boa tarde' : 'Boa noite');\n\n  const atrasadas = tarefas.filter(t => t.urgencia === 'atrasada');\n  const hoje = tarefas.filter(t => t.urgencia === 'hoje');\n  const outras = tarefas.filter(t => t.urgencia === 'normal');\n\n  let partes = [];\n  if (atrasadas.length) partes.push('Atrasadas (passou do prazo):\\n' + atrasadas.slice(0,5).map(t => `- #${t.id} ${t.titulo}`).join('\\n') + (atrasadas.length > 5 ? `\\n...e mais ${atrasadas.length-5}` : ''));\n  if (hoje.length) partes.push('Pra hoje:\\n' + hoje.slice(0,5).map(t => `- #${t.id} ${t.titulo}`).join('\\n') + (hoje.length > 5 ? `\\n...e mais ${hoje.length-5}` : ''));\n  if (outras.length) partes.push((atrasadas.length || hoje.length ? 'Outras pendentes:' : 'Pendentes:') + '\\n' + outras.slice(0,5).map(t => `- #${t.id} ${t.titulo}`).join('\\n') + (outras.length > 5 ? `\\n...e mais ${outras.length-5}` : ''));\n\n  let abertura;\n  if (atrasadas.length) abertura = `${saudacao}, oh, tem ${atrasadas.length} tarefa${atrasadas.length>1?'s':''} atrasada${atrasadas.length>1?'s':''}.`;\n  else if (hoje.length) abertura = `${saudacao}. Hoje tem ${hoje.length} pra fazer.`;\n  else abertura = `${saudacao}, te lembrando das pendentes.`;\n\n  const fechamento = tarefas.length === 1\n    ? '\\n\\nJa fez? Manda \"feito\" se ja resolveu ou \"adia\" pra empurrar.'\n    : '\\n\\nPra dar baixa: \"fiz a ' + tarefas[0].id + '\", \"fiz a X e a Y\" ou \"fiz todas\". Pra empurrar: \"adia a X\". Audio tambem vale.';\n\n  // tarefa cobrada 6+ vezes sem resposta: avisa que vai parar de insistir (e passa a cobrar a cada 3 dias)\n  const cansadas = tarefas.filter(t => Number(t.cobranca_count || 0) >= 6);\n  const avisoCansadas = cansadas.length\n    ? '\\n\\nEssa' + (cansadas.length > 1 ? 's eu ja cobrei' : ' eu ja cobrei') + ' varias vezes: ' + cansadas.slice(0, 4).map(t => '#' + t.id).join(', ') +\n      '. Se nao vai rolar, manda \"cancela a ' + cansadas[0].id + '\" que eu paro de lembrar.'\n    : '';\n  const texto = abertura + '\\n\\n' + partes.join('\\n\\n') + fechamento + avisoCansadas;\n  const ids = tarefas.map(t => t.id);\n  allIds.push(...ids);\n  out.push({ json: { send_to: dono, send_text: texto } });\n}\n\n// SQL unico pra atualizar todas cobradas\nconst idsUrgentes = [], idsNormais = [], idsCansadas = [];\nfor (const [dono, tarefas] of Object.entries(porDono)) {\n  for (const t of tarefas) {\n    if (Number(t.cobranca_count || 0) >= 6) idsCansadas.push(t.id);           // ja insistiu demais: a cada 3 dias\n    else (t.urgencia === 'normal' ? idsNormais : idsUrgentes).push(t.id);\n  }\n}\nconst upds = [];\nif (idsUrgentes.length) upds.push(`UPDATE giulia_tarefas SET ultima_cobranca_em = NOW(), cobranca_count = cobranca_count + 1, proxima_cobranca_em = NOW() + INTERVAL '8 hours' WHERE id IN (${idsUrgentes.join(',')});`);\nif (idsNormais.length) upds.push(`UPDATE giulia_tarefas SET ultima_cobranca_em = NOW(), cobranca_count = cobranca_count + 1, proxima_cobranca_em = NOW() + INTERVAL '24 hours' WHERE id IN (${idsNormais.join(',')});`);\nif (idsCansadas.length) upds.push(`UPDATE giulia_tarefas SET ultima_cobranca_em = NOW(), cobranca_count = cobranca_count + 1, proxima_cobranca_em = NOW() + INTERVAL '72 hours' WHERE id IN (${idsCansadas.join(',')});`);\nconst sqlUpdate = upds.join('\\n') || 'SELECT 1;';\nout.forEach(o => o.json.sql_update = sqlUpdate);\nreturn out;"
    },
    "id": "code-build",
    "name": "Montar Cobranca",
@@ -151,17 +151,6 @@
   }
  ],
  "connections": {
-  "Cron 8h/12h/16h/19h Brasilia": {
-   "main": [
-    [
-     {
-      "node": "Tarefas pra Cobrar",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
   "Webhook manual": {
    "main": [
     [
@@ -211,6 +200,17 @@
     [
      {
       "node": "Salvar Memoria Cobranca",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Cron 8h/17h Brasilia": {
+   "main": [
+    [
+     {
+      "node": "Tarefas pra Cobrar",
       "type": "main",
       "index": 0
      }

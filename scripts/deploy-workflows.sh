@@ -15,6 +15,18 @@
 
 set -euo pipefail
 
+# Salvaguarda: se o script morrer no meio (502 do edge, PUT recusado...), o workflow
+# que estava desativado "temporariamente" NAO pode ficar parado em producao.
+# (Aconteceu em 04/09: o WF17 Financeiro ficou 29 min inativo por um PUT que falhou.)
+PENDENTE_REATIVAR=""
+salvaguarda() {
+  if [ -n "$PENDENTE_REATIVAR" ]; then
+    echo "  SALVAGUARDA: reativando $PENDENTE_REATIVAR antes de sair..."
+    curl -s -X POST -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_URL/api/v1/workflows/$PENDENTE_REATIVAR/activate" > /dev/null || true
+  fi
+}
+trap salvaguarda EXIT
+
 : "${N8N_API_KEY:?defina N8N_API_KEY}"
 : "${N8N_URL:?defina N8N_URL}"
 : "${GIULIA_UAZAPI_TOKEN:?defina GIULIA_UAZAPI_TOKEN}"
@@ -38,6 +50,7 @@ deploy() {
   if [ "$was_active" = "True" ]; then
     echo "  desativando temporariamente..."
     curl -s -X POST -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_URL/api/v1/workflows/$wf_id/deactivate" > /dev/null
+    PENDENTE_REATIVAR="$wf_id"
   fi
 
   # Le JSON, substitui placeholders, monta payload minimo
@@ -76,12 +89,17 @@ payload = {
 print(json.dumps(payload))
 PYEOF
 
-  local resp
-  resp=$(curl -s -X PUT \
-    -H "X-N8N-API-KEY: $N8N_API_KEY" \
-    -H "Content-Type: application/json" \
-    -d @/tmp/wf_put.json \
-    "$N8N_URL/api/v1/workflows/$wf_id")
+  local resp=""
+  for tent in 1 2 3; do
+    resp=$(curl -s -X PUT \
+      -H "X-N8N-API-KEY: $N8N_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d @/tmp/wf_put.json \
+      "$N8N_URL/api/v1/workflows/$wf_id" || true)
+    if echo "$resp" | grep -q '"id"'; then break; fi
+    echo "  PUT sem resposta valida (tentativa $tent), retentando em $((tent*3))s..."
+    sleep $((tent*3))
+  done
 
   if echo "$resp" | grep -q '"id"'; then
     echo "  PUT OK"
@@ -103,6 +121,7 @@ PYEOF
         | python3 -c "import json,sys; print(json.load(sys.stdin).get('active', False))")
       if [ "$ok" = "True" ]; then
         echo "  active: True (verificado)"
+        PENDENTE_REATIVAR=""
         break
       fi
       echo "  ATENCAO: ainda inativo (tentativa $tent), retentando..."
@@ -135,4 +154,15 @@ deploy "qojjGwPdhIVwcpu3" "workflows/17-GIULIA-Financeiro.json" "GIULIA - 17 Fin
 deploy "NNUd29aBLloX72to" "workflows/18-GIULIA-Email.json" "GIULIA - 18 Email"
 
 echo ""
-echo "Workflows deployados com secrets injetados."
+echo "AUDITORIA FINAL: conferindo que todos os workflows GIULIA estao ativos..."
+inativos=""
+for wf_id in $(grep -oE '^deploy "[A-Za-z0-9]+"' "$0" | cut -d'"' -f2); do
+  st=$(curl -s -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_URL/api/v1/workflows/$wf_id" \
+    | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('name','?') if not d.get('active') else '')" 2>/dev/null || echo "$wf_id (sem resposta)")
+  [ -n "$st" ] && inativos="$inativos\n  - $st"
+done
+if [ -n "$inativos" ]; then
+  echo -e "ERRO FATAL: workflow(s) INATIVO(S) em producao:$inativos"
+  exit 1
+fi
+echo "Workflows deployados com secrets injetados. Todos ativos (auditado)."

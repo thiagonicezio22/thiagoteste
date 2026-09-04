@@ -60,3 +60,26 @@ variáveis do *environment* no Claude Code web — acabam com esse passo.
 marcadas `cancelada` a pedido dele. Cópia integral em
 `giulia_tarefas_bak_20260904` (reverter: `UPDATE giulia_tarefas SET
 status='pendente' WHERE id IN (SELECT id FROM giulia_tarefas_bak_20260904)`).
+
+## Menos ruído (04/09) — WF06 e WF11
+
+- **WF06 Cobrar Tarefas**: era 4×/dia (8h/12h/16h/19h) e tarefa atrasada
+  voltava a cada 4h — as 14 tarefas de 07/08 chegaram a 59 cobranças cada.
+  Agora 2×/dia (8h/17h), atrasada/hoje a cada 8h, normal 24h, e tarefa já
+  cobrada **6+ vezes** passa pra 72h com aviso "se não vai rolar, manda
+  'cancela a X'".
+- **WF11 Fechamento do Dia**: não manda mais o fechamento quando não há
+  nada (sem gasto, sem feito, sem pendência, sem agenda) — antes era um
+  "nenhum registrado / nenhuma" todo dia desde que os gastos pararam
+  (último gasto 24/07).
+- **Contas a pagar**: 2 pendentes vencidas em agosto (Aluguel da barbearia
+  1.800 / Internet do escritório 129,90) canceladas a pedido; cópia em
+  `giulia_contas_pagar_bak_20260904`.
+
+## Deploy: salvaguarda (04/09)
+
+Um 502 do edge no meio do `deploy-workflows.sh` deixou o **WF17 Financeiro
+29 min inativo** (o script desativa, o PUT falha, o script morre). Agora:
+`trap EXIT` reativa o workflow pendente, PUT com 3 tentativas em 5xx, e
+auditoria final que falha se qualquer workflow da lista estiver inativo.
+Lição: rodar o script sem `| grep` no meio — o pipe escondeu o exit 1.

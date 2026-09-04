@@ -133,3 +133,38 @@ o IMAP busca só UNSEEN, então ele reprocessa e salva com o fix. Resíduo
 conhecido: outros nós do WF01 que embutem texto livre em SQL (tarefas,
 ideias, gastos) ainda usam o `esc()` antigo; só quebrariam com `$` + 6
 dígitos na descrição.
+
+
+## Lote do IMAP — e-mails perdidos em silêncio, parte 2 (04/09)
+
+Ao recuperar os e-mails do bug do `$N`, apareceu um segundo furo: o IMAP
+entrega **vários e-mails numa execução só** quando chegam perto um do outro
+(ou na ativação do workflow), e `Preparar Email Recebido` lia só `items[0]`.
+Os demais sumiam sem erro. Caso real: 3 respostas da VIVOSUN entre 27 e
+29/08 nunca foram salvas nem avisadas. Um terceiro furo veio no teste do
+lote: `Gravar Anexos` (INSERT sem RETURNING) não devolve item quando há
+outros itens no lote, e o e-mail **com anexo** saía do fluxo antes do
+`Notificar?` — anexo guardado, aviso nunca enviado.
+
+**Correções (WF18):**
+- `Preparar Email Recebido` faz loop por item (`getBinaryDataBuffer(idx, k)`,
+  `pairedItem`); `Preparar Anexos` e `Pos Notificacao` rodam
+  `runOnceForEachItem` com `.item` em vez de `.first()`; `Notificar?` e
+  `Avisar Thiago Email` idem.
+- `Gravar Anexos` agora é `INSERT ... RETURNING email_id` — sempre sai um
+  item.
+
+**Validação:** WF18 desligado → 3 e-mails enviados (um com `$43496650`, um
+com PDF) → religado → 1 execução com 3 itens: 3 salvos, 1 anexo, 3 avisos.
+Repetido com 2 (PDF primeiro): 2/2 avisados. 0 erros no `giulia_erros_log`.
+
+**Recuperação feita:** clone temporário do caminho de captura com
+`customEmailConfig = [["SINCE","25-Aug-2026"]]` (critério com argumento é
+array **aninhado** — `["SINCE","..."]` plano falha em silêncio) e
+`postProcessAction = nothing`. O gatilho IMAP só busca no evento de e-mail
+novo, então foi preciso mandar um e-mail pra caixa pra disparar. Leu 36,
+inseriu 5 (dedup por `message_id`): **Somatec "FECHAMENTO 08/2026"** (2
+PDFs: Recibo de Pagamento e Extrato Mensal), Nicole/Blue Thumb e 3
+VIVOSUN. Caixa desde 25/08 = 27 reais; banco = 27. Clone apagado.
+Os 3 "erro desconhecido" de 02/09 não têm e-mail correspondente na caixa
+(provável falha de envio/aviso, não de recepção) — sem trace pra recuperar.
