@@ -39,3 +39,24 @@ secrets do ambiente do Claude Code — recomendado ao Thiago, pendente.)
   antes de prometer ação.
 - n8n loga pouco histórico (retenção curta, projetos antigos inundam o
   SQLite): auditoria de erros confiável = `giulia_erros_log` no Postgres.
+
+
+## Reciclagem do ambiente (04/09) — terceira perda do `.env`
+
+Trocar de modelo (`/model`) recicla o container: some `.env`, scratchpad e
+variáveis; o repo volta do GitHub. Bootstrap levou ~5 min com a
+N8N_API_KEY nova: runner SQL → `giulia_config` → `.env` (só as 7 chaves
+operacionais; as chaves de imagem `CAPA_*`/`VOUCHER_*`/`CARTAO_*` ficam
+só no banco). Runner SQL criado pela API precisa de `webhookId` no nó
+Webhook, senão o n8n ativa mas não registra a rota (404).
+
+**Pendente com o Thiago:** cadastrar `N8N_API_KEY`, `GIULIA_UAZAPI_TOKEN`,
+`GIULIA_GEMINI_API_KEY`, `HOSTINGER_API_TOKEN` e `GIULIA_EMAIL_SENHA` como
+variáveis do *environment* no Claude Code web — acabam com esse passo.
+
+## Registro: zerar tarefas do Thiago (04/09)
+
+16 tarefas pendentes (14 de 07/08 com 49–59 cobranças cada, #70 e #71)
+marcadas `cancelada` a pedido dele. Cópia integral em
+`giulia_tarefas_bak_20260904` (reverter: `UPDATE giulia_tarefas SET
+status='pendente' WHERE id IN (SELECT id FROM giulia_tarefas_bak_20260904)`).

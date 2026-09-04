@@ -102,3 +102,34 @@ linhas de memória).
 **Limite honesto:** email que chegou antes de 23/08/2026 não tem anexo
 guardado — inclusive o da Mobenfilm que gerou a reclamação. Pra esses, a
 saída é pedir reenvio ao remetente.
+
+
+## Bug do `$N` — e-mails perdidos em silêncio (achado em 04/09)
+
+**Sintoma:** `giulia_erros_log` com "erro desconhecido" no WF18 (2× em 25/08,
+3× em 02/09). Os dois de 25/08 ainda estavam nas execuções do n8n: nó
+`Salvar Email`, erro *"Variable $43496650 exceeds supported maximum of
+$100000"*. E-mails perdidos (não salvos, não avisados): **Somatec RH
+"PROT 8391: FECHAMENTO 08/2026"** e **Nicole/Blue Thumb "Invoice/Tracking
+info"** (25/08); os 3 de 02/09 não têm mais execução guardada.
+
+**Causa:** o nó Postgres do n8n (pg-promise) trata `$<número>` dentro do
+SQL como placeholder de parâmetro. Message-ID no padrão Outlook
+(`<01aa01dd34bd$43496650$c9dc32f0$@dominio>`) sempre carrega `$` + 8
+dígitos → estoura o máximo e derruba o INSERT inteiro. Valores pequenos
+(`$0.00`, `$324.46`) passam; só `$` + número > 100000 quebra — por isso
+ficou invisível até um remetente com Outlook aparecer.
+
+**Correção:** o `esc()` dos 4 Code nodes do WF18 e dos 2 gravadores de
+memória do WF01 (`Montar SQL Memoria`, `Memoria Anexo`) agora quebra o
+literal em `'...' || '$' || '43496650...'` — o Postgres concatena e o valor
+gravado é idêntico (verificado byte a byte). Cuidado ao replicar: em JS,
+`$'` dentro da string de replace significa "texto após o match" — tem que
+ser `'$$'`. Testado ao vivo com e-mail contendo `$43496650`, `$0.00`,
+`$324.46` e `$1500000`: salvou intacto, avisou no WhatsApp, 0 erros.
+
+**Recuperar os perdidos:** no webmail, marcar os e-mails como *não lidos* —
+o IMAP busca só UNSEEN, então ele reprocessa e salva com o fix. Resíduo
+conhecido: outros nós do WF01 que embutem texto livre em SQL (tarefas,
+ideias, gastos) ainda usam o `esc()` antigo; só quebrariam com `$` + 6
+dígitos na descrição.
