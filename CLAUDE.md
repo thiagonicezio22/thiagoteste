@@ -16,6 +16,8 @@ flash/pro). O dono é Thiago (5511910441709).
 - **docs/TRIALS-ACESSO.md** — trials de pilotos e modo eco.
 - **docs/FEATURE-EMAIL.md** — email contato@thiagonicezio.com (só Thiago).
 - **docs/FEATURE-CRM-JOTA.md** — CRM de aniversários do Jota Expedições.
+- **docs/FEATURE-TAREFAS.md** — lista/cobrança/limpeza de tarefas (posição
+  numerada = mesma ordem em todo lugar; "limpa todas", "cancela a 1, 2 e 3").
 
 ## Regras de ouro do projeto
 

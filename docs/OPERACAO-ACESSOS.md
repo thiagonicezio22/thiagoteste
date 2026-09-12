@@ -83,3 +83,16 @@ Um 502 do edge no meio do `deploy-workflows.sh` deixou o **WF17 Financeiro
 `trap EXIT` reativa o workflow pendente, PUT com 3 tentativas em 5xx, e
 auditoria final que falha se qualquer workflow da lista estiver inativo.
 Lição: rodar o script sem `| grep` no meio — o pipe escondeu o exit 1.
+
+## Incidente 12/09 06:55–07:12 BRT — task runner saturado
+
+`giulia_erros_log`: "Task request timed out after 60 seconds" em Code nodes
+de 6 workflows + "Timeout waiting for lock SqliteWriteConnectionMutex".
+Briefing das 07:00 (WF07) falhou pros 3 donos; scheduler (WF02) errou 7×
+na janela. Recuperou sozinho às ~07:12 (Code node de teste em 3 s, crons
+das 08:00 OK). Briefing reenviado às 08:28 pelo webhook `giulia-briefing-tick`
+(manda pra todos os donos ativos, sem claim — só usar quando o do dia NÃO
+saiu). Atenção: WF02 tem `saveDataSuccessExecution: none` — ausência de
+execuções na lista NÃO significa que parou; confira `Lembrete enviado` na
+memória. Mesmo sintoma de 07/08 (VPS reiniciado na época) — se repetir,
+o próximo passo é migrar o n8n de SQLite pra Postgres.
