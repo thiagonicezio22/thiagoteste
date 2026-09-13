@@ -1,0 +1,322 @@
+{
+ "name": "GIULIA - 11 Fechamento do Dia (21h)",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "0 * * * *"
+      }
+     ]
+    }
+   },
+   "id": "cron-hora",
+   "name": "Cron Horario",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    200,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "giulia-fechamento-tick",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "wh-tick",
+   "name": "Webhook manual",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    200,
+    460
+   ],
+   "webhookId": "giulia-fechamento-tick-wh"
+  },
+  {
+   "parameters": {
+    "jsCode": "// Monta SQL do claim. Normal: donos com flag, 21h local, nao enviado hoje (marca enviado).\n// Teste/manual: body {force: 'numero'} ignora hora e NAO marca enviado.\nconst body = (items[0].json.body || items[0].json) || {};\nconst force = String(body.force || '').replace(/[^0-9]/g, '');\n\nconst dados = `SELECT u.numero, u.nome, u.timezone, u.moeda,\n  to_char((NOW() AT TIME ZONE u.timezone)::date, 'DD/MM') AS data_local,\n  (SELECT COALESCE(json_agg(json_build_object('categoria', COALESCE(g.categoria,'outros'), 'sub', COALESCE(g.subcategoria,''), 'descricao', g.descricao, 'valor', g.valor)), '[]'::json)\n    FROM giulia_gastos g WHERE g.dono_numero = u.numero AND g.data_gasto = (NOW() AT TIME ZONE u.timezone)::date) AS gastos_hoje,\n  (SELECT COALESCE(json_agg(t.titulo), '[]'::json) FROM giulia_tarefas t\n    WHERE t.dono_numero = u.numero AND t.status = 'feita' AND t.feita_em >= NOW() - INTERVAL '24 hours') AS tarefas_feitas,\n  (SELECT COALESCE(json_agg(json_build_object('id', t.id, 'titulo', t.titulo, 'atrasada', (t.prazo IS NOT NULL AND t.prazo < (NOW() AT TIME ZONE u.timezone)::date)) ORDER BY (t.prazo IS NULL), t.prazo ASC, t.criada_em ASC, t.id ASC), '[]'::json)\n    FROM giulia_tarefas t WHERE t.dono_numero = u.numero AND t.status = 'pendente') AS tarefas_pendentes,\n  (SELECT COALESCE(json_agg(json_build_object('descricao', c.descricao, 'valor', c.valor, 'atrasada', (c.vencimento < (NOW() AT TIME ZONE u.timezone)::date)) ORDER BY c.vencimento), '[]'::json)\n    FROM giulia_contas_pagar c WHERE c.dono_numero = u.numero AND c.status = 'pendente' AND c.vencimento <= (NOW() AT TIME ZONE u.timezone)::date + 1) AS contas_ate_amanha,\n  (SELECT COALESCE(json_agg(json_build_object('descricao', c.descricao, 'valor', c.valor)), '[]'::json)\n    FROM giulia_contas_pagar c WHERE c.dono_numero = u.numero AND c.status = 'paga' AND c.pago_em >= NOW() - INTERVAL '24 hours') AS contas_pagas,\n  (SELECT COALESCE(json_agg(json_build_object('hora', to_char(l.disparar_em, 'HH24:MI'), 'descricao', l.descricao, 'rec', COALESCE(l.recorrencia,'')) ORDER BY l.disparar_em), '[]'::json)\n    FROM giulia_lembretes l WHERE l.dono_numero = u.numero AND l.status = 'pendente' AND l.disparar_em::date = (NOW() AT TIME ZONE u.timezone)::date + 1) AS lembretes_amanha,\n  (SELECT COALESCE(json_agg(r.tarefa ORDER BY r.id), '[]'::json)\n    FROM giulia_rotina r WHERE r.ativa AND r.dono_numero = u.numero AND r.dia_semana = EXTRACT(DOW FROM (NOW() AT TIME ZONE u.timezone)::date + 1)::INT) AS rotina_amanha,\n  (SELECT COUNT(*) FROM giulia_envios_pendentes e WHERE e.dono_numero = u.numero AND e.status = 'aguardando_confirmacao' AND e.expira_em > NOW()) AS envios_aguardando`;\n\nlet sql;\nif (force) {\n  sql = `${dados}\\nFROM giulia_donos u WHERE u.numero = '${force}';`;\n} else {\n  sql = `WITH alvo AS (\\n  SELECT numero FROM giulia_donos d\\n  WHERE relatorio_diario\\n    AND COALESCE(d.status, 'ativo') = 'ativo'\\n    AND (d.numero = '5511910441709' OR EXISTS (SELECT 1 FROM giulia_memoria m WHERE m.from_numero = d.numero AND m.role = 'user' AND m.created_at > NOW() - INTERVAL '5 days'))\\n    AND to_char(NOW() AT TIME ZONE timezone, 'HH24')::int = 21\\n    AND (ultimo_relatorio_diario IS NULL OR ultimo_relatorio_diario < (NOW() AT TIME ZONE timezone)::date)\\n  FOR UPDATE SKIP LOCKED\\n), upd AS (\\n  UPDATE giulia_donos d SET ultimo_relatorio_diario = (NOW() AT TIME ZONE d.timezone)::date\\n  FROM alvo WHERE d.numero = alvo.numero\\n  RETURNING d.numero, d.nome, d.timezone, d.moeda\\n)\\n${dados.replace('FROM giulia_donos u', '').trim()}\\nFROM upd u;`;\n}\nreturn [{ json: { sql } }];"
+   },
+   "id": "code-claim",
+   "name": "Montar SQL Claim",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    420,
+    380
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "pg-dados",
+   "name": "Carregar Dia",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    640,
+    380
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   },
+   "executeOnce": true,
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "jsCode": "// Fechamento do dia - UMA mensagem POR DONO + grafico dark premium dos gastos\nconst out = [];\nfor (const item of items) {\n  const d = item.json || {};\n  if (!d.numero) continue;\n  function parse(v){ if (typeof v === 'string') { try { return JSON.parse(v); } catch(e) { return []; } } return v || []; }\n  const gastos = parse(d.gastos_hoje);\n  const feitas = parse(d.tarefas_feitas);\n  const pendentes = parse(d.tarefas_pendentes);\n  const contas = parse(d.contas_ate_amanha);\n  const pagas = parse(d.contas_pagas);\n  const lembretes = parse(d.lembretes_amanha);\n  const rotina = parse(d.rotina_amanha);\n  const envios = Number(d.envios_aguardando || 0);\n  const SYM = d.moeda === 'USD' ? '$' : 'R$';\n  const fmt = v => SYM + ' ' + (Number(v)||0).toFixed(2).replace('.', ',').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');\n\n  const totalDia = gastos.reduce((s,g) => s + (Number(g.valor)||0), 0);\n  const porCat = {};\n  for (const g of gastos) porCat[g.categoria] = (porCat[g.categoria]||0) + (Number(g.valor)||0);\n  const cats = Object.entries(porCat).sort((a,b) => b[1]-a[1]);\n\n  let secoes = [];\n  if (gastos.length) {\n    const linhas = cats.slice(0,5).map(([c,v]) => `  ${c}: ${fmt(v)}`).join('\\n');\n    secoes.push(`*Gastos de hoje: ${fmt(totalDia)}* (${gastos.length === 1 ? '1 lancamento' : gastos.length + ' lancamentos'})\\n${linhas}`);\n  } else {\n    secoes.push('*Gastos de hoje:* nenhum registrado - dia de cofre fechado.');\n  }\n  let feitoTxt = [];\n  if (feitas.length) feitoTxt.push(`${feitas.length === 1 ? '1 tarefa concluida' : feitas.length + ' tarefas concluidas'} (${feitas.slice(0,3).join('; ')}${feitas.length > 3 ? '...' : ''})`);\n  if (pagas.length) feitoTxt.push(`${pagas.length === 1 ? '1 conta paga' : pagas.length + ' contas pagas'} (${pagas.map(c => c.descricao).slice(0,3).join('; ')})`);\n  if (feitoTxt.length) secoes.push('*Feito hoje:*\\n  ' + feitoTxt.join('\\n  '));\n\n  let pend = [];\n  const pendNum = pendentes.map((t, i) => ({ ...t, pos: i + 1 }));   // posicao = mesma da lista \"minhas tarefas\"\n  const atrasadas = pendNum.filter(t => t.atrasada);\n  const abertas = pendNum.filter(t => !t.atrasada);\n  if (atrasadas.length) pend.push(`${atrasadas.length} tarefa${atrasadas.length>1?'s':''} atrasada${atrasadas.length>1?'s':''}: ` + atrasadas.map(t => `${t.pos}. ${t.titulo}`).slice(0,4).join('; ') + (atrasadas.length > 4 ? ` ...e mais ${atrasadas.length-4}` : ''));\n  if (abertas.length) pend.push(`${abertas.length} tarefa${abertas.length>1?'s':''} em aberto: ` + abertas.map(t => `${t.pos}. ${t.titulo}`).slice(0,4).join('; ') + (abertas.length > 4 ? ` ...e mais ${abertas.length-4}` : ''));\n  const contasAtras = contas.filter(c => c.atrasada);\n  const contasAmanha = contas.filter(c => !c.atrasada);\n  if (contasAtras.length) pend.push('conta ATRASADA: ' + contasAtras.map(c => `${c.descricao}${c.valor ? ' ' + fmt(c.valor) : ''}`).join('; '));\n  if (contasAmanha.length) pend.push('vence ate amanha: ' + contasAmanha.map(c => `${c.descricao}${c.valor ? ' ' + fmt(c.valor) : ''}`).join('; '));\n  if (envios > 0) pend.push(`${envios} recado${envios>1?'s':''} aguardando teu OK`);\n  secoes.push(pend.length ? '*Fica pra amanha:*\\n  ' + pend.join('\\n  ') : '*Pendencias:* nenhuma - dia fechado sem pontas soltas.');\n\n  let amanha = [];\n  if (lembretes.length) amanha.push(lembretes.map(l => `${l.hora} ${l.descricao}${l.rec ? ' (fixo)' : ''}`).slice(0,5).join('; '));\n  if (rotina.length) amanha.push('rotina: ' + rotina.join(', '));\n  if (amanha.length) secoes.push('*Amanha ja agendado:*\\n  ' + amanha.join('\\n  '));\n\n  // dia sem nada (sem gasto, sem feito, sem pendencia, sem agenda): nao manda \"nenhum/nenhuma\" - silencio.\n  if (!gastos.length && !feitoTxt.length && !pend.length && !amanha.length) continue;\n  const texto = `*Fechamento do dia - ${d.data_local}*\\n\\n` + secoes.join('\\n\\n');\n\n  // grafico dark premium do dia (so se teve gasto)\n  let chartUrl = '';\n  if (cats.length) {\n    const CORES = ['#3987e5','#199e70','#c98500','#008300','#9085e9','#e66767','#d55181','#d95926'];\n    const labels = JSON.stringify(cats.slice(0,8).map(([c,v]) => c + ' - ' + fmt(v)));\n    const vals = JSON.stringify(cats.slice(0,8).map(([c,v]) => Math.round(v*100)/100));\n    const cores = JSON.stringify(CORES.slice(0, Math.min(cats.length,8)));\n    const cfg = \"{type:'doughnut',data:{labels:\" + labels + \",datasets:[{data:\" + vals + \",backgroundColor:\" + cores + \",borderColor:'#0B1A13',borderWidth:3}]},options:{cutoutPercentage:58,layout:{padding:10},title:{display:true,text:'Gastos do dia - \" + d.data_local + \"',fontSize:19,fontColor:'#F5F0E8',fontFamily:'Georgia, serif',padding:12},legend:{position:'right',labels:{fontSize:12,fontColor:'#F5F0E8',padding:10,boxWidth:13}},plugins:{datalabels:{display:function(ctx){var dd=ctx.dataset.data;var t=dd.reduce(function(a,b){return a+b},0);return dd[ctx.dataIndex]/t>=0.08;},formatter:function(v,ctx){var t=ctx.dataset.data.reduce(function(a,b){return a+b},0);return Math.round(v/t*100)+'%';},color:'#ffffff',font:{weight:'bold',size:14}},doughnutlabel:{labels:[{text:'\" + fmt(totalDia) + \"',font:{size:20,weight:'bold'},color:'#F5F0E8'},{text:'total do dia',font:{size:11},color:'#C9A84C'}]}}}}\";\n    chartUrl = 'https://quickchart.io/chart?w=700&h=400&bkg=' + encodeURIComponent('#0B1A13') + '&devicePixelRatio=2&c=' + encodeURIComponent(cfg);\n  }\n  out.push({ json: { send_to: d.numero, send_text: texto, chart_url: chartUrl } });\n}\nreturn out;"
+   },
+   "id": "code-fechamento",
+   "name": "Montar Fechamento",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    860,
+    380
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://engsolucao.uazapi.com/send/text",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "token",
+       "value": "__GIULIA_UAZAPI_TOKEN__"
+      },
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.send_text }) }}",
+    "options": {
+     "timeout": 30000,
+     "response": {
+      "response": {
+       "neverError": true
+      }
+     }
+    }
+   },
+   "id": "http-texto",
+   "name": "Enviar Texto",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1080,
+    380
+   ],
+   "continueOnFail": true
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $('Montar Fechamento').item.json.chart_url }}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "notEquals"
+       }
+      }
+     ],
+     "combinator": "and"
+    }
+   },
+   "id": "if-chart",
+   "name": "Tem Grafico?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    1300,
+    380
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://engsolucao.uazapi.com/send/media",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "token",
+       "value": "__GIULIA_UAZAPI_TOKEN__"
+      },
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ number: $('Montar Fechamento').item.json.send_to, type: 'image', file: $('Montar Fechamento').item.json.chart_url, text: 'Como o dia se distribuiu' }) }}",
+    "options": {
+     "timeout": 60000,
+     "response": {
+      "response": {
+       "neverError": true
+      }
+     }
+    }
+   },
+   "id": "http-grafico",
+   "name": "Enviar Grafico",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1520,
+    300
+   ],
+   "continueOnFail": true
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + $('Montar Fechamento').item.json.send_text.replace(/'/g, \"''\") + \"', '\" + $('Montar Fechamento').item.json.send_to + \"')\" }}",
+    "options": {}
+   },
+   "id": "pg-memoria",
+   "name": "Salvar Memoria",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    1520,
+    460
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   },
+   "continueOnFail": true
+  }
+ ],
+ "connections": {
+  "Cron Horario": {
+   "main": [
+    [
+     {
+      "node": "Montar SQL Claim",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook manual": {
+   "main": [
+    [
+     {
+      "node": "Montar SQL Claim",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar SQL Claim": {
+   "main": [
+    [
+     {
+      "node": "Carregar Dia",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Carregar Dia": {
+   "main": [
+    [
+     {
+      "node": "Montar Fechamento",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar Fechamento": {
+   "main": [
+    [
+     {
+      "node": "Enviar Texto",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar Texto": {
+   "main": [
+    [
+     {
+      "node": "Tem Grafico?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tem Grafico?": {
+   "main": [
+    [
+     {
+      "node": "Enviar Grafico",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Salvar Memoria",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar Grafico": {
+   "main": [
+    [
+     {
+      "node": "Salvar Memoria",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "ltVUUCOCDYKMmtnT"
+ }
+}

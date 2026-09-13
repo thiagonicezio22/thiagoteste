@@ -1,0 +1,379 @@
+{
+  "name": "GIULIA - 10 Relatorio Gastos",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-relatorio-gastos",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wh-rel",
+      "name": "Webhook Relatorio",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        380
+      ],
+      "webhookId": "giulia-relatorio-gastos-wh"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida pedido e monta SQL (dono sanitizado, periodo whitelist)\nconst body = items[0].json.body || items[0].json;\nconst dono = String(body.dono || '').replace(/[^0-9]/g, '');\nconst periodos = ['hoje','semana','mes','mes_passado','tudo'];\nconst periodo = periodos.includes(body.periodo) ? body.periodo : 'mes';\nif (!dono) return [];\n\nconst hojeLocal = \"(NOW() AT TIME ZONE d.timezone)::date\";\nlet filtro;\nif (periodo === 'hoje') filtro = `g0.data_gasto = ${hojeLocal}`;\nelse if (periodo === 'semana') filtro = `g0.data_gasto >= ${hojeLocal} - 6`;\nelse if (periodo === 'mes') filtro = `date_trunc('month', g0.data_gasto) = date_trunc('month', ${hojeLocal})`;\nelse if (periodo === 'mes_passado') filtro = `date_trunc('month', g0.data_gasto) = date_trunc('month', ${hojeLocal} - INTERVAL '1 month')`;\nelse filtro = 'TRUE';\n\nconst sql = `SELECT d.numero, d.nome, d.timezone, d.moeda,\\n  (SELECT COALESCE(json_agg(json_build_object('id', g0.id, 'data', to_char(g0.data_gasto,'DD/MM/YYYY'), 'descricao', g0.descricao, 'categoria', COALESCE(g0.categoria,'outros'), 'forma', COALESCE(g0.forma_pagamento,''), 'valor', g0.valor, 'obs', COALESCE(g0.observacoes,''), 'sub', COALESCE(g0.subcategoria,'')) ORDER BY g0.data_gasto, g0.id), '[]'::json)\\n   FROM giulia_gastos g0 WHERE g0.dono_numero = d.numero AND ${filtro}) AS gastos\\nFROM giulia_donos d WHERE d.numero = '${dono}';`;\n\nreturn [{ json: { dono, periodo, sql } }];"
+      },
+      "id": "code-prep",
+      "name": "Preparar Pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql }}",
+        "options": {}
+      },
+      "id": "pg-dados",
+      "name": "Carregar Dados",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        640,
+        380
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      },
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Monta resumo texto + graficos (QuickChart, config JS com funcoes) + meta da planilha\nconst req = $('Preparar Pedido').first().json;\nconst d = (items[0] && items[0].json) || {};\nconst labelPeriodo = ({hoje:'hoje', semana:'ultimos 7 dias', mes:'mes atual', mes_passado:'mes passado', tudo:'periodo completo'})[req.periodo] || 'mes atual';\nif (!d.numero) return [{ json: { vazio: true, dono: req.dono, texto: 'Nao consegui gerar o relatorio agora. Me pede de novo em instantes?' } }];\nconst gastos = typeof d.gastos === 'string' ? JSON.parse(d.gastos) : (d.gastos || []);\nconst SYM = d.moeda === 'USD' ? '$' : 'R$';\nfunction fmt(v){ const n = Number(v) || 0; return SYM + ' ' + n.toFixed(2).replace('.', ',').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.'); }\nif (!gastos.length) return [{ json: { vazio: true, dono: d.numero, texto: `Nenhum gasto registrado no periodo (${labelPeriodo}).` } }];\n\nconst total = gastos.reduce((s,g) => s + (Number(g.valor)||0), 0);\nconst porCat = {};\nfor (const g of gastos) porCat[g.categoria] = (porCat[g.categoria]||0) + (Number(g.valor)||0);\nlet cats = Object.entries(porCat).sort((a,b) => b[1]-a[1]);\nif (cats.length > 8) { const resto = cats.slice(7).reduce((s,c)=>s+c[1],0); cats = cats.slice(0,7); cats.push(['outros', resto]); }\nconst porDia = {};\nfor (const g of gastos) { const dd = String(g.data).substring(0,5); porDia[dd] = (porDia[dd]||0) + (Number(g.valor)||0); }\nconst dias = Object.entries(porDia);\n\n// paleta categorica validada (ordem fixa, CVD-safe)\nconst CORES = ['#3987e5','#199e70','#c98500','#008300','#9085e9','#e66767','#d55181','#d95926']; // steps dark-mode validados\nconst pct = v => total ? Math.round(v/total*100) : 0;\n\n// configs em JS literal (QuickChart aceita funcoes p/ datalabels e centro da rosca)\nconst catLabels = JSON.stringify(cats.map(([c,v]) => c + ' - ' + fmt(v)));\nconst catVals = JSON.stringify(cats.map(([c,v]) => Math.round(v*100)/100));\nconst catCores = JSON.stringify(CORES.slice(0, cats.length));\nconst cfgCat = \"{type:'doughnut',data:{labels:\" + catLabels + \",datasets:[{data:\" + catVals + \",backgroundColor:\" + catCores + \",borderColor:'#0B1A13',borderWidth:3}]},options:{cutoutPercentage:58,layout:{padding:10},title:{display:true,text:'Gastos por categoria',fontSize:20,fontColor:'#F5F0E8',fontFamily:'Georgia, serif',padding:14},legend:{position:'right',labels:{fontSize:13,fontColor:'#F5F0E8',padding:12,boxWidth:14}},plugins:{datalabels:{display:function(ctx){var d=ctx.dataset.data;var t=d.reduce(function(a,b){return a+b},0);return d[ctx.dataIndex]/t>=0.07;},formatter:function(v,ctx){var t=ctx.dataset.data.reduce(function(a,b){return a+b},0);return Math.round(v/t*100)+'%';},color:'#ffffff',font:{weight:'bold',size:15}},doughnutlabel:{labels:[{text:'\" + fmt(total) + \"',font:{size:22,weight:'bold'},color:'#F5F0E8'},{text:'total - \" + labelPeriodo + \"',font:{size:12},color:'#C9A84C'}]}}}}\";\n\nconst diaLabels = JSON.stringify(dias.map(x=>x[0]));\nconst diaVals = JSON.stringify(dias.map(x=>Math.round(x[1]*100)/100));\nconst cfgDia = \"{type:'bar',data:{labels:\" + diaLabels + \",datasets:[{data:\" + diaVals + \",backgroundColor:'#C9A84C',maxBarThickness:46}]},options:{layout:{padding:{top:28}},title:{display:true,text:'Gasto por dia - \" + labelPeriodo + \" (\" + SYM + \")',fontSize:20,fontColor:'#F5F0E8',fontFamily:'Georgia, serif',padding:14},legend:{display:false},scales:{yAxes:[{ticks:{beginAtZero:true,fontColor:'#A8B3A0'},gridLines:{color:'rgba(245,240,232,0.10)',zeroLineColor:'rgba(201,168,76,0.45)',drawBorder:false}}],xAxes:[{ticks:{fontColor:'#A8B3A0'},gridLines:{display:false}}]},plugins:{datalabels:{anchor:'end',align:'end',offset:2,color:'#F5F0E8',font:{weight:'bold',size:12},formatter:function(v){var s=v>=1000?(Math.round(v/100)/10)+'k':String(v);return s.replace('.',',');}}}}}\";\n\nconst qc = c => 'https://quickchart.io/chart?w=760&h=440&bkg=' + encodeURIComponent('#0B1A13') + '&devicePixelRatio=2&c=' + encodeURIComponent(c);\n\nconst maior = gastos.reduce((m,g) => (Number(g.valor)||0) > (Number(m.valor)||0) ? g : m, gastos[0]);\nconst linhasCat = cats.map(([c,v]) => `  ${c}: ${fmt(v)} (${pct(v)}%)`).join('\\n');\nconst agoraLocal = new Date().toLocaleString('sv-SE', { timeZone: d.timezone || 'America/Sao_Paulo' });\nconst dataFmt = agoraLocal.substring(8,10) + '/' + agoraLocal.substring(5,7) + '/' + agoraLocal.substring(0,4);\nconst nLanc = gastos.length === 1 ? '1 lancamento' : gastos.length + ' lancamentos';\nconst texto = `*Relatorio de gastos - ${labelPeriodo}*\\n_Gerado em ${dataFmt}_\\n\\n*Total: ${fmt(total)}* (${nLanc})\\n\\n*Por categoria:*\\n${linhasCat}\\n\\n*Maior gasto:* ${maior.descricao} - ${fmt(maior.valor)}\\n\\nSegue os graficos e a planilha completa.`;\nconst docname = `gastos-${req.periodo}-${dataFmt.replace(/\\//g,'-')}.xlsx`;\n\nreturn [{ json: { vazio: false, dono: d.numero, nome: d.nome || '', moeda: d.moeda || 'BRL', label_periodo: labelPeriodo, data_geracao: dataFmt, texto, chart_cat_url: qc(cfgCat), chart_dia_url: dias.length > 1 ? qc(cfgDia) : '', docname, gastos, total } }];"
+      },
+      "id": "code-meta",
+      "name": "Montar Meta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.dono, text: $json.texto }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-resumo",
+      "name": "Enviar Resumo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1080,
+        380
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Montar Meta').first().json.vazio }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-tem",
+      "name": "Tem Gastos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Um item por midia (graficos) pra enviar em sequencia\nconst meta = $('Montar Meta').first().json;\nconst out = [];\nif (meta.chart_cat_url) out.push({ json: { number: meta.dono, file: meta.chart_cat_url, caption: 'Como se distribui por categoria' } });\nif (meta.chart_dia_url) out.push({ json: { number: meta.dono, file: meta.chart_dia_url, caption: 'Evolucao dia a dia' } });\nreturn out;"
+      },
+      "id": "code-midias",
+      "name": "Montar Midias",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.number, type: 'image', file: $json.file, text: $json.caption }) }}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-midias",
+      "name": "Enviar Graficos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1740,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://engsolucao.uazapi.com/send/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "__GIULIA_UAZAPI_TOKEN__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Montar Meta').first().json.dono, type: 'document', file: 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + $json.xlsx_b64, docName: $('Montar Meta').first().json.docname, text: 'Planilha completa em anexo' }) }}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-planilha",
+      "name": "Enviar Planilha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2620,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + $('Montar Meta').first().json.texto.replace(/'/g, \"''\") + \"', '\" + $('Montar Meta').first().json.dono + \"')\" }}",
+        "options": {}
+      },
+      "id": "pg-memoria",
+      "name": "Salvar Memoria Relatorio",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        540
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      },
+      "continueOnFail": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gera XLSX premium (puro JS, sem libs) - relatorio de gastos\n// Identidade: dark premium (#0B1A13 verde, #C9A84C dourado, #F5F0E8 creme)\n// Duas abas: Resumo (capa + KPIs + categorias) e Lancamentos (tabela com filtro e cabecalho congelado)\n'use strict';\n\n// ---------- ZIP (STORE, sem compressao) ----------\nconst CRC_TABLE = (() => {\n  const t = new Int32Array(256);\n  for (let n = 0; n < 256; n++) {\n    let c = n;\n    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);\n    t[n] = c;\n  }\n  return t;\n})();\nfunction crc32(buf) {\n  let c = 0xFFFFFFFF;\n  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);\n  return (c ^ 0xFFFFFFFF) >>> 0;\n}\nfunction zipStore(entries) {\n  const locals = [], centrals = [];\n  let offset = 0;\n  for (const e of entries) {\n    const nameB = Buffer.from(e.name, 'utf8');\n    const crc = crc32(e.data);\n    const lh = Buffer.alloc(30);\n    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(0x0800, 6);\n    lh.writeUInt16LE(0, 8); lh.writeUInt16LE(0, 10); lh.writeUInt16LE(0x21, 12);\n    lh.writeUInt32LE(crc, 14); lh.writeUInt32LE(e.data.length, 18); lh.writeUInt32LE(e.data.length, 22);\n    lh.writeUInt16LE(nameB.length, 26); lh.writeUInt16LE(0, 28);\n    locals.push(lh, nameB, e.data);\n    const ch = Buffer.alloc(46);\n    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6);\n    ch.writeUInt16LE(0x0800, 8); ch.writeUInt16LE(0, 10); ch.writeUInt16LE(0, 12); ch.writeUInt16LE(0x21, 14);\n    ch.writeUInt32LE(crc, 16); ch.writeUInt32LE(e.data.length, 20); ch.writeUInt32LE(e.data.length, 24);\n    ch.writeUInt16LE(nameB.length, 28);\n    ch.writeUInt32LE(offset, 42);\n    centrals.push(ch, nameB);\n    offset += 30 + nameB.length + e.data.length;\n  }\n  const cdSize = centrals.reduce((s, b) => s + b.length, 0);\n  const eocd = Buffer.alloc(22);\n  eocd.writeUInt32LE(0x06054b50, 0);\n  eocd.writeUInt16LE(entries.length, 8); eocd.writeUInt16LE(entries.length, 10);\n  eocd.writeUInt32LE(cdSize, 12); eocd.writeUInt32LE(offset, 16);\n  return Buffer.concat([...locals, ...centrals, eocd]);\n}\n\n// ---------- helpers ----------\nfunction esc(s) {\n  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n}\nfunction colLetter(n) {\n  let s = '';\n  while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }\n  return s;\n}\n\n// ---------- estilos (indices de cellXfs) ----------\n//  0 normal\n//  1 titulo capa (Georgia 16 creme sobre verde, centro)\n//  2 subtitulo capa (dourado sobre verde, centro)\n//  3 secao (Georgia 12 verde sobre creme, acento dourado a esquerda)\n//  4 header tabela (creme bold sobre verde, centro, sublinhado dourado)\n//  5 kpi rotulo (oliva)\n//  6 kpi moeda grande (bold 14 verde)\n//  7 kpi numero grande (bold 14 verde)\n//  8 texto | 9 texto zebra\n// 10 moeda | 11 moeda zebra\n// 12 pct   | 13 pct zebra\n// 14 total rotulo (bold, borda dupla verde) | 15 total moeda\n// 16 data centro | 17 data centro zebra\n// 18 nota rodape (italico oliva)\n// 19 kpi texto (normal, p/ maior gasto)\nfunction stylesXml(moedaFmt) {\n  return `<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">\n<numFmts count=\"2\">\n<numFmt numFmtId=\"164\" formatCode=\"&quot;${moedaFmt}&quot;\\\\ #,##0.00\"/>\n<numFmt numFmtId=\"165\" formatCode=\"0%\"/>\n</numFmts>\n<fonts count=\"9\">\n<font><sz val=\"11\"/><color rgb=\"FF1F2418\"/><name val=\"Calibri\"/></font>\n<font><b/><sz val=\"16\"/><color rgb=\"FFF5F0E8\"/><name val=\"Georgia\"/></font>\n<font><sz val=\"10\"/><color rgb=\"FFC9A84C\"/><name val=\"Calibri\"/></font>\n<font><b/><sz val=\"12\"/><color rgb=\"FF0B1A13\"/><name val=\"Georgia\"/></font>\n<font><b/><sz val=\"11\"/><color rgb=\"FFF5F0E8\"/><name val=\"Calibri\"/></font>\n<font><sz val=\"11\"/><color rgb=\"FF6B7263\"/><name val=\"Calibri\"/></font>\n<font><b/><sz val=\"14\"/><color rgb=\"FF0B1A13\"/><name val=\"Calibri\"/></font>\n<font><b/><sz val=\"11\"/><color rgb=\"FF1F2418\"/><name val=\"Calibri\"/></font>\n<font><i/><sz val=\"9\"/><color rgb=\"FF6B7263\"/><name val=\"Calibri\"/></font>\n</fonts>\n<fills count=\"5\">\n<fill><patternFill patternType=\"none\"/></fill>\n<fill><patternFill patternType=\"gray125\"/></fill>\n<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF0B1A13\"/></patternFill></fill>\n<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFF5F0E8\"/></patternFill></fill>\n<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFF8F6F1\"/></patternFill></fill>\n</fills>\n<borders count=\"5\">\n<border><left/><right/><top/><bottom/><diagonal/></border>\n<border><left/><right/><top/><bottom style=\"thin\"><color rgb=\"FFE3DFD3\"/></bottom><diagonal/></border>\n<border><left/><right/><top style=\"double\"><color rgb=\"FF0B1A13\"/></top><bottom/><diagonal/></border>\n<border><left style=\"medium\"><color rgb=\"FFC9A84C\"/></left><right/><top/><bottom/><diagonal/></border>\n<border><left/><right/><top/><bottom style=\"medium\"><color rgb=\"FFC9A84C\"/></bottom><diagonal/></border>\n</borders>\n<cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs>\n<cellXfs count=\"20\">\n<xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/>\n<xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"0\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf>\n<xf numFmtId=\"0\" fontId=\"2\" fillId=\"2\" borderId=\"0\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf>\n<xf numFmtId=\"0\" fontId=\"3\" fillId=\"3\" borderId=\"3\" applyAlignment=\"1\"><alignment vertical=\"center\" indent=\"1\"/></xf>\n<xf numFmtId=\"0\" fontId=\"4\" fillId=\"2\" borderId=\"4\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf>\n<xf numFmtId=\"0\" fontId=\"5\" fillId=\"0\" borderId=\"0\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf>\n<xf numFmtId=\"164\" fontId=\"6\" fillId=\"0\" borderId=\"0\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf>\n<xf numFmtId=\"0\" fontId=\"6\" fillId=\"0\" borderId=\"0\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf>\n<xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" applyAlignment=\"1\"><alignment vertical=\"top\" wrapText=\"1\"/></xf>\n<xf numFmtId=\"0\" fontId=\"0\" fillId=\"4\" borderId=\"1\" applyAlignment=\"1\"><alignment vertical=\"top\" wrapText=\"1\"/></xf>\n<xf numFmtId=\"164\" fontId=\"0\" fillId=\"0\" borderId=\"1\" applyAlignment=\"1\"><alignment vertical=\"top\"/></xf>\n<xf numFmtId=\"164\" fontId=\"0\" fillId=\"4\" borderId=\"1\" applyAlignment=\"1\"><alignment vertical=\"top\"/></xf>\n<xf numFmtId=\"165\" fontId=\"5\" fillId=\"0\" borderId=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"top\"/></xf>\n<xf numFmtId=\"165\" fontId=\"5\" fillId=\"4\" borderId=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"top\"/></xf>\n<xf numFmtId=\"0\" fontId=\"7\" fillId=\"0\" borderId=\"2\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf>\n<xf numFmtId=\"164\" fontId=\"7\" fillId=\"0\" borderId=\"2\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf>\n<xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"top\"/></xf>\n<xf numFmtId=\"0\" fontId=\"0\" fillId=\"4\" borderId=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"top\"/></xf>\n<xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf>\n<xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf>\n</cellXfs>\n<cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles>\n</styleSheet>`;\n}\n\n// ---------- monta XML de uma folha ----------\nfunction sheetXml(rows, merges, cols, opts) {\n  const rowsXml = rows.map(row => {\n    const cellsXml = (row.cells || []).map(c => {\n      const ref = colLetter(c.col) + row.r;\n      if (c.v != null) return `<c r=\"${ref}\" s=\"${c.s}\"><v>${c.v}</v></c>`;\n      return `<c r=\"${ref}\" s=\"${c.s}\" t=\"inlineStr\"><is><t xml:space=\"preserve\">${esc(c.t)}</t></is></c>`;\n    }).join('');\n    const htAttr = row.ht ? ` ht=\"${row.ht}\" customHeight=\"1\"` : '';\n    return `<row r=\"${row.r}\"${htAttr}>${cellsXml}</row>`;\n  }).join('');\n  const colsXml = cols.map((w, i) => `<col min=\"${i + 1}\" max=\"${i + 1}\" width=\"${w}\" customWidth=\"1\"/>`).join('');\n  const freeze = opts && opts.freezeRow\n    ? `<sheetViews><sheetView workbookViewId=\"0\" showGridLines=\"0\"><pane ySplit=\"${opts.freezeRow}\" topLeftCell=\"A${opts.freezeRow + 1}\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>`\n    : `<sheetViews><sheetView workbookViewId=\"0\" showGridLines=\"0\"/></sheetViews>`;\n  const filter = opts && opts.autoFilter ? `<autoFilter ref=\"${opts.autoFilter}\"/>` : '';\n  const mergesXml = merges.length ? `<mergeCells count=\"${merges.length}\">${merges.map(m => `<mergeCell ref=\"${m}\"/>`).join('')}</mergeCells>` : '';\n  return `<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">\n${freeze}\n<cols>${colsXml}</cols>\n<sheetData>${rowsXml}</sheetData>\n${filter}\n${mergesXml}\n<pageSetup orientation=\"landscape\" fitToWidth=\"1\"/>\n</worksheet>`;\n}\n\n// helper de construcao de linhas\nfunction mkSheet() {\n  const rows = [], merges = [];\n  let R = 0;\n  return {\n    rows, merges,\n    add(cells, ht) { R++; rows.push({ r: R, cells, ht }); return R; },\n    merge(r, c1, c2) { merges.push(`${colLetter(c1)}${r}:${colLetter(c2)}${r}`); },\n    row() { return R; }\n  };\n}\nfunction txt(col, s, style) { return { col, t: s, s: style }; }\nfunction num(col, v, style) { return { col, v, s: style }; }\nfunction band(sh, texto, sub, nCols) {\n  let r = sh.add([txt(1, texto, 1), ...Array.from({ length: nCols - 1 }, (_, i) => txt(i + 2, '', 1))], 32);\n  sh.merge(r, 1, nCols);\n  r = sh.add([txt(1, sub, 2), ...Array.from({ length: nCols - 1 }, (_, i) => txt(i + 2, '', 2))], 17);\n  sh.merge(r, 1, nCols);\n}\nfunction section(sh, texto, nCols) {\n  const r = sh.add([txt(1, texto, 3), ...Array.from({ length: nCols - 1 }, (_, i) => txt(i + 2, '', 3))], 20);\n  sh.merge(r, 1, nCols);\n}\n\n// ---------- relatorio ----------\nfunction buildXlsx(meta) {\n  const moedaFmt = meta.moeda === 'USD' ? '$' : 'R$';\n  const fmtBR = v => moedaFmt + ' ' + (Number(v) || 0).toFixed(2).replace('.', ',').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');\n  const gastos = meta.gastos || [];\n  const total = gastos.reduce((s, g) => s + (Number(g.valor) || 0), 0);\n  const media = gastos.length ? total / gastos.length : 0;\n  const porCat = {};\n  for (const g of gastos) porCat[g.categoria] = (porCat[g.categoria] || 0) + (Number(g.valor) || 0);\n  const cats = Object.entries(porCat).sort((a, b) => b[1] - a[1]);\n  const maior = gastos.reduce((m, g) => (Number(g.valor) || 0) > (Number(m.valor) || 0) ? g : m, gastos[0] || {});\n  const subtitulo = `${meta.nome || ''}  ·  ${meta.label_periodo || ''}  ·  gerado em ${meta.data_geracao || ''}`;\n\n  // ===== Aba 1: Resumo =====\n  const s1 = mkSheet();\n  band(s1, 'Relatório de Gastos', subtitulo, 4);\n  s1.add([]);\n  section(s1, 'Resumo do período', 4);\n  s1.add([txt(1, 'Total do período', 5), num(2, Math.round(total * 100) / 100, 6)], 20);\n  s1.add([txt(1, 'Lançamentos', 5), num(2, gastos.length, 7)], 18);\n  s1.add([txt(1, 'Média por lançamento', 5), num(2, Math.round(media * 100) / 100, 6)], 18);\n  let r = s1.add([txt(1, 'Maior gasto', 5), txt(2, `${maior.descricao || '-'} (${fmtBR(maior.valor)})`, 19)], 18);\n  s1.merge(r, 2, 4);\n  s1.add([]);\n  section(s1, 'Por categoria', 4);\n  s1.add([txt(1, 'Categoria', 4), txt(2, 'Valor', 4), txt(3, '% do total', 4)]);\n  cats.forEach(([c, v], i) => {\n    const z = i % 2 === 1;\n    s1.add([txt(1, c, z ? 9 : 8), num(2, Math.round(v * 100) / 100, z ? 11 : 10), num(3, total ? v / total : 0, z ? 13 : 12)]);\n  });\n  s1.add([txt(1, 'Total', 14), num(2, Math.round(total * 100) / 100, 15), txt(3, '', 14)]);\n  s1.add([]);\n  s1.add([txt(1, `Valores em ${meta.moeda === 'USD' ? 'dólares americanos (USD)' : 'reais (BRL)'}. Detalhes na aba Lançamentos.`, 18)]);\n\n  // ===== Aba 2: Lancamentos =====\n  const s2 = mkSheet();\n  band(s2, 'Lançamentos detalhados', subtitulo, 7);\n  s2.add([txt(1, 'Data', 4), txt(2, 'Descrição', 4), txt(3, 'Categoria', 4), txt(4, 'Subcategoria', 4), txt(5, 'Forma de pagamento', 4), txt(6, 'Valor', 4), txt(7, 'Observações', 4)]);\n  gastos.forEach((g, i) => {\n    const z = i % 2 === 1;\n    s2.add([\n      txt(1, g.data || '', z ? 17 : 16),\n      txt(2, g.descricao || '', z ? 9 : 8),\n      txt(3, g.categoria || '', z ? 9 : 8),\n      txt(4, g.sub || '', z ? 9 : 8),\n      txt(5, g.forma || '', z ? 9 : 8),\n      num(6, Math.round((Number(g.valor) || 0) * 100) / 100, z ? 11 : 10),\n      txt(7, g.obs || '', z ? 9 : 8)\n    ]);\n  });\n  const lastData = s2.row();\n  s2.add([txt(1, '', 14), txt(2, 'Total', 14), txt(3, '', 14), txt(4, '', 14), txt(5, '', 14), num(6, Math.round(total * 100) / 100, 15), txt(7, '', 14)]);\n\n  const sheet1 = sheetXml(s1.rows, s1.merges, [22, 20, 12, 34], {});\n  const sheet2 = sheetXml(s2.rows, s2.merges, [12, 38, 14, 16, 18, 13, 42], { freezeRow: 3, autoFilter: `A3:G${lastData}` });\n\n  const contentTypes = `<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">\n<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>\n<Default Extension=\"xml\" ContentType=\"application/xml\"/>\n<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>\n<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>\n<Override PartName=\"/xl/worksheets/sheet2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>\n<Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/>\n</Types>`;\n  const rels = `<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\n<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>\n</Relationships>`;\n  const wbRels = `<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\n<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>\n<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet2.xml\"/>\n<Relationship Id=\"rId3\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>\n</Relationships>`;\n  const workbook = `<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\n<sheets><sheet name=\"Resumo\" sheetId=\"1\" r:id=\"rId1\"/><sheet name=\"Lançamentos\" sheetId=\"2\" r:id=\"rId2\"/></sheets>\n</workbook>`;\n\n  const zip = zipStore([\n    { name: '[Content_Types].xml', data: Buffer.from(contentTypes, 'utf8') },\n    { name: '_rels/.rels', data: Buffer.from(rels, 'utf8') },\n    { name: 'xl/workbook.xml', data: Buffer.from(workbook, 'utf8') },\n    { name: 'xl/_rels/workbook.xml.rels', data: Buffer.from(wbRels, 'utf8') },\n    { name: 'xl/styles.xml', data: Buffer.from(stylesXml(moedaFmt), 'utf8') },\n    { name: 'xl/worksheets/sheet1.xml', data: Buffer.from(sheet1, 'utf8') },\n    { name: 'xl/worksheets/sheet2.xml', data: Buffer.from(sheet2, 'utf8') }\n  ]);\n  return zip.toString('base64');\n}\n\nconst meta = $('Montar Meta').first().json;\nreturn [{ json: { xlsx_b64: buildXlsx(meta) } }];\n"
+      },
+      "id": "code-xlsx",
+      "name": "Gerar XLSX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Relatorio": {
+      "main": [
+        [
+          {
+            "node": "Preparar Pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Pedido": {
+      "main": [
+        [
+          {
+            "node": "Carregar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar Dados": {
+      "main": [
+        [
+          {
+            "node": "Montar Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Meta": {
+      "main": [
+        [
+          {
+            "node": "Enviar Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Resumo": {
+      "main": [
+        [
+          {
+            "node": "Tem Gastos?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Salvar Memoria Relatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Gastos?": {
+      "main": [
+        [
+          {
+            "node": "Montar Midias",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Montar Midias": {
+      "main": [
+        [
+          {
+            "node": "Enviar Graficos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Graficos": {
+      "main": [
+        [
+          {
+            "node": "Gerar XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar XLSX": {
+      "main": [
+        [
+          {
+            "node": "Enviar Planilha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  }
+}

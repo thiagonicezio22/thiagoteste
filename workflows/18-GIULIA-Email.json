@@ -1,0 +1,634 @@
+{
+ "name": "18 - GIULIA Email",
+ "nodes": [
+  {
+   "parameters": {
+    "mailbox": "INBOX",
+    "postProcessAction": "read",
+    "options": {
+     "allowUnauthorizedCerts": false,
+     "forceReconnect": 60
+    },
+    "downloadAttachments": true
+   },
+   "id": "em-imap",
+   "name": "Email Trigger IMAP",
+   "type": "n8n-nodes-base.emailReadImap",
+   "typeVersion": 2,
+   "position": [
+    -200,
+    100
+   ],
+   "credentials": {
+    "imap": {
+     "id": "SPlSrP20IjwICGGH",
+     "name": "Email Thiago IMAP"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "// Normaliza o email recebido (formatos variam) e monta SQL + aviso pro Thiago.\n// LOTE: o IMAP pode entregar varios emails de uma vez - um item de saida por email.\nconst saida = [];\nfor (let idx = 0; idx < items.length; idx++) {\n  const j = items[idx].json || {};\n  // escapa aspas E neutraliza $<numero> (pg-promise trata $N como placeholder: Message-ID do Outlook\n  // '<...$43496650$...>' derrubava o Salvar Email). Vira '...' || '$' || '123': valor gravado identico.\n  const esc = s => String(s == null ? '' : s).replace(/'/g, \"''\").replace(/\\$(?=\\d)/g, \"' || '$$' || '\");\n\n  function extrairDe() {\n    const f = j.from;\n    if (!f) return { email: 'desconhecido', nome: '' };\n    if (typeof f === 'string') {\n      const m = f.match(/^\\s*\"?([^\"<]*)\"?\\s*<([^>]+)>/);\n      return m ? { nome: m[1].trim(), email: m[2].trim() } : { nome: '', email: f.trim() };\n    }\n    if (f.value && f.value[0]) return { nome: f.value[0].name || '', email: f.value[0].address || 'desconhecido' };\n    if (f.text) return extrairDeStr(f.text);\n    return { email: String(f).substring(0, 100), nome: '' };\n  }\n  function extrairDeStr(s) {\n    const m = String(s).match(/^\\s*\"?([^\"<]*)\"?\\s*<([^>]+)>/);\n    return m ? { nome: m[1].trim(), email: m[2].trim() } : { nome: '', email: String(s).trim() };\n  }\n  const de = extrairDe();\n  const assunto = String(j.subject || '(sem assunto)').substring(0, 300);\n  let corpo = String(j.textPlain || j.text || '').trim();\n  if (!corpo && j.textHtml) corpo = String(j.textHtml).replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n  corpo = corpo\n    .replace(/&#(\\d+);/g, (m, d) => { try { return String.fromCharCode(parseInt(d, 10)); } catch (e) { return m; } })\n    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '\"')\n    .replace(/\\s+\\n/g, '\\n').trim();\n  corpo = corpo.substring(0, 8000);\n  const msgId = String((j.metadata && j.metadata['message-id']) || j.messageId || '').substring(0, 300) || null;\n\n  // so avisa emails que chegaram de ontem pra ca (evita enxurrada de nao-lidos antigos na ativacao)\n  let notificar = true;\n  try {\n    const dt = j.date ? new Date(j.date) : null;\n    if (dt && !isNaN(dt) && (Date.now() - dt.getTime()) > 36 * 3600 * 1000) notificar = false;\n  } catch (e) {}\n\n  // anexos vindos do IMAP (binary attachment_0, attachment_1, ...)\n  const LIM_MB = 15;\n  const anexos = [];\n  try {\n    const bin = items[idx].binary || {};\n    for (const k of Object.keys(bin)) {\n      const b = bin[k];\n      if (!b) continue;\n      const nomeA = String(b.fileName || (k + (b.fileExtension ? '.' + b.fileExtension : ''))).substring(0, 200);\n      // o n8n pode guardar o binario FORA da memoria: o helper busca o conteudo real\n      let dados = '', bytes = 0;\n      try {\n        const buf = await this.helpers.getBinaryDataBuffer(idx, k);\n        if (buf && buf.length) { dados = buf.toString('base64'); bytes = buf.length; }\n      } catch (e) {}\n      if (!dados && typeof b.data === 'string' && b.data.length > 500) {\n        dados = b.data; bytes = Math.round(dados.length * 3 / 4);\n      }\n      if (!dados || bytes < 20) continue; // referencia vazia/quebrada: nao guarda lixo\n      anexos.push({ nome: nomeA, mime: String(b.mimeType || 'application/octet-stream').substring(0, 120), bytes, b64: bytes <= LIM_MB * 1024 * 1024 ? dados : '' });\n    }\n  } catch (e) {}\n  const fmtTam = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';\n  const linhaAnexos = anexos.length\n    ? '\\n\\n📎 ' + anexos.length + ' anexo(s): ' + anexos.map(a => a.nome + ' (' + fmtTam(a.bytes) + (a.b64 ? '' : ', grande demais pra eu guardar') + ')').join(', ') +\n      (anexos.some(a => a.b64) ? '\\nSe quiser o arquivo aqui no WhatsApp, e so pedir: \"me manda o anexo desse email\".' : '')\n    : '';\n\n  const trecho = corpo.substring(0, 350) + (corpo.length > 350 ? '…' : '');\n  const texto = '📧 Email novo em contato@thiagonicezio.com\\n\\nDe: ' + (de.nome ? de.nome + ' <' + de.email + '>' : de.email) +\n    '\\nAssunto: ' + assunto + '\\n\\n' + (trecho || '(sem texto)') +\n    linhaAnexos + '\\n\\nQuer que eu responda? Me fala o que dizer que eu monto e te mostro antes.';\n\n  const sql = \"INSERT INTO giulia_emails (de, de_nome, assunto, corpo, message_id) VALUES ('\" +\n    esc(de.email) + \"', '\" + esc(de.nome) + \"', '\" + esc(assunto) + \"', '\" + esc(corpo) + \"', \" +\n    (msgId ? \"'\" + esc(msgId) + \"'\" : 'NULL') + \")\" +\n    (msgId ? \" ON CONFLICT (message_id) WHERE message_id IS NOT NULL DO NOTHING\" : '') +\n    \" RETURNING id;\";\n\n  saida.push({ json: { sql, notificar, texto, anexos: anexos.filter(a => a.b64) }, pairedItem: { item: idx } });\n\n}\nreturn saida;\n"
+   },
+   "id": "em-prep-rec",
+   "name": "Preparar Email Recebido",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    40,
+    100
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "em-salvar",
+   "name": "Salvar Email",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    280,
+    100
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $('Preparar Email Recebido').item.json.notificar }}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      },
+      {
+       "leftValue": "={{ $('Salvar Email').item.json.id }}",
+       "rightValue": "",
+       "operator": {
+        "type": "number",
+        "operation": "exists",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    }
+   },
+   "id": "em-notif-if",
+   "name": "Notificar?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    520,
+    100
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://engsolucao.uazapi.com/send/text",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "token",
+       "value": "__GIULIA_UAZAPI_TOKEN__"
+      },
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ number: '5511910441709', text: $('Preparar Email Recebido').item.json.texto }) }}",
+    "options": {
+     "timeout": 30000
+    }
+   },
+   "id": "em-avisar",
+   "name": "Avisar Thiago Email",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    760,
+    40
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "// Depois do aviso no WhatsApp: registra na memoria e marca notificado.\nconst prep = $('Preparar Email Recebido').item.json;\nconst salvo = $('Salvar Email').item.json || {};\n// escapa aspas E neutraliza $<numero> (pg-promise trata $N como placeholder: Message-ID do Outlook\n// '<...$43496650$...>' derrubava o Salvar Email). Vira '...' || '$' || '123': valor gravado identico.\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\").replace(/\\$(?=\\d)/g, \"' || '$$' || '\");\nlet sql = \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + esc(prep.texto) + \"', '5511910441709');\";\nif (salvo.id) sql += \"\\nUPDATE giulia_emails SET notificado = true WHERE id = \" + parseInt(salvo.id, 10) + \";\";\nreturn { json: { sql } };\n",
+    "mode": "runOnceForEachItem"
+   },
+   "id": "em-pos",
+   "name": "Pos Notificacao",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1000,
+    40
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "em-reg",
+   "name": "Registrar Notificacao",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    1240,
+    40
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "giulia-email",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "em-webhook",
+   "name": "Webhook Email",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    -200,
+    420
+   ],
+   "webhookId": "giulia-email"
+  },
+  {
+   "parameters": {
+    "jsCode": "// Gate + normalizacao do pedido de envio (so o Thiago).\nconst b = items[0].json.body || items[0].json || {};\nconst dono = String(b.dono || '').replace(/[^0-9]/g, '');\nif (dono !== '5511910441709') return [];\nreturn [{ json: { dono, pendente_id: b.pendente_id ? parseInt(b.pendente_id, 10) : null } }];\n"
+   },
+   "id": "em-prep-env",
+   "name": "Preparar Envio Email",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    40,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT id, destinatario, assunto, corpo FROM giulia_email_pendentes WHERE status = 'pendente' ORDER BY id DESC LIMIT 3;",
+    "options": {}
+   },
+   "id": "em-load-pend",
+   "name": "Carregar Pendente Email",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    280,
+    420
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "jsCode": "// Escolhe o pendente confirmado e prepara o envio.\nconst ped = $('Preparar Envio Email').first().json;\nconst pendentes = $('Carregar Pendente Email').all().map(i => i.json).filter(p => p && p.id);\nlet pend = ped.pendente_id ? pendentes.find(p => String(p.id) === String(ped.pendente_id)) : pendentes[0];\nif (!pend) {\n  return [{ json: { ok: false, dono: ped.dono, texto: 'Nao achei email aguardando confirmacao. Me pede de novo que eu monto na hora.' } }];\n}\nconst escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst corpoHtml = escHtml(pend.corpo).replace(/[\\u0080-\\uFFFF]/g, ch => '&#' + ch.charCodeAt(0) + ';').replace(/\\n/g, '<br>');\nconst html = '<div style=\"font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #222; line-height: 1.55; max-width: 640px;\">' +\n  corpoHtml +\n  '<br><br><table style=\"border-left: 3px solid #1a73b5; padding-left: 12px;\" cellpadding=\"0\" cellspacing=\"0\"><tr><td style=\"padding-left: 12px; font-family: Arial, sans-serif; font-size: 13px; color: #333;\">' +\n  '<strong style=\"font-size: 15px; color: #111;\">Thiago Nicezio</strong><br>' +\n  '<span style=\"color: #555;\">+55 11 91044-1709 &nbsp;|&nbsp; contato@thiagonicezio.com</span>' +\n  '</td></tr></table></div>';\nreturn [{ json: { ok: true, dono: ped.dono, pend_id: pend.id, destinatario: pend.destinatario, assunto: pend.assunto, corpo: pend.corpo, html } }];\n"
+   },
+   "id": "em-montar",
+   "name": "Montar Envio",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    520,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $json.ok }}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    }
+   },
+   "id": "em-tem-envio",
+   "name": "Tem Envio?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    760,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "fromEmail": "Thiago Nicezio <contato@thiagonicezio.com>",
+    "toEmail": "={{ $json.destinatario }}",
+    "subject": "={{ $json.assunto }}",
+    "emailFormat": "html",
+    "options": {
+     "appendAttribution": false
+    },
+    "html": "={{ $json.html }}"
+   },
+   "id": "em-smtp",
+   "name": "Enviar Email SMTP",
+   "type": "n8n-nodes-base.emailSend",
+   "typeVersion": 2.1,
+   "position": [
+    1000,
+    360
+   ],
+   "credentials": {
+    "smtp": {
+     "id": "jCec0J7EjuErLvg7",
+     "name": "Email Thiago SMTP"
+    }
+   },
+   "retryOnFail": true,
+   "maxTries": 2
+  },
+  {
+   "parameters": {
+    "jsCode": "// Marca enviado + memoria + texto de confirmacao pro Thiago.\nconst m = $('Montar Envio').first().json;\n// escapa aspas E neutraliza $<numero> (pg-promise trata $N como placeholder: Message-ID do Outlook\n// '<...$43496650$...>' derrubava o Salvar Email). Vira '...' || '$' || '123': valor gravado identico.\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\").replace(/\\$(?=\\d)/g, \"' || '$$' || '\");\nconst texto = '📤 Email enviado ✅\\nPara: ' + m.destinatario + '\\nAssunto: ' + m.assunto;\nconst sql = \"UPDATE giulia_email_pendentes SET status = 'enviado', resolvido_em = NOW() WHERE id = \" + parseInt(m.pend_id, 10) + \";\\n\" +\n  \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + esc(texto) + \"', '5511910441709');\";\nreturn [{ json: { sql, texto, dono: '5511910441709' } }];\n"
+   },
+   "id": "em-fim",
+   "name": "Finalizar Envio",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1240,
+    360
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "em-gravar-envio",
+   "name": "Gravar Envio",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    1480,
+    360
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   },
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://engsolucao.uazapi.com/send/text",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "token",
+       "value": "__GIULIA_UAZAPI_TOKEN__"
+      },
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ number: '5511910441709', text: $('Finalizar Envio').first().json.texto }) }}",
+    "options": {
+     "timeout": 30000
+    }
+   },
+   "id": "em-conf-zap",
+   "name": "Confirmar Pro Thiago",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1720,
+    360
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://engsolucao.uazapi.com/send/text",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "token",
+       "value": "__GIULIA_UAZAPI_TOKEN__"
+      },
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ number: '5511910441709', text: $('Montar Envio').first().json.texto }) }}",
+    "options": {
+     "timeout": 30000
+    }
+   },
+   "id": "em-sem-pend",
+   "name": "Avisar Sem Pendente",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1000,
+    500
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "// Grava os anexos do email recem-salvo (id vem do Salvar Email)\nconst prep = $('Preparar Email Recebido').item.json;\nconst salvo = $('Salvar Email').item.json || {};\nconst anexos = Array.isArray(prep.anexos) ? prep.anexos : [];\n// escapa aspas E neutraliza $<numero> (pg-promise trata $N como placeholder: Message-ID do Outlook\n// '<...$43496650$...>' derrubava o Salvar Email). Vira '...' || '$' || '123': valor gravado identico.\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\").replace(/\\$(?=\\d)/g, \"' || '$$' || '\");\nif (!salvo.id || !anexos.length) return { json: { sql: 'SELECT 1;', n: 0 } };\nconst vals = anexos.map(a => \"(\" + parseInt(salvo.id, 10) + \", '\" + esc(a.nome) + \"', '\" + esc(a.mime) + \"', \" + parseInt(a.bytes, 10) + \", '\" + esc(a.b64) + \"')\");\n// RETURNING obrigatorio: sem linha de saida o no Postgres descarta o item e o email nunca chega no Notificar?\n// (bug real: email com anexo dentro de um lote ficava sem aviso no WhatsApp)\nreturn { json: { sql: \"INSERT INTO giulia_email_anexos (email_id, nome, mime, tamanho, conteudo_b64) VALUES \" + vals.join(', ') + \" RETURNING email_id;\", n: anexos.length } };\n",
+    "mode": "runOnceForEachItem"
+   },
+   "id": "em-prep-anexos",
+   "name": "Preparar Anexos",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    520,
+    240
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "em-grava-anexos",
+   "name": "Gravar Anexos",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    760,
+    240
+   ],
+   "alwaysOutputData": true,
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Email Trigger IMAP": {
+   "main": [
+    [
+     {
+      "node": "Preparar Email Recebido",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Preparar Email Recebido": {
+   "main": [
+    [
+     {
+      "node": "Salvar Email",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Salvar Email": {
+   "main": [
+    [
+     {
+      "node": "Preparar Anexos",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Notificar?": {
+   "main": [
+    [
+     {
+      "node": "Avisar Thiago Email",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    []
+   ]
+  },
+  "Avisar Thiago Email": {
+   "main": [
+    [
+     {
+      "node": "Pos Notificacao",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Pos Notificacao": {
+   "main": [
+    [
+     {
+      "node": "Registrar Notificacao",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook Email": {
+   "main": [
+    [
+     {
+      "node": "Preparar Envio Email",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Preparar Envio Email": {
+   "main": [
+    [
+     {
+      "node": "Carregar Pendente Email",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Carregar Pendente Email": {
+   "main": [
+    [
+     {
+      "node": "Montar Envio",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar Envio": {
+   "main": [
+    [
+     {
+      "node": "Tem Envio?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tem Envio?": {
+   "main": [
+    [
+     {
+      "node": "Enviar Email SMTP",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Avisar Sem Pendente",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar Email SMTP": {
+   "main": [
+    [
+     {
+      "node": "Finalizar Envio",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Finalizar Envio": {
+   "main": [
+    [
+     {
+      "node": "Gravar Envio",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Gravar Envio": {
+   "main": [
+    [
+     {
+      "node": "Confirmar Pro Thiago",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Preparar Anexos": {
+   "main": [
+    [
+     {
+      "node": "Gravar Anexos",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Gravar Anexos": {
+   "main": [
+    [
+     {
+      "node": "Notificar?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "ltVUUCOCDYKMmtnT"
+ }
+}

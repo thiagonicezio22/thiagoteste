@@ -1,0 +1,59 @@
+{
+  "name": "GIULIA - 00 Setup DB (rodar 1x)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "giulia-setup-db",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-giulia-setup",
+      "name": "Webhook Setup",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "giulia-setup-db-wh"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS giulia_ideias (\n  id SERIAL PRIMARY KEY,\n  conteudo TEXT NOT NULL,\n  tags TEXT[],\n  created_at TIMESTAMP DEFAULT NOW()\n);\n\nCREATE TABLE IF NOT EXISTS giulia_lembretes (\n  id SERIAL PRIMARY KEY,\n  descricao TEXT NOT NULL,\n  disparar_em TIMESTAMP NOT NULL,\n  recorrencia TEXT,\n  status TEXT DEFAULT 'pendente',\n  enviado_em TIMESTAMP,\n  criado_em TIMESTAMP DEFAULT NOW()\n);\nCREATE INDEX IF NOT EXISTS idx_giulia_lembretes_pendentes\n  ON giulia_lembretes(disparar_em) WHERE status='pendente';\n\nCREATE TABLE IF NOT EXISTS giulia_mensagens_agendadas (\n  id SERIAL PRIMARY KEY,\n  destinatario_numero TEXT NOT NULL,\n  destinatario_nome TEXT,\n  conteudo TEXT NOT NULL,\n  agendado_para TIMESTAMP NOT NULL,\n  status TEXT DEFAULT 'pendente',\n  enviado_em TIMESTAMP,\n  erro TEXT,\n  criado_em TIMESTAMP DEFAULT NOW()\n);\nCREATE INDEX IF NOT EXISTS idx_giulia_msgs_pendentes\n  ON giulia_mensagens_agendadas(agendado_para) WHERE status='pendente';\n\nCREATE TABLE IF NOT EXISTS giulia_contatos (\n  id SERIAL PRIMARY KEY,\n  nome TEXT NOT NULL,\n  apelidos TEXT[],\n  numero TEXT NOT NULL,\n  dono_numero TEXT NOT NULL DEFAULT '5511910441709',\n  observacoes TEXT,\n  criado_em TIMESTAMP DEFAULT NOW()\n);\n\nCREATE UNIQUE INDEX IF NOT EXISTS idx_contatos_dono_contato\n  ON giulia_contatos (dono_numero, numero);\n\nCREATE TABLE IF NOT EXISTS giulia_memoria (\n  id SERIAL PRIMARY KEY,\n  role TEXT NOT NULL,\n  content TEXT NOT NULL,\n  metadata JSONB,\n  created_at TIMESTAMP DEFAULT NOW()\n);\nCREATE INDEX IF NOT EXISTS idx_giulia_memoria_created\n  ON giulia_memoria(created_at DESC);\n\nINSERT INTO giulia_contatos (nome, apelidos, numero, observacoes) VALUES\n  ('Thiago Nicezio', ARRAY['thiago','eu','dono'], '5511964486564', 'Dono da Giulia'),\n  ('Antonio', ARRAY['antonio','tonio'], '5511951604808', 'Dono ENG Solucoes'),\n  ('Ismar', ARRAY['ismar'], '5511919695008', 'Vendedor comercial ENG'),\n  ('Thiago Biologo', ARRAY['thiago biologo','biologo','thiagobio'], '5511919361449', 'Vendedor comercial ENG'),\n  ('Julia', ARRAY['julia','ju'], '5511997357793', 'Pos-venda ENG'),\n  ('Elaine', ARRAY['elaine'], '5511972387708', 'Financeiro ENG'),\n  ('Felipe', ARRAY['felipe'], '5511944985003', 'Gestor ENG')\nON CONFLICT DO NOTHING\nRETURNING id, nome;",
+        "options": {}
+      },
+      "id": "pg-setup",
+      "name": "Criar Tabelas giulia_*",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qSNNpS1TadimC3ND",
+          "name": "PostgreSQL Julian"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Setup": {
+      "main": [
+        [
+          {
+            "node": "Criar Tabelas giulia_*",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
