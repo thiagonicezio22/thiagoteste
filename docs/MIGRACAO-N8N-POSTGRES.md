@@ -13,13 +13,23 @@ o lock; reduzir a cadência dos dois workflows acima reduz a carga.
 
 ## O que já está pronto (feito pela API)
 
-- Banco **`n8n`** e role **`n8n`** criados no Postgres do Easypanel
-  (host interno `10.11.0.15`, porta 5432, Postgres 17). Senha em
-  `giulia_config` chave `N8N_DB_PASSWORD` (não está neste arquivo).
+- Serviço Postgres **dedicado** `whats/n8n-db` (postgres:17, db `n8n`,
+  user `n8n`, host interno **`whats_n8n-db`**) criado pela API do Easypanel.
+  Senha em `giulia_config` (`N8N_DB_PASSWORD`). Conexão n8n → n8n-db
+  **testada** (credencial temporária, `select version()` OK, apagada).
+- Acesso ao Easypanel pela API (`https://ghikuu.easypanel.host`, token em
+  `giulia_config`): variáveis, deploy e restart do n8n saem daqui.
 - Snapshot de todos os 51 workflows (id, nome, ativo):
   `ops/n8n-snapshot-2026-09-13.json` — é o gabarito da verificação final.
 - Todos os workflows GIULIA versionados em `workflows/` com placeholders;
   o `deploy-workflows.sh` re-publica qualquer um pelo id.
+
+## Divisão (versão com API, 13/09)
+
+- **Thiago (console do n8n no Easypanel):** os 2 exports (passo 1), criar
+  o dono (passo 3), os 2 imports (passo 4), gerar a API key (passo 6).
+- **Claude (API):** variáveis `DB_*` + deploy (passo 2), restart (passo 5),
+  verificação e rollback.
 
 ## O que só o Thiago consegue (Easypanel, ~15 min)
 
@@ -40,7 +50,7 @@ remover as existentes (em especial **`N8N_ENCRYPTION_KEY`**, que precisa
 continuar igual):
 ```
 DB_TYPE=postgresdb
-DB_POSTGRESDB_HOST=10.11.0.15
+DB_POSTGRESDB_HOST=whats_n8n-db
 DB_POSTGRESDB_PORT=5432
 DB_POSTGRESDB_DATABASE=n8n
 DB_POSTGRESDB_USER=n8n

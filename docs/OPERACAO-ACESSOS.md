@@ -12,6 +12,8 @@
 | GIULIA_UAZAPI_TOKEN | `.env` + tabela `giulia_config` no Postgres + injetado nos workflows publicados | Com a N8N_API_KEY: ler da `giulia_config` via runner SQL, ou extrair de um nó UAZAPI de qualquer workflow publicado (header `token`) |
 | GIULIA_GEMINI_API_KEY | idem | idem — no WF01, nó "Decidir Acao" (`generateContent?key=...`) |
 | HOSTINGER_API_TOKEN | `.env` + `giulia_config` | Idem via `giulia_config`; ou Thiago gera novo em hpanel.hostinger.com/api (marcar TODAS as permissões de produto — sem "Hospedagem VPS" o token não executa ações, só lê) |
+| EASYPANEL_API_TOKEN | `.env` + `giulia_config` (+ `EASYPANEL_URL`) | Painel → Settings → Usuários → chave do admin. **Usar sempre `https://ghikuu.easypanel.host`** (o `http://76.13.172.146:3000` não passa pelo proxy). API tRPC: `GET /api/trpc/<proc>?input={"json":...}` para queries, `POST` para mutations, header `Authorization: Bearer`. Procs úteis: `projects.listProjectsAndServices`, `services.app.inspectService/updateEnv/updateDeploy/deployService/restartService`, `services.postgres.createService/inspectService`. Cuidado: `inspect` devolve env e senhas em claro — nunca imprimir. |
+| N8N_DB_PASSWORD / N8N_DB_HOST | `giulia_config` | Serviço Postgres dedicado `whats/n8n-db` (postgres:17, db `n8n`, user `n8n`, host interno `whats_n8n-db`), criado em 13/09 pela API pra migração do n8n. |
 
 **Bootstrap completo de um ambiente novo:** pedir só a N8N_API_KEY ao
 Thiago → criar runner SQL temporário → `SELECT * FROM giulia_config` →
@@ -109,3 +111,11 @@ Erro meu: desativei o Audio Poller por ~2 min achando o alvo morto — o
 Chatwoot respondeu 401 (vivo) e o script interpretou como "não responde".
 Reativado na hora. Lição: 401 ≠ offline; e workflow de outro projeto só
 se mexe com o Thiago sabendo.
+
+## Mapa dos serviços (Easypanel, projeto `whats`, 13/09)
+
+n8n (`n8nio/n8n:2.8.3`, volume `data` em `/home/node/.n8n`, sem `DB_*` = SQLite,
+`N8N_ENCRYPTION_KEY` mora no arquivo de config do volume), chatwoot +
+chatwoot-db (**pgvector pg17 — é o "PostgreSQL Julian": db `whats` com as
+tabelas giulia_* e `julian_db`**) + chatwoot-redis + sidekiq, evolution-api
+(+db, +redis), gotenberg, e o novo n8n-db. Projeto `post` está vazio.
