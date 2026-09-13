@@ -114,8 +114,32 @@ se mexe com o Thiago sabendo.
 
 ## Mapa dos serviços (Easypanel, projeto `whats`, 13/09)
 
-n8n (`n8nio/n8n:2.8.3`, volume `data` em `/home/node/.n8n`, sem `DB_*` = SQLite,
-`N8N_ENCRYPTION_KEY` mora no arquivo de config do volume), chatwoot +
-chatwoot-db (**pgvector pg17 — é o "PostgreSQL Julian": db `whats` com as
-tabelas giulia_* e `julian_db`**) + chatwoot-redis + sidekiq, evolution-api
-(+db, +redis), gotenberg, e o novo n8n-db. Projeto `post` está vazio.
+n8n (`n8nio/n8n:2.8.3`, volume `data` em `/home/node/.n8n`,
+`N8N_ENCRYPTION_KEY` mora no arquivo de config do volume; **desde 13/09
+16:20 roda em Postgres** no serviço `n8n-db`), chatwoot + chatwoot-db +
+chatwoot-redis + sidekiq, **evolution-api + evolution-api-db + evolution-api-redis
+(⛔ NUNCA parar: o `evolution-api-db` é o "PostgreSQL Julian" — banco
+`julian_db` com as tabelas giulia_*, orcamentos, lauren_*; o IP interno muda
+a cada restart, por isso a credencial usa o hostname)**, gotenberg, n8n-db.
+Projeto `post` está vazio. (Correção: em 13/09 eu tinha anotado chatwoot-db
+como dono das tabelas — errado; o handoff da sessão ENG confirmou evolution-api-db.)
+
+## n8n em Postgres — regras novas (handoff ENG, 13/09)
+
+- **API key do n8n mudou** na migração (owner novo). A antiga (`sub 91b9f758…`)
+  está morta. A nova vive só no `.env` desta sessão — se o ambiente reciclar,
+  pedir ao Thiago de novo (Settings → n8n API). Nunca em docs.
+- Restart do n8n pelo Easypanel (API/MCP): **`stopAppService` →
+  `deployAppService` → `startAppService`** — sem o `start` o serviço fica
+  parado (custou 9 min de queda em 13/09). `deploy.zeroDowntime=false`.
+- Env novas: `EXECUTIONS_DATA_PRUNE=true`, `EXECUTIONS_DATA_MAX_AGE=48`,
+  `EXECUTIONS_DATA_PRUNE_MAX_COUNT=3000`, `N8N_DEFAULT_BINARY_DATA_MODE=filesystem`.
+  Histórico de execuções começou do zero; sucesso não é salvo nos pollers.
+- SQLite antigo fica no volume por 30 dias (rollback); pasta
+  `/home/node/.n8n/mig/` será apagada — não usar como fonte.
+- Easypanel também tem MCP (`/api/mcp`, Streamable HTTP, tools
+  `search_procedures`/`execute_query`/`execute_mutation`) — daqui só pelo
+  domínio HTTPS `ghikuu.easypanel.host`. `Execute Command` bloqueado no n8n 2.x.
+- Vendedores ENG: `5511919695008`=Leticia, `5511997357793`=Beatriz; Felipe
+  (`5511944985003`) bloqueado de envio em 9 workflows — não readicionar.
+

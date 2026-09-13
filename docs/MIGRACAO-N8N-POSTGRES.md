@@ -1,3 +1,20 @@
+# ✅ CONCLUÍDA em 13/09/2026 ~16:20 BRT (pela sessão "Atendimento ENG")
+
+Verificação desta sessão (GIULIA), 13/09 ~17:10 BRT, com a API key nova:
+- 51 workflows, **51 ids iguais** ao snapshot `ops/n8n-snapshot-2026-09-13.json`;
+  45 ativos, 0 divergências; 18 GIULIA ativos; WF15 Error Handler ativo.
+- Versões dos meus workflows chegaram (WF01 com `Carregar Tarefas`, WF18 com
+  loop por e-mail e `RETURNING email_id`).
+- Credenciais nos ids antigos: `PostgreSQL Julian` (26 nós), IMAP, SMTP.
+  Query real pela credencial: `julian_db` em `evolution-api-db` OK.
+- Webhooks `giulia-msg` e `giulia-email` respondem 200.
+- Ponta a ponta no WF01 ("minhas tarefas" → resposta certa, memória gravada,
+  rastro apagado). `giulia_erros_log` sem nenhum erro após a migração;
+  0 lembretes atrasados; `giulia_config` íntegra (15 chaves).
+- Restante: 24 h sem "Sqlite" no log (checar 14/09).
+
+---
+
 # Migração do n8n: SQLite → Postgres (roteiro, 13/09/2026)
 
 ## Por quê
