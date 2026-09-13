@@ -96,3 +96,16 @@ saiu). Atenção: WF02 tem `saveDataSuccessExecution: none` — ausência de
 execuções na lista NÃO significa que parou; confira `Lembrete enviado` na
 memória. Mesmo sintoma de 07/08 (VPS reiniciado na época) — se repetir,
 o próximo passo é migrar o n8n de SQLite pra Postgres.
+
+## 13/09 — de onde vem a pressão no SQLite (e um erro meu)
+
+Medição via API (1.500 execuções guardadas): 1.257 erros, 978 do
+`05 - Audio Poller & Transcriber` (Julian, cron 20 s, ~15% de falha com
+"connection aborted" no Chatwoot) e 238 do `HZ - Lauren Pipeline v1`
+(tick 5 s). Roteiro da migração: `docs/MIGRACAO-N8N-POSTGRES.md`.
+Banco/role `n8n` já criados; senha em `giulia_config` (`N8N_DB_PASSWORD`).
+
+Erro meu: desativei o Audio Poller por ~2 min achando o alvo morto — o
+Chatwoot respondeu 401 (vivo) e o script interpretou como "não responde".
+Reativado na hora. Lição: 401 ≠ offline; e workflow de outro projeto só
+se mexe com o Thiago sabendo.
