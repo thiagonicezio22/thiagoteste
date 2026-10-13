@@ -7,7 +7,7 @@
      "interval": [
       {
        "field": "cronExpression",
-       "expression": "0 7,16 * * *"
+       "expression": "0 8,17 * * *"
       }
      ]
     }
@@ -104,7 +104,10 @@
    "position": [
     860,
     380
-   ]
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 15000
   },
   {
    "parameters": {
@@ -220,6 +223,7 @@
  },
  "settings": {
   "executionOrder": "v1",
-  "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  "errorWorkflow": "ltVUUCOCDYKMmtnT",
+  "timezone": "America/Sao_Paulo"
  }
 }
