@@ -168,3 +168,19 @@ PDFs: Recibo de Pagamento e Extrato Mensal), Nicole/Blue Thumb e 3
 VIVOSUN. Caixa desde 25/08 = 27 reais; banco = 27. Clone apagado.
 Os 3 "erro desconhecido" de 02/09 não têm e-mail correspondente na caixa
 (provável falha de envio/aviso, não de recepção) — sem trace pra recuperar.
+
+
+## 13/10/2026 — mojibake e alertas do trigger IMAP
+
+- 63% dos corpos recebidos vinham como "OlÃ¡, Thiago NicÃ©zio" (UTF-8 lido
+  como latin-1 no caminho quoted-printable). `Preparar Email Recebido`
+  reconverte com `Buffer.from(corpo,'latin1').toString('utf8')` **só** se o
+  texto inteiro cabe em latin-1 e a troca reduz os `Ã`/`Â` (sem perda;
+  texto já correto com travessão/emoji fica intacto). `&#N;` passa por
+  `fromCodePoint` (emoji por entidade não vira NUL) e NUL é removido.
+- Os 21 "erro desconhecido / node ? / Exec ?" eram quedas do trigger IMAP
+  (reconexão), que chegam ao WF15 sem objeto `execution`. Agora o log
+  registra `trigger(<mode>)` + mensagem do n8n, e o Thiago recebe no máximo
+  1 alerta a cada 12 h com o texto "trigger de e-mail caiu N vez(es)...
+  confere a credencial IMAP" — não some (senha inválida precisa chegar),
+  mas não acorda mais a cada reconexão.

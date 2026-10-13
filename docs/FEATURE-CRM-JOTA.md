@@ -95,3 +95,28 @@ completa (o import 2.0 enriquece sem duplicar). Registrado na memória
 da conversa dele. Próximo marco: quando ele reenviar o arquivo, conferir
 a importação e depois limpar as ~150 pessoas suspeitas da janela LLM de
 16/07 (criado_em < 2026-07-17 10:00).
+
+
+## Inscrição em expedição com cadastro na hora (13/10/2026)
+
+**Falha real (28/08):** o Jota tentou 4× "inscreve o Alexandre Smitch na
+Serra do Itapeti"; a assistente recusava ("Nao achei essa pessoa na tua
+base"), prometeu "já cadastro na hora" e recusou de novo. Ele escreveu "Já
+enroscamos" e não usou mais (45 dias). Inscritos no sistema: 0.
+
+**Agora (`Decidir Acao`, ação `inscrever_expedicao`):** CTE `novo` cadastra
+a pessoa em `giulia_pessoas` (grupo `piloto`, sem telefone, `observacoes =
+'auto-cadastro via inscricao em <expedição> em <data>'`) quando não há
+match e a expedição existe — **só com nome + sobrenome** (nome único como
+"Agnaldo" continua pedindo o nome completo, para não criar duplicata por
+grafia). `alvo = match ∪ novo` → inscreve. Respostas: "cadastrei como
+piloto (sem telefone) e inscrevi na X. Total N / V vagas" (+ LOTOU / Restam
+N); "Cadastrei na base, mas já estava inscrito"; nome único → "Me manda
+nome e sobrenome". Prompt atualizado (não promete mais "cadastro antes").
+Guardas novas: nome só com tokens < 2 letras → pergunta (antes virava
+`ILIKE '%%'` e `cancelar_inscricao` apagava TODOS os inscritos); bloco de
+resposta não roda quando o SQL falhou (não dizia mais "não achei
+expedição" por erro técnico); `ñ` entrou na lista do `translate`.
+Expedição com `data_fim`/`data_ini` passada há 2+ dias fecha sozinha
+(`concluida`, WF11 de hora em hora) — a #4 Serra do Itapeti fecha no
+próximo ciclo.

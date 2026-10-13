@@ -208,3 +208,44 @@ WF07/WF11/WF06/WF02.
 - Workflow não-GIULIA `18 - Monitor Atendimento Vendedor` foi editado em
   13/10 13:02 UTC fora do repo (não foi esta sessão — conferido no log
   dos agentes).
+
+## Correções da auditoria — 13/10/2026 (deploy no mesmo dia)
+
+Aprovadas pelo Thiago ("pode fazer tudo"). Patch por âncora + revisão
+adversarial (4 revisores + 4 céticos, 23 achados, 0 bloqueios) + testes.
+
+- **Fuso dos crons**: `settings.timezone = America/Sao_Paulo` em WF04/05/06/
+  07/09 e expressões reescritas em hora de Brasília (07:00 briefing, 08/17
+  cobrança, 08:30 contas, 12:00 rotina, dom 05:00 sumarização). Não muda
+  mais com o horário de verão dos EUA.
+- **Briefing (WF07) tolerante a falha**: `Enviar UAZAPI` com
+  `onError=continueRegularOutput` (um destinatário falhando não derruba os
+  outros) e o nó seguinte virou `Salvar Memoria ou Reenfileirar`: item com
+  erro entra em `giulia_mensagens_agendadas` (+2 min) e o WF02 reenvia.
+  **Não** usar `retryOnFail` em nó de envio com vários itens: o n8n
+  re-executa o nó inteiro (reenvia pra quem já recebeu) e limita a espera
+  a 5 s / 5 tentativas (revisão de 13/10).
+- **WF15 Error Handler**: lê `j.trigger.error` (erro de trigger, sem
+  execução) — node `trigger(<mode>)` e mensagem real (+ `cause` quando o
+  n8n serializar); erro de trigger de e-mail alerta no máximo 1×/12 h com
+  texto próprio ("confere a credencial IMAP"); `pg_advisory_xact_lock` no
+  início do SQL serializa handlers concorrentes (fim dos alertas em
+  dobro); `%`/`_` do nome escapados no LIKE da dedup.
+- **WF18**: corpo com mojibake ("OlÃ¡") reconvertido latin-1→UTF-8 só
+  quando sem perda; `&#N;` via `fromCodePoint`; NUL removido antes do SQL.
+- **WF11**: CTE `fecha_exp` marca `concluida` expedição com
+  `COALESCE(data_fim, data_ini) < hoje(SP) - 1` a cada hora.
+- **WF07**: briefing só lista reunião `pendente_aprovacao_thiago` criada
+  nos últimos 14 dias; ids 9–12 (jul/ago) marcadas `dispensada`.
+- **WF03/WF01 Sheets**: sem `GIULIA_SHEETS_DOC_ID`/`_CRED_ID` no `.env` o
+  sync sai em silêncio e o link da planilha não aparece (antes: erro a
+  cada 5 min e link quebrado). Para ligar: criar a credencial "Google
+  Sheets Giulia", definir as 3 vars (docs/setup-sheets-gastos.md) e
+  redeployar WF01+WF03.
+- **WF04**: resumo usa o nome do dono (não mais "Thiago" para todos) e
+  ignora partes `thought` da resposta do Gemini (resumos vinham truncados
+  com trecho de raciocínio).
+- **WF01 inscrição em expedição**: ver docs/FEATURE-CRM-JOTA.md.
+- Pendências que continuam com o Thiago: token Hostinger (401), planilha
+  de gastos (Sheets), 9 tarefas de julho do André, reenvio da planilha do
+  CRM do Jota.

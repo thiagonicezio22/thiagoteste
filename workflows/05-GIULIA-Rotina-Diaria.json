@@ -147,10 +147,7 @@
    "position": [
     1080,
     540
-   ],
-   "retryOnFail": true,
-   "maxTries": 3,
-   "waitBetweenTries": 15000
+   ]
   }
  ],
  "connections": {

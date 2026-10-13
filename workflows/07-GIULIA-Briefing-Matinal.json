@@ -105,18 +105,16 @@
     860,
     380
    ],
-   "retryOnFail": true,
-   "maxTries": 3,
-   "waitBetweenTries": 15000
+   "onError": "continueRegularOutput"
   },
   {
    "parameters": {
     "operation": "executeQuery",
-    "query": "={{ \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + $('Formatar Briefing').item.json.send_text.replace(/'/g, \"''\") + \"', '\" + $('Formatar Briefing').item.json.send_to + \"')\" }}",
+    "query": "={{ $json.error ? \"INSERT INTO giulia_mensagens_agendadas (destinatario_numero, destinatario_nome, conteudo, agendado_para, status) VALUES ('\" + String($('Formatar Briefing').item.json.send_to).replace(/[^0-9]/g, '') + \"', 'briefing (reenvio)', '\" + String($('Formatar Briefing').item.json.send_text).replace(/'/g, \"''\") + \"', (NOW() AT TIME ZONE 'America/Sao_Paulo') + INTERVAL '2 minutes', 'pendente')\" : \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + $('Formatar Briefing').item.json.send_text.replace(/'/g, \"''\") + \"', '\" + $('Formatar Briefing').item.json.send_to + \"')\" }}",
     "options": {}
    },
    "id": "pg-memoria-brief",
-   "name": "Salvar Memoria Briefing",
+   "name": "Salvar Memoria ou Reenfileirar",
    "type": "n8n-nodes-base.postgres",
    "typeVersion": 2,
    "position": [
@@ -181,7 +179,7 @@
    "main": [
     [
      {
-      "node": "Salvar Memoria Briefing",
+      "node": "Salvar Memoria ou Reenfileirar",
       "type": "main",
       "index": 0
      }

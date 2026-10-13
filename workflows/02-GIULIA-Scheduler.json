@@ -172,10 +172,7 @@
     860,
     100
    ],
-   "continueOnFail": true,
-   "retryOnFail": true,
-   "maxTries": 3,
-   "waitBetweenTries": 5000
+   "continueOnFail": true
   },
   {
    "parameters": {
@@ -209,10 +206,7 @@
     860,
     460
    ],
-   "continueOnFail": true,
-   "retryOnFail": true,
-   "maxTries": 3,
-   "waitBetweenTries": 5000
+   "continueOnFail": true
   },
   {
    "parameters": {
@@ -246,10 +240,7 @@
     860,
     280
    ],
-   "continueOnFail": true,
-   "retryOnFail": true,
-   "maxTries": 3,
-   "waitBetweenTries": 5000
+   "continueOnFail": true
   },
   {
    "parameters": {
