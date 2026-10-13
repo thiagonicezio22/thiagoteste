@@ -143,3 +143,68 @@ como dono das tabelas — errado; o handoff da sessão ENG confirmou evolution-a
 - Vendedores ENG: `5511919695008`=Leticia, `5511997357793`=Beatriz; Felipe
   (`5511944985003`) bloqueado de envio em 9 workflows — não readicionar.
 
+
+## Auditoria completa de 13/10/2026 (relatório: `ops/auditoria-2026-10-13.json`)
+
+Feita em modo somente leitura por 8 agentes em paralelo + 8 verificadores
+céticos (147 itens: 100 OK, 39 WARN, 2 FAIL, 6 não verificáveis). Ambiente
+tinha sido reciclado de novo (4ª vez); recuperado com a API key de 13/09
+e o token do Easypanel que estavam no histórico da conversa.
+
+**Infra saudável:** 51 workflows / 45 ativos = gabarito de 13/09; 18
+GIULIA ativos; WF15 ativo; briefing, cobrança, fechamento, scheduler,
+sumarização e horários rodando; zero erro de SQLite/lock desde a migração;
+Easypanel com todos os serviços enabled; 18/18 workflows GIULIA ao vivo
+idênticos ao repo (nenhuma edição manual desde 13/09).
+
+**FAIL 1 — inscrição em expedição (Jota):** `inscrever_expedicao` recusa
+pessoa fora da base ("Nao achei essa pessoa na tua base"); em 28/08 o Jota
+tentou 4× inscrever "Alexandre Smitch", a IA PROMETEU cadastrar na hora e
+falhou de novo; ele disse "Já enroscamos" e nunca mais usou (45 dias, modo
+eco). `giulia_expedicao_inscritos` = 0 no sistema inteiro. Correção: no
+Decidir Acao, candidatos=0 + nome informado → INSERT em giulia_pessoas e
+seguir; alinhar o prompt.
+
+**FAIL 2 — briefing de 27/09 não saiu** para Thiago e Jota: UAZAPI fora
+do ar às 07:00 BRT, nó `Enviar UAZAPI` do WF07 sem retryOnFail, memória é
+gravada DEPOIS do envio → execução abortou inteira. Único dia sem briefing
+em 30 dias. Correção: retryOnFail (3×, 30–60 s) nos nós de envio UAZAPI de
+WF07/WF11/WF06/WF02.
+
+**WARNs que viram tarefa:**
+- WF15 `Montar Alerta` só lê `j.execution.*`; erro de TRIGGER (IMAP do
+  WF18 caindo/reconectando, 16 eventos/21 linhas em 30 dias) vira
+  "node ? / erro desconhecido / Exec ?" e alerta inútil ao Thiago (16 de
+  18 alertas do mês). Ler também `j.trigger.error`. Dedup de 30 min falha
+  em erros concorrentes (5 pares de alerta duplicado) → advisory lock.
+- `GIULIA_SHEETS_DOC_ID/TAB/CRED_ID` não estão no `.env` → o deploy de
+  13/09 colocou os placeholders literais em produção no WF03 (Append
+  Sheets: documentId e credencial) e no WF01 (link da planilha no
+  resumo de gastos). Latente: próximo gasto do Thiago = erro a cada 5 min
+  no WF03. Setup em docs/setup-sheets-gastos.md.
+- Crons de hora fixa rodam no fuso da instância (America/New_York, sem
+  GENERIC_TIMEZONE): em **01/11/2026** (fim do DST nos EUA) briefing vai
+  pra 08:00 BRT, cobrança 09:00/18:00, contas 09:30, rotina 13:00. Fixar
+  `settings.timezone=America/Sao_Paulo` nos 5 workflows (WF04/05/06/07/09).
+- Notificação de e-mail com mojibake ("OlÃ¡", 63% dos corpos): WF18 não
+  decodifica charset/quoted-printable do corpo.
+- Briefing do Thiago repete há 50–76 dias 4 reuniões `pendente_aprovacao`
+  (ids 9–12); WF07 sem corte de idade.
+- Expedição #4 (29/08) segue "aberta" — não existe fechamento automático.
+- CRM do Jota congelado desde 17/07: 1.458 pessoas, 73 nomes duplicados,
+  52 com datas de nascimento divergentes (cartões repetidos já saíram);
+  reenvio da planilha nunca veio; 150 registros da janela LLM ainda lá.
+- Resumos de memória do WF04 truncados (~150 chars) e com dono trocado
+  (prompt diz "Thiago" para qualquer dono).
+- Retenção de execuções do n8n = 48 h (`EXECUTIONS_DATA_MAX_AGE=48`):
+  erros de 30 dias só no `giulia_erros_log`. Runner SQL gera ~100
+  execuções por auditoria — contam no teto de 3.000.
+- Token Hostinger inválido (401) desde ago; só serve pra restart do VPS.
+- Settings de retenção (saveDataSuccessExecution) não são versionados.
+- Uso: Thiago 10 msgs em 5 semanas, 0 gastos desde 24/07, planilhas
+  financeiras defasadas/não enviadas desde 21/08; André 0 msgs desde
+  ~23/08 (só recebe 3 automáticas/dia, 9 tarefas de julho intocadas, pedido
+  de "me ligue" de 19/09 expirou sem confirmação); Jota 0 msgs desde 28/08.
+- Workflow não-GIULIA `18 - Monitor Atendimento Vendedor` foi editado em
+  13/10 13:02 UTC fora do repo (não foi esta sessão — conferido no log
+  dos agentes).
