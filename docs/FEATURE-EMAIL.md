@@ -174,10 +174,13 @@ Os 3 "erro desconhecido" de 02/09 não têm e-mail correspondente na caixa
 
 - 63% dos corpos recebidos vinham como "OlÃ¡, Thiago NicÃ©zio" (UTF-8 lido
   como latin-1 no caminho quoted-printable). `Preparar Email Recebido`
-  reconverte com `Buffer.from(corpo,'latin1').toString('utf8')` **só** se o
-  texto inteiro cabe em latin-1 e a troca reduz os `Ã`/`Â` (sem perda;
-  texto já correto com travessão/emoji fica intacto). `&#N;` passa por
-  `fromCodePoint` (emoji por entidade não vira NUL) e NUL é removido.
+  decodifica **sequência a sequência** (`desMojibake`: só pares/triplas/
+  quádruplas de bytes válidos em UTF-8, via regex + `Buffer.from(m,'latin1')`),
+  **antes** da limpeza de espaços — a 1ª versão (converter o texto inteiro
+  e rejeitar se desse U+FFFD) falhou no 1º e-mail real do Nubank (14/10)
+  porque o `\s+` já tinha engolido o `nbsp` e quebrado um par. Validado no
+  corpo real desse e-mail: 47 pares `Ã` → 0; texto legítimo, travessão e
+  emoji intactos. `&#N;` passa por `fromCodePoint` e NUL é removido.
 - Os 21 "erro desconhecido / node ? / Exec ?" eram quedas do trigger IMAP
   (reconexão), que chegam ao WF15 sem objeto `execution`. Agora o log
   registra `trigger(<mode>)` + mensagem do n8n, e o Thiago recebe no máximo

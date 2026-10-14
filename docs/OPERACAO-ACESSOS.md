@@ -249,3 +249,17 @@ adversarial (4 revisores + 4 céticos, 23 achados, 0 bloqueios) + testes.
 - Pendências que continuam com o Thiago: token Hostinger (401), planilha
   de gastos (Sheets), 9 tarefas de julho do André, reenvio da planilha do
   CRM do Jota.
+
+### Validação pós-deploy (13–14/10)
+
+Ao vivo com o número do Thiago (rastros apagados): criar expedição de
+teste → "inscreve o Fulano Auditoria Teste" → cadastrou como piloto (com
+`observacoes` de rastro) e inscreveu; 2ª vez "já estava inscrito" sem
+duplicar; erro proposital num workflow temporário → WF15 gravou node e
+mensagem reais e criou 1 alerta (sem dobro); timezone `America/Sao_Paulo`
+e crons novos confirmados nos 5 workflows. Dia seguinte (14/10): cobrança
+rodou 17:00 e 08:00 BRT, briefing 07:00 pros 3 donos (texto "Dia livre"
+quando não há nada — não começa com "Resumo"), expedição #4 → `concluida`,
+0 erros e 0 alertas em 24 h, lembretes do André nos horários de NY.
+Mojibake: a 1ª versão não pegou o Nubank de 14/10 (nbsp); corrigido e
+redeployado (WF18) no mesmo dia. 18/18 GIULIA ativos, 0 temporários.
