@@ -120,3 +120,12 @@ expedição" por erro técnico); `ñ` entrou na lista do `translate`.
 Expedição com `data_fim`/`data_ini` passada há 2+ dias fecha sozinha
 (`concluida`, WF11 de hora em hora) — a #4 Serra do Itapeti fecha no
 próximo ciclo.
+
+### 15/10 — travas em cancelar/marcar pago
+
+`cancelar_inscricao` e `marcar_pago_expedicao` agora só executam com UM
+inscrito casando (CTE `c` + `count(*) = 1`); com vários, a resposta lista os
+nomes e pede o completo ("Achei 2 inscritos com esse nome (…)"). Nome vazio
+ou só com letras soltas vira `REPLY_ONLY` (nenhum SQL) — antes a guarda de
+13/10 deixava `acao_tipo=DB_OP` e o roteador rodava `DELETE … ILIKE '%%'`.
+Testado ao vivo 15/10 com 2 inscritos de teste (rastros apagados).

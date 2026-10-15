@@ -33,3 +33,11 @@ flash/pro). O dono é Thiago (5511910441709).
    `node --check` no jsCode antes de deployar; testar ao vivo depois.
 7. Fuso: memoria/created_at em UTC naive (exibir com -3h);
    lembretes/disparar_em no horário LOCAL do dono, sem conversão.
+8. SQL montado em Code node NUNCA pode levar `$` literal dentro do texto:
+   o n8n (≥ 2.42) consome `$'`, `$$`, `$&` ao resolver `{{ $json.sql }}` e o
+   pg-promise lê `$<número>` como placeholder. Texto de usuário passa pelo
+   `esc()` que vira `' || chr(36) || '`; regex/SQL fixo usa `chr(36)`.
+9. Nó de envio UAZAPI que recebe VÁRIOS itens não usa `retryOnFail` (o n8n
+   re-executa o nó inteiro e reenvia pra quem já recebeu; limite real 5 s).
+   Padrão: `onError=continueRegularOutput` + reenfileirar o item que falhou
+   em `giulia_mensagens_agendadas` (WF07).

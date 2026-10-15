@@ -187,3 +187,19 @@ Os 3 "erro desconhecido" de 02/09 não têm e-mail correspondente na caixa
   1 alerta a cada 12 h com o texto "trigger de e-mail caiu N vez(es)...
   confere a credencial IMAP" — não some (senha inválida precisa chegar),
   mas não acorda mais a cada reconexão.
+
+## 15/10/2026 — `$` no corpo, 1 aviso por e-mail, recuperação
+
+n8n 2.42.7 (upgrade da sessão ENG em 14/10) consome `$'`/`$$`/`$&` ao
+resolver `{{ $json.sql }}`: o escape antigo (`' || '$' || '`) perdeu o
+e-mail da Dixieply ("$36.05", 3 PDFs). Agora `esc()` troca todo `$` por
+`' || chr(36) || '` (runs → `repeat(chr(36), n)`) nos 4 Code nodes. E-mail
+com N anexos gerava N avisos (Gravar Anexos devolvia N linhas): agora 1
+linha (`WITH ins ... SELECT min(email_id), count(*)`), `queryBatching=
+independently` e `continueRegularOutput` (anexo ruim não derruba o lote);
+`Preparar Anexos` lê o id do próprio item antes de usar pairedItem (lote
+só de duplicatas). Recuperação de e-mail perdido: roteiro em
+`scratchpad/recuperar_emails.py` da sessão — clone do caminho de captura
+com `customEmailConfig=[["SINCE","DD-Mon-YYYY"]]` (array aninhado),
+`postProcessAction=nothing`, WF18 desligado por ~45 s, e-mail-gatilho pra
+forçar a leitura, dedup por `message_id`.

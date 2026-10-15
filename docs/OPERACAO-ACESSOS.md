@@ -263,3 +263,57 @@ quando não há nada — não começa com "Resumo"), expedição #4 → `conclui
 0 erros e 0 alertas em 24 h, lembretes do André nos horários de NY.
 Mojibake: a 1ª versão não pegou o Nubank de 14/10 (nbsp); corrigido e
 redeployado (WF18) no mesmo dia. 18/18 GIULIA ativos, 0 temporários.
+
+## 15/10/2026 — n8n atualizado pela sessão ENG (2.8.3 → 2.42.7) e patch v3/v4
+
+**O que aconteceu (14/10 ~20:20 BRT, sessão ENG):** upgrade do n8n para
+2.42.7, app `evolution-api` e `evolution-api-redis` desligados no Easypanel
+(o `evolution-api-db`, que é o banco da GIULIA, continua ligado; a GIULIA
+não usa o app Evolution — WhatsApp é UAZAPI), banco inalcançável por ~2 min
+(23:23–23:28 UTC; WF02 falhou 2×, WF15 não conseguiu registrar). Dois
+workflows `CK-*` foram criados e depois removidos por eles.
+
+**Regressão da versão nova:** ao resolver `={{ $json.sql }}` o nó Postgres
+passa o valor por um `String.replace`, que consome `$'`, `$$`, `$&`, `` $` ``.
+O escape de 04/09 (`' || '$' || '`) virou veneno: e-mail da Dixieply com
+"$36.05" (14/10 20:54, 3 PDFs, para o André) derrubou o `Salvar Email` e
+foi perdido; e o regex fixo `'[0-9]+$'` do WF12 quebrou — **nenhum
+orçamento em PDF saiu entre 14/10 20:20 e 15/10 02:00**.
+
+**Patch v3+v4 (commits 7836d59..HEAD), revisado por 3 revisores + 3
+céticos (18 achados, 2 bloqueios corrigidos antes do deploy):**
+- `esc()` → `' || chr(36) || '` (runs de `$` viram `repeat(chr(36), n)`) nos 4
+  Code nodes do WF18, `Montar SQL Memoria`/`Memoria Anexo` do WF01 e nos 2
+  literais de descrição do WF02; WF12 `substring(numero from '[0-9]+' || chr(36))`.
+- WF01 `Decidir Acao`: parâmetros do Gemini passam por `_san` (espaço após
+  `$` quando seguido de dígito/`'`/`&`/`` ` ``/`$`: "R$1500" → "R$ 1500") — cobre
+  os ~80 literais sem mexer nos casts tipados (`::jsonb`, `::TIMESTAMP`).
+- WF01 expedição: nome vazio/curto → `acao_tipo='REPLY_ONLY'` (antes ficava
+  `DB_OP` e o roteador executava `DELETE ... ILIKE '%%'`); `cancelar_inscricao`
+  e `marcar_pago_expedicao` só agem com **1** candidato (nome parcial "Ana"
+  casava 3) e listam os nomes quando há mais.
+- WF18: 1 aviso por e-mail mesmo com N anexos (`Gravar Anexos` devolve 1
+  linha; `queryBatching=independently` + `continueRegularOutput`); `Preparar
+  Anexos` checa o id antes do pairedItem.
+- WF15: `Salvar Alerta` com `continueErrorOutput` → `Limitar Aviso Direto`
+  (1 a cada 30 min via `$getWorkflowStaticData`, que mora no `n8n-db`) →
+  `Avisar Direto UAZAPI` (Thiago fica sabendo quando o banco cai).
+- WF13/14/16: `retryOnFail` removido dos envios multi-item.
+- Jota: duplicata "CLAUDIO JOSE DO AMARAL" (id 317) apagada — evitava 2
+  cartões em 20/10.
+
+**Validação (15/10 02:03–02:10 UTC, rastros apagados):** deploy 18/18;
+13/13 ao vivo (e-mail com `$36.05`/`$$`/`$'` + 2 PDFs salvo e avisado 1×;
+ideia com `$36.05` e "R$1500 e os $'" gravada; auto-cadastro; guarda "J";
+nome ambíguo não apaga; nome completo cancela só ela). E-mail da Dixieply
+**recuperado** (id 268, 3 PDFs) pelo clone `SINCE 14-Oct-2026`; Thiago
+avisado por `giulia_mensagens_agendadas`.
+
+**Fica pra depois (achados CORRIGIR_DEPOIS da revisão):** WF13/14/16 no
+padrão WF07 (reenfileirar); corpo com >~2.100 `$` isolados estoura
+`max_stack_depth` (só spam patológico); `Decidir Acao` ainda usa `esc()` só
+de aspas (o `_san` cobre o risco real); WF04 converte `periodo_inicio` no
+fuso do processo; André recebe briefing às 06:00 NY e passará a 05:00 em
+01/11 (cron único em SP); 9 tarefas de julho do André; reenvio da planilha
+do Jota; `saveDataSuccessExecution=all` em WF05/WF09 se quiser prova de
+execução diária.
