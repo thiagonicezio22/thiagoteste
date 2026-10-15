@@ -66,7 +66,7 @@
     },
     "sendBody": true,
     "specifyBody": "json",
-    "jsonBody": "={{ JSON.stringify({ number: '5511910441709', text: '⚠️ Nao consegui registrar um erro no banco (Postgres fora do ar?). Erro original: ' + String($('Montar Alerta').item.json.alerta || '').substring(0, 220) }) }}",
+    "jsonBody": "={{ JSON.stringify({ number: '5511910441709', text: '⚠️ Nao consegui registrar erro no banco (Postgres fora do ar?). ' + ($json.n > 1 ? $json.n + ' falhas sem registro na ultima meia hora. ' : '') + 'Ultimo: ' + String($json.alerta || '') }) }}",
     "options": {
      "timeout": 30000
     }
@@ -76,10 +76,23 @@
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
    "position": [
-    900,
+    1120,
     460
    ],
    "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "// Banco fora do ar: no maximo 1 aviso direto a cada 30 min. O estado fica no staticData do n8n\n// (banco whats_n8n-db, separado do julian_db) - por isso funciona durante a queda.\nconst sd = $getWorkflowStaticData('global');\nconst agora = Date.now();\nsd.quedasNaoAvisadas = Number(sd.quedasNaoAvisadas || 0) + 1;\nif (agora - Number(sd.ultimoAvisoDireto || 0) < 30 * 60 * 1000) return [];\nconst n = sd.quedasNaoAvisadas; sd.quedasNaoAvisadas = 0; sd.ultimoAvisoDireto = agora;\nreturn [{ json: { alerta: String($('Montar Alerta').first().json.alerta || '').replace(/['$]/g, '').substring(0, 200), n } }];\n"
+   },
+   "id": "limitar-aviso",
+   "name": "Limitar Aviso Direto",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    900,
+    460
+   ]
   }
  ],
  "connections": {
@@ -108,6 +121,17 @@
   "Salvar Alerta": {
    "main": [
     [],
+    [
+     {
+      "node": "Limitar Aviso Direto",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Limitar Aviso Direto": {
+   "main": [
     [
      {
       "node": "Avisar Direto UAZAPI",
