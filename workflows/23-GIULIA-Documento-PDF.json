@@ -1,0 +1,228 @@
+{
+ "name": "GIULIA - 23 Documento PDF",
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "giulia-documento-pdf",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "doc-wh",
+   "webhookId": "f4359dbd-79cc-4736-8f2d-45cf4fc7f6ef",
+   "name": "Webhook Documento",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// monta o HTML do documento (tabelas por secao) e entrega como arquivo pro Gotenberg\nconst b = ($input.first().json.body || $input.first().json || {});\nconst dono = String(b.dono || '').replace(/[^0-9]/g, '');\nif (!dono) return [];\nconst doc = b.doc || {};\nconst h = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst num = s => /^[\\s\\-+]*(R\\$|US\\$|\\$|€)?\\s*[\\d.,]+\\s*%?$/.test(String(s || '').trim());\nconst titulo = String(doc.titulo || 'Documento').substring(0, 120);\nconst sub = String(doc.subtitulo || '').substring(0, 200);\nconst tz = String(b.timezone || 'America/Sao_Paulo');\nconst hoje = new Date().toLocaleDateString('pt-BR', { timeZone: tz });\nconst secoes = (Array.isArray(doc.secoes) ? doc.secoes : []).slice(0, 12);\nlet corpo = '';\nfor (const s of secoes) {\n  const cols = (Array.isArray(s.colunas) ? s.colunas : []).slice(0, 8).map(String);\n  const linhas = (Array.isArray(s.linhas) ? s.linhas : []).slice(0, 200).map(l => Array.isArray(l) ? l.slice(0, 8) : [l]);\n  const ncol = Math.max(cols.length, ...linhas.map(l => l.length), 1);\n  corpo += `<h2>${h(s.titulo || '')}</h2><table>`;\n  if (cols.length) corpo += '<thead><tr>' + cols.map((c, i) => `<th class=\"${i > 0 ? 'r' : ''}\">${h(c)}</th>`).join('') + '</tr></thead>';\n  corpo += '<tbody>' + linhas.map(l => '<tr>' + Array.from({ length: ncol }, (_, i) => `<td class=\"${num(l[i]) && i > 0 ? 'r' : ''}\">${h(l[i] == null ? '' : l[i])}</td>`).join('') + '</tr>').join('') + '</tbody>';\n  if (s.total && (s.total.rotulo || s.total.valor)) corpo += `<tfoot><tr><td colspan=\"${Math.max(ncol - 1, 1)}\">${h(s.total.rotulo || 'Total')}</td><td class=\"r\">${h(s.total.valor || '')}</td></tr></tfoot>`;\n  corpo += '</table>';\n}\nconst tg = doc.total_geral;\nif (tg && (tg.rotulo || tg.valor)) corpo += `<div class=\"tg\"><span>${h(tg.rotulo || 'Total')}</span><span>${h(tg.valor || '')}</span></div>`;\nif (doc.observacao) corpo += `<p class=\"obs\">${h(String(doc.observacao).substring(0, 1200))}</p>`;\nconst html = `<!doctype html><html><head><meta charset=\"utf-8\"><style>\n@page { size: A4; margin: 18mm 16mm; }\nbody { font-family: 'DejaVu Sans', Arial, sans-serif; color: #1d1d1b; font-size: 11pt; }\nh1 { font-size: 19pt; color: #1f3b2d; margin: 0 0 2pt; } .sub { color: #666; font-size: 9.5pt; margin-bottom: 14pt; }\nh2 { font-size: 12pt; margin: 16pt 0 5pt; color: #1f3b2d; }\ntable { width: 100%; border-collapse: collapse; } th { background: #e8efe9; text-align: left; font-size: 9.5pt; padding: 5pt 6pt; border-bottom: 1px solid #1f3b2d; }\ntd { padding: 4pt 6pt; border-bottom: 0.5px solid #ddd; font-size: 10pt; } .r { text-align: right; white-space: nowrap; }\ntfoot td { font-weight: bold; background: #f4f4f4; border-top: 1px solid #999; }\n.tg { margin-top: 16pt; background: #1f3b2d; color: #fff; padding: 8pt 10pt; font-weight: bold; font-size: 13pt; display: flex; justify-content: space-between; }\n.obs { margin-top: 12pt; color: #555; font-size: 9.5pt; } .rod { margin-top: 22pt; color: #999; font-size: 8pt; }\n</style></head><body><h1>${h(titulo)}</h1><div class=\"sub\">${h(sub ? sub + ' · ' : '')}gerado em ${h(hoje)}</div>${corpo}<div class=\"rod\">Documento gerado pela assistente${b.nome ? ' a pedido de ' + h(b.nome) : ''}.</div></body></html>`;\nconst slug = titulo.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 60) || 'documento';\nreturn [{ json: { dono, titulo, doc_name: slug + '.pdf', legenda: String(doc.legenda || ('📄 ' + titulo)).substring(0, 500) },\n          binary: { data: { data: Buffer.from(html, 'utf8').toString('base64'), mimeType: 'text/html', fileName: 'index.html' } } }];\n"
+   },
+   "id": "doc-html",
+   "name": "Montar HTML",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "http://whats_gotenberg:3000/forms/chromium/convert/html",
+    "sendBody": true,
+    "contentType": "multipart-form-data",
+    "bodyParameters": {
+     "parameters": [
+      {
+       "parameterType": "formBinaryData",
+       "name": "files",
+       "inputDataFieldName": "data"
+      },
+      {
+       "name": "preferCssPageSize",
+       "value": "true"
+      }
+     ]
+    },
+    "options": {
+     "timeout": 60000,
+     "response": {
+      "response": {
+       "responseFormat": "file",
+       "outputPropertyName": "pdf"
+      }
+     }
+    }
+   },
+   "id": "doc-got",
+   "name": "Gotenberg PDF",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    440,
+    0
+   ],
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "// pega o PDF (ou o erro) e monta o envio: documento se deu certo, texto avisando se falhou\nconst it = $input.first();\nconst base = $('Montar HTML').first().json;\nlet b64 = '';\ntry { if (!(it.json && it.json.error)) { const buf = await this.helpers.getBinaryDataBuffer(0, 'pdf'); if (buf && buf.length > 500) b64 = buf.toString('base64'); } } catch (e) {}\nconst ok = !!b64;\nconst body = ok ? { number: base.dono, type: 'document', file: 'data:application/pdf;base64,' + b64, docName: base.doc_name, text: base.legenda }\n                : { number: base.dono, text: 'Nao consegui gerar o PDF agora (o gerador nao respondeu). Me pede de novo em um minuto?' };\nreturn [{ json: { ok, url: ok ? 'https://engsolucao.uazapi.com/send/media' : 'https://engsolucao.uazapi.com/send/text', body, dono: base.dono, titulo: base.titulo, legenda: base.legenda } }];\n"
+   },
+   "id": "doc-env",
+   "name": "Montar Envio",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $json.url }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "token",
+       "value": "__GIULIA_UAZAPI_TOKEN__"
+      },
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify($json.body) }}",
+    "options": {
+     "timeout": 60000
+    }
+   },
+   "id": "doc-uaz",
+   "name": "Enviar UAZAPI",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    880,
+    0
+   ],
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "// registra na memoria o que foi realmente enviado\nconst env = $input.first().json || {};\nconst m = $('Montar Envio').first().json;\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\").replace(/\\$+/g, x => x.length === 1 ? \"' || chr(36) || '\" : \"' || repeat(chr(36), \" + x.length + \") || '\");\nconst enviado = !env.error;\nconst txt = m.ok ? (m.legenda + (enviado ? ' [PDF enviado]' : ' [falhou o envio do PDF]')) : 'Nao consegui gerar o PDF agora (o gerador nao respondeu).';\nreturn [{ json: { sql: \"INSERT INTO giulia_memoria (role, content, from_numero) VALUES ('assistant', '\" + esc(txt) + \"', '\" + esc(m.dono) + \"');\" } }];\n"
+   },
+   "id": "doc-mem",
+   "name": "Montar Memoria",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1100,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "doc-grava",
+   "name": "Gravar Memoria",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    1320,
+    0
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Webhook Documento": {
+   "main": [
+    [
+     {
+      "node": "Montar HTML",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar HTML": {
+   "main": [
+    [
+     {
+      "node": "Gotenberg PDF",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Gotenberg PDF": {
+   "main": [
+    [
+     {
+      "node": "Montar Envio",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar Envio": {
+   "main": [
+    [
+     {
+      "node": "Enviar UAZAPI",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Enviar UAZAPI": {
+   "main": [
+    [
+     {
+      "node": "Montar Memoria",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar Memoria": {
+   "main": [
+    [
+     {
+      "node": "Gravar Memoria",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "ltVUUCOCDYKMmtnT",
+  "saveDataSuccessExecution": "all"
+ }
+}

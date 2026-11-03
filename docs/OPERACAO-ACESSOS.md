@@ -357,3 +357,31 @@ testado com o código do WF19: agora casa direto). O WF20 não mexe em
   que tem aquele tamanho (Bufalo I) — nos nós `Montar Rascunho` e
   `Montar Numeracao`. ⚠️ Diverge das fontes da outra sessão (calc-invoice.js):
   reaplicar se o WF19 for regerado.
+
+### 03/11 (2a rodada) — 6 melhorias aprovadas
+
+1. **Rascunho não expira esperando:** o WF22 prorroga `hz_invoices_pendentes.expira_em`
+   (+24h) quando manda o follow-up. O rascunho #15 do André foi prorrogado à mão.
+2. **Thiago avisado:** o WF22 tem um 2º ramo, `Escalar ao Thiago`, que funciona só
+   com SQL. Se o dono segue sem responder 3h depois do follow-up, a mensagem
+   "⏳ <dono> não respondeu…" entra em `giulia_mensagens_agendadas`, das 8h às
+   21h de SP. Marca `metadata.escalado` para não repetir.
+3. **Preferências nas invoices:** a coluna `historico_json` em `Carregar Invoices
+   HZ` vira o bloco "INVOICES QUE … JÁ EMITIU" no prompt. A Giulia preenche o
+   acabamento de sempre e a entrega de cliente repetido; o resumo é confirmado
+   antes de gerar.
+4. **Follow-up pergunta o tamanho faltante** de modelo com mais de um tamanho.
+5. **WF23 `7y7QzP23U7P7HTSs`, Documento PDF:** webhook `giulia-documento-pdf`,
+   HTML → Gotenberg (`http://whats_gotenberg:3000/forms/chromium/convert/html`)
+   → documento no WhatsApp → memória. No WF01 entraram a ação
+   `gerar_documento_pdf`, a regra `DOC_PDF` no `Roteador Acao` (saída 10, antes
+   do fallback) e o nó `Chamar Documento PDF`. Ela confere as somas e pergunta se
+   não batem; não lança nada como gasto. O relatório de gastos ficou restrito aos
+   gastos já lançados (era por isso que o pedido do Caio virou gasto).
+6. **Handoff:** `docs/HANDOFF-INVOICE-2026-11-03.md`, para a sessão do invoice.
+
+Testes ao vivo com o número do Thiago (rastros apagados):
+- PDF do pintor gerado e enviado, sem gasto criado.
+- Soma errada: ela perguntou qual valor vale em vez de gerar.
+- Invoice "2 Bufalo medio e 1 Bisbi grande" → Bufalo I e Bixby I, só perguntou o acabamento.
+- PDF de teste pelo WF23 direto.
