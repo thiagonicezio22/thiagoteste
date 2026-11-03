@@ -317,3 +317,23 @@ fuso do processo; André recebe briefing às 06:00 NY e passará a 05:00 em
 01/11 (cron único em SP); 9 tarefas de julho do André; reenvio da planilha
 do Jota; `saveDataSuccessExecution=all` em WF05/WF09 se quiser prova de
 execução diária.
+
+## 03/11/2026 — Invoice Horizon (feito por outra sessão) e análise do André
+
+**Atenção para deploy:** em 25/10 outra sessão criou o módulo de invoice
+da Horizon Pottery (WF19 `Gd9UCBiztkoVA4q5` Invoice Horizon, WF20
+`WCA0M6F5bLhDhBc8` Sync Catálogo, WF21 `gj0NVrClNcnEpGlt` Dados de
+Pagamento; tabelas `hz_*`) e editou o WF01 ao vivo (nós `Carregar Equipe HZ`,
+`Carregar Invoices HZ`, `Chamar Invoice HZ` + Montar Prompt/Decidir Acao/
+Formatar Resposta Final/Resolver Dono). Nada disso estava no git: rodar
+`deploy-workflows.sh` com o WF01 antigo apagaria o invoice. Em 03/11 os 4
+workflows foram copiados do ar para `workflows/` (tokens trocados por
+placeholders). O código do WF19 é **gerado** a partir de fontes da outra
+sessão (`calc-invoice.js`, `ESPEC-INVOICE-GIULIA.md`, `lib-wf`) que não
+estão neste repo — não editar o JSON do WF19 à mão sem essas fontes.
+WF19–21 **não** estão no `deploy-workflows.sh` de propósito.
+
+**Ajuste de dados:** `hz_catalogo.apelidos` do Bixby I ganhou
+"Bisbi I", "Bixbi I", "Bisby I" (o áudio do André vira "Bisbi 1";
+testado com o código do WF19: agora casa direto). O WF20 não mexe em
+`apelidos`.
