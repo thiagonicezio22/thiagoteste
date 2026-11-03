@@ -337,3 +337,23 @@ WF19–21 **não** estão no `deploy-workflows.sh` de propósito.
 "Bisbi I", "Bixbi I", "Bisby I" (o áudio do André vira "Bisbi 1";
 testado com o código do WF19: agora casa direto). O WF20 não mexe em
 `apelidos`.
+
+### 03/11 — melhorias a partir das conversas do André (aprovadas pelo Thiago)
+
+- **WF22 `91E9A49eKBCSj7Tw` — Follow-up de perguntas** (novo): a cada 10 min
+  procura a última pergunta da Giulia (mensagem com "?", não automática) feita
+  a um dono ativo **exceto o Thiago**, há 40 min a 20 h, sem resposta do dono e
+  sem follow-up ainda, dentro de 8h–20h no fuso do dono. Gemini escreve UMA
+  mensagem: pergunta se ficou dúvida, mostra que entendeu o pedido e sugere a
+  resposta mais provável (acabamento que ele sempre usa, cliente com o mesmo
+  nome de invoice anterior e a cidade dela, modelo pelo tamanho/nome parecido —
+  recebe a lista de tamanhos do catálogo). Trava: só envia se `finishReason =
+  STOP` e o texto não tiver preço. Grava na memória com `metadata.followup =
+  true` (não repete e o WF01 enxerga o que foi dito). 1 follow-up por pergunta.
+- **WF01 `Montar Prompt`**: invoice aceita `desconto_pct`/`desconto_valor` por
+  item e no pedido — "18% de desconto" vira desconto visível na invoice, não
+  mais preço trocado; regra geral **"nunca diga que fez o que não fez"**.
+- **WF19**: nome ambíguo + tamanho ("Búfalo Médio") resolve pelo único modelo
+  que tem aquele tamanho (Bufalo I) — nos nós `Montar Rascunho` e
+  `Montar Numeracao`. ⚠️ Diverge das fontes da outra sessão (calc-invoice.js):
+  reaplicar se o WF19 for regerado.

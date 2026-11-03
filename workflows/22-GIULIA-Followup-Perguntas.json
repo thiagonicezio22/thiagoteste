@@ -1,0 +1,304 @@
+{
+ "name": "GIULIA - 22 Followup Perguntas",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "minutes",
+       "minutesInterval": 10
+      }
+     ]
+    }
+   },
+   "id": "fu-cron",
+   "name": "Cron 10min",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "WITH q AS (\n  SELECT DISTINCT ON (m.from_numero) m.id, m.from_numero, m.content, m.created_at\n  FROM giulia_memoria m\n  JOIN giulia_donos d ON d.numero = m.from_numero\n  WHERE m.role = 'assistant'\n    AND COALESCE(d.status, 'ativo') = 'ativo'\n    AND d.numero <> '5511910441709'\n    AND COALESCE(m.metadata->>'followup', '') = ''\n    AND m.content !~ '^(Bom dia|Boa tarde|Boa noite|Lembrete|[*]Fechamento|[*]Relatorio|📧|⚠️|📄|🎂|Montando|Gerando)'\n    AND m.created_at > (NOW() AT TIME ZONE 'UTC') - INTERVAL '20 hours'\n  ORDER BY m.from_numero, m.id DESC\n)\nSELECT q.id AS pergunta_id, q.from_numero, q.content AS pergunta, q.created_at,\n  ROUND(EXTRACT(EPOCH FROM ((NOW() AT TIME ZONE 'UTC') - q.created_at)) / 60)::int AS minutos,\n  d.nome, COALESCE(d.idioma, 'pt-BR') AS idioma, d.timezone,\n  (SELECT json_agg(x ORDER BY x.id) FROM (SELECT id, role, left(content, 700) AS content FROM giulia_memoria\n     WHERE from_numero = q.from_numero AND COALESCE(metadata->>'followup', '') = '' ORDER BY id DESC LIMIT 14) x) AS historico,\n  (SELECT json_agg(json_build_object('rascunho', p.id, 'resumo', left(p.resumo_texto, 1500), 'faltando', p.faltando, 'pedido', p.pedido))\n     FROM hz_invoices_pendentes p WHERE p.dono_numero = q.from_numero AND p.invoice_id IS NULL\n     AND p.status NOT IN ('substituido', 'cancelado', 'processado', 'expirado') AND p.expira_em > NOW()) AS invoices_abertas,\n  (SELECT json_agg(json_build_object('numero', h.numero, 'cliente', h.cliente->>'nome', 'cidade', h.entrega->>'cidade',\n       'endereco', h.entrega->>'endereco', 'acabamentos', (SELECT string_agg(DISTINCT i->>'acabamento', ', ') FROM jsonb_array_elements(h.itens) i)))\n     FROM (SELECT * FROM hz_invoices WHERE solicitante_numero = q.from_numero AND NOT teste ORDER BY id DESC LIMIT 5) h) AS invoices_anteriores,\n  (SELECT string_agg(c.produto || ' (' || c.tams || ')', '; ' ORDER BY c.produto) FROM (SELECT produto, COALESCE(string_agg(DISTINCT tamanho, '/'), 'tamanho unico') AS tams\n     FROM hz_catalogo WHERE ativo GROUP BY produto) c\n     WHERE EXISTS (SELECT 1 FROM hz_invoices_pendentes p WHERE p.dono_numero = q.from_numero AND p.expira_em > NOW())) AS catalogo_tamanhos\nFROM q\nJOIN giulia_donos d ON d.numero = q.from_numero\nWHERE q.content LIKE '%?%'\n  AND q.created_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '40 minutes'\n  AND NOT EXISTS (SELECT 1 FROM giulia_memoria u WHERE u.from_numero = q.from_numero AND u.id > q.id AND u.role = 'user')\n  AND NOT EXISTS (SELECT 1 FROM giulia_memoria f WHERE f.from_numero = q.from_numero AND f.id > q.id AND f.metadata->>'followup' = 'true')\n  AND to_char(NOW() AT TIME ZONE d.timezone, 'HH24')::int BETWEEN 8 AND 20",
+    "options": {}
+   },
+   "id": "fu-busca",
+   "name": "Perguntas Sem Resposta",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    220,
+    0
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "mode": "runOnceForEachItem",
+    "jsCode": "// monta o pedido ao Gemini para a mensagem de follow-up (1 item = 1 dono com pergunta parada)\nconst j = $input.item.json;\nconst hist = (Array.isArray(j.historico) ? j.historico : []).map(h => (h.role === 'user' ? 'DONO: ' : 'GIULIA: ') + String(h.content || '').replace(/\\s+/g, ' ').substring(0, 500)).join('\\n');\nconst inv = Array.isArray(j.invoices_abertas) && j.invoices_abertas.length ? JSON.stringify(j.invoices_abertas).substring(0, 3500) : '(nenhuma)';\nconst ant = Array.isArray(j.invoices_anteriores) && j.invoices_anteriores.length ? JSON.stringify(j.invoices_anteriores).substring(0, 1500) : '(nenhuma)';\nconst idi = String(j.idioma || 'pt-BR').toLowerCase().startsWith('en') ? 'ingles' : (String(j.idioma || '').toLowerCase().startsWith('es') ? 'espanhol' : 'portugues do Brasil');\nconst sys = `Voce e a Giulia, secretaria virtual no WhatsApp. Voce fez uma pergunta ao ${j.nome || 'dono'} ha ${j.minutos} minutos e ele nao respondeu.\nEscreva UMA mensagem curta de WhatsApp (no maximo 6 linhas), em ${idi}, tom leve e direto:\n1) comece perguntando se ficou alguma duvida no que voce perguntou;\n2) em uma frase, mostre que entendeu o pedido dele (cite o cliente e as pecas/o que ele quer);\n3) diga so o que ainda falta, em forma de pergunta de sim/nao quando der, sugerindo a resposta mais provavel com base no historico:\n   - acabamento que ele sempre usa nas invoices anteriores (ex.: 'tudo Savana, como nas outras?');\n   - cliente com o mesmo primeiro nome de uma invoice anterior: pergunte se e a mesma pessoa e cite a cidade dela;\n   - modelo com nome parecido do catalogo (ex.: 'o Bisbi e o Bixby I?'); se o rascunho listar opcoes, cite-as;\n4) feche dizendo que ele pode responder por audio.\nNUNCA cite preco, total, imposto ou valor. NUNCA invente dado que nao esteja abaixo. Sem titulo, sem lista longa, sem markdown alem de *negrito*. Responda SO com o texto da mensagem.`;\nconst catT = j.catalogo_tamanhos ? `\\n\\nCATALOGO (modelo e tamanhos que existem - use para resolver ambiguidade: se ele disse o tamanho e so um modelo tem esse tamanho, sugira esse):\\n${String(j.catalogo_tamanhos).substring(0, 2500)}` : '';\nconst ctx = `PERGUNTA PARADA (sua ultima mensagem):\\n${String(j.pergunta || '').substring(0, 1500)}\\n\\nINVOICES EM ABERTO (rascunho atual):\\n${inv}\\n\\nINVOICES ANTERIORES DELE:\\n${ant}\\n\\nCONVERSA RECENTE (mais antiga primeiro):\\n${hist}${catT}`;\nreturn { json: { ...j, gemini_body: {\n  systemInstruction: { parts: [{ text: sys }] },\n  contents: [{ role: 'user', parts: [{ text: ctx }] }],\n  generationConfig: { temperature: 0.4, maxOutputTokens: 4096 } } } };\n"
+   },
+   "id": "fu-prompt",
+   "name": "Montar Prompt Followup",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=__GIULIA_GEMINI_API_KEY__",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+    "options": {
+     "timeout": 60000
+    }
+   },
+   "id": "fu-gemini",
+   "name": "Gemini Followup",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    660,
+    0
+   ],
+   "onError": "continueRegularOutput",
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 5000
+  },
+  {
+   "parameters": {
+    "mode": "runOnceForEachItem",
+    "jsCode": "// texto final (ignora partes de raciocinio do modelo) + trava: nada de preco/cifrao\nconst g = $input.item.json || {};\nconst base = $('Montar Prompt Followup').item.json;\nlet txt = '';\ntry { txt = ((g.candidates || [])[0].content.parts || []).filter(p => p && p.text && !p.thought).map(p => p.text).join('').trim(); } catch (e) {}\ntxt = txt.replace(/^[\"']|[\"']$/g, '').trim();\ntxt = txt.replace(/\\*\\*/g, '*');   // WhatsApp usa *negrito* simples\nlet fim = ''; try { fim = String((g.candidates || [])[0].finishReason || ''); } catch (e) {}\nconst ok = fim === 'STOP' && txt.length >= 15 && txt.length <= 900 && !/(\\$|US\\$|R\\$|USD)\\s?\\d/.test(txt);\nreturn { json: { ok, send_to: base.from_numero, texto: txt, pergunta_id: base.pergunta_id } };\n"
+   },
+   "id": "fu-envio",
+   "name": "Montar Envio",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    880,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $json.ok }}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    }
+   },
+   "id": "fu-ok",
+   "name": "Texto OK?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    1100,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://engsolucao.uazapi.com/send/text",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "token",
+       "value": "__GIULIA_UAZAPI_TOKEN__"
+      },
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ number: $json.send_to, text: $json.texto }) }}",
+    "options": {
+     "timeout": 30000
+    }
+   },
+   "id": "fu-uazapi",
+   "name": "Enviar Followup UAZAPI",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1320,
+    -80
+   ],
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "mode": "runOnceForEachItem",
+    "jsCode": "// grava o follow-up na memoria (metadata followup=true: nao dispara de novo e o WF01 ve o que foi dito)\nconst env = $input.item.json || {};\nconst m = $('Montar Envio').item.json;\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\").replace(/\\$+/g, x => x.length === 1 ? \"' || chr(36) || '\" : \"' || repeat(chr(36), \" + x.length + \") || '\");\nif (env.error || !m.ok) return { json: { sql: 'SELECT 1;' } };\nconst meta = '{\"followup\": true, \"pergunta_id\": ' + parseInt(m.pergunta_id, 10) + '}';\nreturn { json: { sql: \"INSERT INTO giulia_memoria (role, content, from_numero, metadata) VALUES ('assistant', '\" + esc(m.texto) + \"', '\" + esc(m.send_to) + \"', '\" + meta + \"'::jsonb);\" } };\n"
+   },
+   "id": "fu-mem",
+   "name": "Montar Memoria",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1540,
+    -80
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "fu-grava",
+   "name": "Gravar Memoria",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    1760,
+    -80
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Cron 10min": {
+   "main": [
+    [
+     {
+      "node": "Perguntas Sem Resposta",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Perguntas Sem Resposta": {
+   "main": [
+    [
+     {
+      "node": "Montar Prompt Followup",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar Prompt Followup": {
+   "main": [
+    [
+     {
+      "node": "Gemini Followup",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Gemini Followup": {
+   "main": [
+    [
+     {
+      "node": "Montar Envio",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar Envio": {
+   "main": [
+    [
+     {
+      "node": "Texto OK?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Texto OK?": {
+   "main": [
+    [
+     {
+      "node": "Enviar Followup UAZAPI",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    []
+   ]
+  },
+  "Enviar Followup UAZAPI": {
+   "main": [
+    [
+     {
+      "node": "Montar Memoria",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar Memoria": {
+   "main": [
+    [
+     {
+      "node": "Gravar Memoria",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "ltVUUCOCDYKMmtnT",
+  "timezone": "America/Sao_Paulo",
+  "saveDataSuccessExecution": "all"
+ }
+}
