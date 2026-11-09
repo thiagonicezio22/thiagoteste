@@ -154,6 +154,7 @@ deploy "qojjGwPdhIVwcpu3" "workflows/17-GIULIA-Financeiro.json" "GIULIA - 17 Fin
 deploy "NNUd29aBLloX72to" "workflows/18-GIULIA-Email.json" "GIULIA - 18 Email"
 deploy "91E9A49eKBCSj7Tw" "workflows/22-GIULIA-Followup-Perguntas.json" "GIULIA - 22 Followup Perguntas"
 deploy "7y7QzP23U7P7HTSs" "workflows/23-GIULIA-Documento-PDF.json" "GIULIA - 23 Documento PDF"
+deploy "J7g50yWUBPSCYdJW" "workflows/24-GIULIA-Monitor-IA.json" "GIULIA - 24 Monitor IA"
 
 echo ""
 echo "AUDITORIA FINAL: conferindo que todos os workflows GIULIA estao ativos..."
