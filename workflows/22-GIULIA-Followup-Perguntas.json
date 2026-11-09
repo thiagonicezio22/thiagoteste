@@ -224,6 +224,37 @@
      "name": "PostgreSQL Julian"
     }
    }
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ String($json.from_numero || '') }}",
+       "rightValue": "^[0-9]{8,}",
+       "operator": {
+        "type": "string",
+        "operation": "regex"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "id": "fu-tem",
+   "name": "Tem Pergunta?",
+   "type": "n8n-nodes-base.filter",
+   "typeVersion": 2,
+   "position": [
+    330,
+    -120
+   ]
   }
  ],
  "connections": {
@@ -247,7 +278,7 @@
    "main": [
     [
      {
-      "node": "Montar Prompt Followup",
+      "node": "Tem Pergunta?",
       "type": "main",
       "index": 0
      }
@@ -315,6 +346,17 @@
     [
      {
       "node": "Gravar Memoria",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tem Pergunta?": {
+   "main": [
+    [
+     {
+      "node": "Montar Prompt Followup",
       "type": "main",
       "index": 0
      }
