@@ -1,0 +1,149 @@
+{
+ "name": "GIULIA - 24 Monitor IA",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "minutes",
+       "minutesInterval": 15
+      }
+     ]
+    }
+   },
+   "id": "gm-cron",
+   "name": "Cron 15min",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.anthropic.com/v1/messages",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "anthropicApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "anthropic-version",
+       "value": "2023-06-01"
+      },
+      {
+       "name": "content-type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "{\"model\": \"claude-opus-5-5\", \"max_tokens\": 256, \"messages\": [{\"role\": \"user\", \"content\": \"Responda apenas: ok\"}], \"output_config\": {\"effort\": \"low\"}}",
+    "options": {
+     "timeout": 45000,
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     }
+    }
+   },
+   "id": "gm-ping",
+   "name": "Ping Claude",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    220,
+    0
+   ],
+   "onError": "continueRegularOutput",
+   "credentials": {
+    "anthropicApi": {
+     "id": "FiTDzqlKTWNbybxI",
+     "name": "Anthropic account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "// avalia a resposta do ping ao Claude e decide se avisa o Thiago (estado em staticData, so em producao)\nconst st = $getWorkflowStaticData('global');\nconst r = $input.first().json || {};\nconst code = parseInt(r.statusCode || (r.error && r.error.status) || 0, 10) || 0;\nlet corpo = r.body;\nif (typeof corpo === 'string') { try { corpo = JSON.parse(corpo); } catch (e) {} }\nconst msgApi = String((corpo && corpo.error && (corpo.error.message || corpo.error.type)) || (r.error && r.error.message) || '').replace(/\\s+/g, ' ').substring(0, 220);\nconst ok = code === 200 && corpo && Array.isArray(corpo.content);\nconst agora = Date.now();\nconst HORAS6 = 6 * 3600 * 1000;\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\").replace(/\\$+/g, x => \"' || repeat(chr(36), \" + x.length + \") || '\");\nconst fila = txt => \"INSERT INTO giulia_mensagens_agendadas (destinatario_numero, destinatario_nome, conteudo, agendado_para, status) VALUES ('5511910441709', 'Thiago', '\" + esc(txt) + \"', NOW() AT TIME ZONE 'America/Sao_Paulo', 'pendente') RETURNING id;\";\nif (ok) {\n  st.falhas = 0;\n  if (st.alertado_em) {\n    const desde = st.fora_desde ? new Date(st.fora_desde).toISOString().substring(0, 16).replace('T', ' ') + ' UTC' : '?';\n    st.alertado_em = null; st.fora_desde = null;\n    return [{ json: { sql: fila('✅ O Claude voltou a responder. A Giulia já está entendendo as mensagens de novo (estava fora desde ' + desde + ').') } }];\n  }\n  st.fora_desde = null;\n  return [];\n}\nst.falhas = (st.falhas || 0) + 1;\nif (!st.fora_desde) st.fora_desde = agora;\n// 4xx (cobranca, chave invalida, permissao, cota) = problema de conta: avisa ja. 5xx/timeout: so apos 3 seguidos.\nconst contaProblema = code >= 400 && code < 500;\nif (!contaProblema && st.falhas < 3) return [];\nif (st.alertado_em && agora - st.alertado_em < HORAS6) return [];\nst.alertado_em = agora;\nlet causa = 'erro ' + (code || 'sem resposta');\nif (/credit balance|billing|payment|outstanding/i.test(msgApi)) causa = 'CRÉDITOS: o saldo da conta da Anthropic acabou. Recarregue em console.anthropic.com → Billing';\nelse if (code === 401 || /api.?key|authentication/i.test(msgApi)) causa = 'CHAVE inválida ou revogada (credencial Anthropic no n8n)';\nelse if (code === 429) causa = 'LIMITE de uso estourado (rate limit ou limite de gasto)';\nelse if (code === 403) causa = 'PERMISSÃO negada (chave ou projeto)';\nconst txt = '🚨 Claude (IA da Giulia) fora do ar (HTTP ' + (code || '?') + '). ' + causa + '.\\n'\n  + 'Enquanto isso a Giulia não entende as mensagens e responde que teve um problema e pede para mandar de novo.\\n'\n  + (msgApi ? 'Detalhe: ' + msgApi.replace(/https?:\\/\\/\\S+/g, '').trim() + '\\n' : '')\n  + 'Eu aviso de novo quando voltar.';\nreturn [{ json: { sql: fila(txt) } }];\n"
+   },
+   "id": "gm-aval",
+   "name": "Avaliar Resposta",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "gm-fila",
+   "name": "Avisar Thiago",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Cron 15min": {
+   "main": [
+    [
+     {
+      "node": "Ping Claude",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Ping Claude": {
+   "main": [
+    [
+     {
+      "node": "Avaliar Resposta",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Avaliar Resposta": {
+   "main": [
+    [
+     {
+      "node": "Avisar Thiago",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "ltVUUCOCDYKMmtnT",
+  "timezone": "America/Sao_Paulo",
+  "saveDataSuccessExecution": "none"
+ }
+}
