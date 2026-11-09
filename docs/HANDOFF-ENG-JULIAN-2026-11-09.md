@@ -89,11 +89,20 @@ Thiago se acabarem os créditos ou a chave falhar.
 
 ## 5. Pendências que encostam em vocês
 
-- **WF20 Sync Catálogo Horizon** falha 2×/dia desde 02/11:
-  `duplicate key hz_catalogo_variant_id_key`, variant 44165277024359.
-  Hoje esse variant é o `HP-ONYX-SM`, Onyx Medium; a Shopify provavelmente
-  trocou o SKU. O catálogo está parado em 02/11. O código é gerado a partir de
-  `calc-invoice.js`/`lib-wf`, que estão fora do repo.
+- **WF20 Sync Catálogo Horizon** falhou 2×/dia de 02/11 a 08/11 com
+  `duplicate key hz_catalogo_variant_id_key`, variant 44165277024359. O catálogo
+  ficou parado em 02/11.
+  - **Causa:** a Shopify renomeou o SKU do Onyx Medium de `HP-ONYX-SM` para
+    `HP-ONYX-MD`. O upsert faz `ON CONFLICT (sku)`, então tentou inserir uma linha
+    nova e bateu no `UNIQUE(variant_id)`.
+  - **Corrigido nos dados em 09/11:** `UPDATE hz_catalogo SET sku='HP-ONYX-MD'`
+    nessa linha. Era o único caso: comparei os 122 variants do feed com o banco.
+    Nenhuma invoice nem rascunho usava o SKU antigo. Backup em
+    `hz_catalogo_bak_onyx_20261109`.
+  - **Para não repetir (no gerador, `calc-invoice.js`/`lib-wf`, fora do repo):**
+    antes do INSERT, rodar
+    `UPDATE hz_catalogo c SET sku = v.sku FROM (VALUES ...) v WHERE c.variant_id = v.variant_id AND c.sku <> v.sku`,
+    para que um SKU renomeado na Shopify vire rename e não duplicata.
 - `docs/HANDOFF-INVOICE-2026-11-03.md`: mudanças no WF19 e no WF01 que a sessão
   do invoice precisa levar para os fontes.
 - **n8n:** a senha do dono foi resetada em 09/11 (o Thiago trocou). Ativar a
