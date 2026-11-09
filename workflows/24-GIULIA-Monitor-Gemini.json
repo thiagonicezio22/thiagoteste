@@ -1,0 +1,137 @@
+{
+ "name": "GIULIA - 24 Monitor Gemini",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "minutes",
+       "minutesInterval": 15
+      }
+     ]
+    }
+   },
+   "id": "gm-cron",
+   "name": "Cron 15min",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=__GIULIA_GEMINI_API_KEY__",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Content-Type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "{\"contents\": [{\"role\": \"user\", \"parts\": [{\"text\": \"Responda apenas: ok\"}]}], \"generationConfig\": {\"maxOutputTokens\": 256, \"temperature\": 0}}",
+    "options": {
+     "timeout": 45000,
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     }
+    }
+   },
+   "id": "gm-ping",
+   "name": "Ping Gemini",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    220,
+    0
+   ],
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "// avalia a resposta do ping ao Gemini e decide se avisa o Thiago (estado em staticData, so em producao)\nconst st = $getWorkflowStaticData('global');\nconst r = $input.first().json || {};\nconst code = parseInt(r.statusCode || (r.error && r.error.status) || 0, 10) || 0;\nlet corpo = r.body;\nif (typeof corpo === 'string') { try { corpo = JSON.parse(corpo); } catch (e) {} }\nconst msgApi = String((corpo && corpo.error && corpo.error.message) || (r.error && r.error.message) || '').replace(/\\s+/g, ' ').substring(0, 220);\nconst ok = code === 200;\nconst agora = Date.now();\nconst HORAS6 = 6 * 3600 * 1000;\nconst esc = s => String(s == null ? '' : s).replace(/'/g, \"''\").replace(/\\$+/g, x => \"' || repeat(chr(36), \" + x.length + \") || '\");\nconst fila = txt => \"INSERT INTO giulia_mensagens_agendadas (destinatario_numero, destinatario_nome, conteudo, agendado_para, status) VALUES ('5511910441709', 'Thiago', '\" + esc(txt) + \"', NOW() AT TIME ZONE 'America/Sao_Paulo', 'pendente') RETURNING id;\";\nif (ok) {\n  st.falhas = 0;\n  if (st.alertado_em) {\n    const desde = st.fora_desde ? new Date(st.fora_desde).toISOString().substring(0, 16).replace('T', ' ') + ' UTC' : '?';\n    st.alertado_em = null; st.fora_desde = null;\n    return [{ json: { sql: fila('✅ O Gemini voltou a responder. A Giulia já está entendendo as mensagens de novo (estava fora desde ' + desde + ').') } }];\n  }\n  st.fora_desde = null;\n  return [];\n}\nst.falhas = (st.falhas || 0) + 1;\nif (!st.fora_desde) st.fora_desde = agora;\n// 4xx (cobranca, chave invalida, permissao, cota) = problema de conta: avisa ja. 5xx/timeout: so apos 3 seguidos.\nconst contaProblema = code >= 400 && code < 500;\nif (!contaProblema && st.falhas < 3) return [];\nif (st.alertado_em && agora - st.alertado_em < HORAS6) return [];\nst.alertado_em = agora;\nlet causa = 'erro ' + (code || 'sem resposta');\nif (/billing|outstanding balance/i.test(msgApi)) causa = 'COBRANÇA: a conta do Google AI Studio está com saldo devedor. Pague em aistudio.google.com/billing';\nelse if (code === 400 && /api key/i.test(msgApi)) causa = 'CHAVE inválida ou expirada';\nelse if (code === 429) causa = 'COTA/limite estourado';\nelse if (code === 403) causa = 'PERMISSÃO negada (chave ou projeto)';\nconst txt = '🚨 Gemini fora do ar (HTTP ' + (code || '?') + '). ' + causa + '.\\n'\n  + 'Enquanto isso a Giulia não entende nenhuma mensagem e responde \"não consegui te ouvir\" para todo mundo.\\n'\n  + (msgApi ? 'Detalhe: ' + msgApi.replace(/https?:\\/\\/\\S+/g, '').trim() + '\\n' : '')\n  + 'Eu aviso de novo quando voltar.';\nreturn [{ json: { sql: fila(txt) } }];\n"
+   },
+   "id": "gm-aval",
+   "name": "Avaliar Resposta",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "id": "gm-fila",
+   "name": "Avisar Thiago",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    660,
+    0
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Cron 15min": {
+   "main": [
+    [
+     {
+      "node": "Ping Gemini",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Ping Gemini": {
+   "main": [
+    [
+     {
+      "node": "Avaliar Resposta",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Avaliar Resposta": {
+   "main": [
+    [
+     {
+      "node": "Avisar Thiago",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "ltVUUCOCDYKMmtnT",
+  "timezone": "America/Sao_Paulo",
+  "saveDataSuccessExecution": "none"
+ }
+}
