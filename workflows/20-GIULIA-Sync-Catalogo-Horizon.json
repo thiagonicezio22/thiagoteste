@@ -1,0 +1,351 @@
+{
+ "id": "WCA0M6F5bLhDhBc8",
+ "name": "GIULIA - 20 Sync Catalogo Horizon",
+ "nodes": [
+  {
+   "id": "n56-agenda-sync-catalogo",
+   "name": "Agenda Sync Catalogo",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    -600,
+    200
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "15 6,14 * * *"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "n57-rodar-sync-manual",
+   "name": "Rodar Sync Manual",
+   "webhookId": "5b432f3f-2f65-4eaa-967d-70645e22e2af",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    -600,
+    400
+   ],
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "giulia-sync-hz-manual",
+    "responseMode": "onReceived",
+    "authentication": "headerAuth",
+    "options": {}
+   },
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "4xML1rfhFCOcVQRz",
+     "name": "GIULIA Invoice HZ (header)"
+    }
+   }
+  },
+  {
+   "id": "n58-carregar-catalogo-atual",
+   "name": "Carregar Catalogo Atual",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "executeOnce": true,
+   "position": [
+    -380,
+    300
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT (SELECT json_agg(k) FROM (SELECT sku, colecao, preco_shopify_cents, preco_aprovado_cents, preco_status, foto_url, foto_origem, ativo, ausente_syncs, (foto_b64 IS NOT NULL) AS tem_foto FROM hz_catalogo) k) AS catalogo, (SELECT json_object_agg(chave, valor) FROM hz_config WHERE chave IN ('alertas_ativos','foto_modelo_permitida','modo_foto')) AS config;",
+    "options": {}
+   },
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  },
+  {
+   "id": "n-baixar-catalogo",
+   "name": "Baixar Catalogo Shopify",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "executeOnce": true,
+   "retryOnFail": true,
+   "maxTries": 2,
+   "waitBetweenTries": 60000,
+   "onError": "continueRegularOutput",
+   "position": [
+    -160,
+    300
+   ],
+   "parameters": {
+    "url": "https://horizon-pottery.myshopify.com/products.json?limit=250",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "pagination": {
+      "pagination": {
+       "parameters": {
+        "parameters": [
+         {
+          "type": "qs",
+          "name": "page",
+          "value": "={{ $pageCount + 1 }}"
+         }
+        ]
+       },
+       "paginationCompleteWhen": "other",
+       "completeExpression": "={{ !Array.isArray($response.body.products) || $response.body.products.length < 250 }}",
+       "limitPagesFetched": true,
+       "maxRequests": 10,
+       "requestInterval": 2000
+      }
+     },
+     "timeout": 30000
+    }
+   }
+  },
+  {
+   "id": "n59-montar-upsert-catalogo",
+   "name": "Montar Upsert Catalogo",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    60,
+    300
+   ],
+   "parameters": {
+    "jsCode": "\nconst lit = s => (s === null || s === undefined) ? 'NULL'\n  : \"convert_from(decode('\" + Buffer.from(String(s), 'utf8').toString('base64') + \"','base64'),'UTF8')\";\nconst litJson = o => lit(JSON.stringify(o)) + '::jsonb';\nconst int = v => { const n = parseInt(v, 10); if (!Number.isFinite(n) || String(n) !== String(v).trim()) throw new Error('inteiro invalido: ' + v); return n; };\nconst intOuNull = v => (v === null || v === undefined || v === '') ? 'NULL' : String(int(v));\nconst digitos = s => String(s || '').replace(/[^0-9]/g, '');\nconst litDate = s => { if (s == null || s === '') return 'NULL';\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(s))) throw new Error('data invalida'); return lit(String(s)) + '::date'; };\nconst arr = a => (Array.isArray(a) && a.length) ? 'ARRAY[' + a.map(lit).join(',') + ']::text[]' : \"'{}'::text[]\";\nconst bool = v => (v === true ? 'true' : 'false');\nconst cfgBool = v => String(v == null ? '' : v).trim().toLowerCase() === 'true';\nconst cfgInt = (v, min, max, padrao) => { const n = parseInt(String(v == null ? '' : v).trim(), 10);\n  return (Number.isFinite(n) && n >= min && n <= max) ? n : padrao; };\nconst semCifrao = sql => { if (String(sql).includes('$')) throw new Error('SQL com cifrao'); return sql; };\nconst THIAGO = '5511910441709';\n// constantes de build (lib-wf.desligarEnvios troca para false): com os envios desligados nada vai para\n// giulia_memoria / giulia_mensagens_agendadas (nenhuma mensagem saiu) e o webhook REAL recusa (so o de teste responde)\nconst ENVIOS_LIGADOS = true;\nconst MODO_REAL_LIBERADO = true;\n\nconst A = $('Carregar Catalogo Atual').first().json || {};\nconst atual = Array.isArray(A.catalogo) ? A.catalogo : [];\nconst cfg = A.config || {};\nconst porSku = {}; atual.forEach(r => { porSku[r.sku] = r; });\nconst ativos = atual.filter(r => r.ativo);\nconst paginas = $input.all().map(i => i.json || {});\nfunction alerta(texto) {\n  if (!cfgBool(cfg.alertas_ativos)) return 'SELECT 0 AS alerta;';\n  return \"INSERT INTO giulia_mensagens_agendadas (destinatario_numero, destinatario_nome, conteudo, agendado_para, status) VALUES ('\" + THIAGO + \"', 'Thiago', \" + lit(texto) + \", NOW() AT TIME ZONE 'America/Sao_Paulo', 'pendente') RETURNING id;\";\n}\nfunction abortar(motivo) {\n  return [{ json: { abortado: true, motivo, sql: semCifrao(alerta('Horizon: sincronização do catálogo abortada (' + motivo + '); nada foi alterado.')), fotos_novas: [], resumo: { paginas: paginas.length } } }];\n}\n// --- conferencias do feed (espec 2.4): status 200 e products array em toda pagina, feed nao vazio, >= 80% dos SKUs ativos\nlet products = [];\nfor (let i = 0; i < paginas.length; i++) {\n  const p = paginas[i];\n  if (p.error) return abortar('erro de rede na página ' + (i + 1) + ': ' + String(p.error.message || p.error).slice(0, 120));\n  const body = p.body !== undefined ? p.body : p;\n  if (p.statusCode !== undefined && p.statusCode !== 200) return abortar('HTTP ' + p.statusCode + ' na página ' + (i + 1));\n  if (!body || !Array.isArray(body.products)) return abortar('página ' + (i + 1) + ' sem products[]');\n  products = products.concat(body.products);\n}\nif (!paginas.length) return abortar('nenhuma página');\nif (!products.length) return abortar('feed vazio');\nconst ACAB = ['Savana', 'Canyon Dust', 'Graphite'], TAM = ['Large', 'Medium', 'Small', 'Median', 'Standard'];\nconst fotoModelo = cfgBool(cfg.foto_modelo_permitida);\nfunction urlFoto(src) {\n  if (typeof src !== 'string') return null;\n  const m = /^https:\\/\\/([a-z0-9.-]+)\\//i.exec(src);\n  if (!m || m[1].toLowerCase() !== 'cdn.shopify.com') return undefined; // host errado\n  return src + (src.indexOf('?') >= 0 ? '&' : '?') + 'width=600&format=jpg';\n}\nconst linhas = [], feedSkus = [], hostErrado = [], novos = [], precoMudou = [], semUrl = [];\nlet semSku = 0;\nproducts.forEach(p => {\n  if (!p || !Array.isArray(p.variants)) return;\n  const opts = Array.isArray(p.options) ? p.options : [];\n  const posFinish = opts.findIndex(o => /finish|acabamento/i.test(String(o.name)));\n  const posSize = opts.findIndex(o => /size|tamanho/i.test(String(o.name)));\n  const colecao = posFinish >= 0 ? 'Signature' : 'Home';\n  const imgs = (Array.isArray(p.images) ? p.images : []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));\n  const titulo = String(p.title || '').replace(/\\s*(—|-|–|\\|)\\s*handmade.*$/i, '').trim() || String(p.title || '').trim();\n  p.variants.forEach(v => {\n    const sku = String(v.sku || '').trim().toUpperCase();\n    if (!sku) { semSku++; return; }\n    const optv = [v.option1, v.option2, v.option3];\n    let acab = posFinish >= 0 ? optv[posFinish] : null; if (ACAB.indexOf(acab) < 0) acab = null;\n    let tam = posSize >= 0 ? optv[posSize] : null; if (TAM.indexOf(tam) < 0) tam = null;\n    // foto: da variante (featured_image ou images[].variant_ids) -> 'variante'; senao modelo (images[0]) -> 'modelo'\n    let src = null, origem = null;\n    if (v.featured_image && v.featured_image.src) { src = v.featured_image.src; origem = 'variante'; }\n    else { const im = imgs.find(x => Array.isArray(x.variant_ids) && x.variant_ids.indexOf(v.id) >= 0); if (im) { src = im.src; origem = 'variante'; } }\n    if (!src && imgs.length) {\n      if (p.variants.length === 1) { src = imgs[0].src; origem = 'variante'; }\n      else if (fotoModelo) { src = imgs[0].src; origem = 'modelo'; }\n    }\n    let url = src ? urlFoto(src) : null;\n    if (url === undefined) { hostErrado.push(sku); url = null; origem = null; }\n    const preco = Math.round(parseFloat(v.price) * 100);\n    if (!Number.isFinite(preco)) return;\n    const at = porSku[sku];\n    if (!at) novos.push(sku + ' (' + titulo + (acab ? ' ' + acab : '') + (tam ? ' ' + tam : '') + ')');\n    else if (at.preco_status === 'aprovado' && at.preco_aprovado_cents !== null && at.preco_aprovado_cents !== preco && at.preco_shopify_cents !== preco) precoMudou.push(sku + ' ' + CALC_USD(at.preco_shopify_cents) + ' -> ' + CALC_USD(preco));\n    if (at && at.foto_url && !url) semUrl.push(sku); // feed veio sem imagem: a foto guardada e preservada (revisao 25/10)\n    feedSkus.push(sku);\n    linhas.push({ sku, variant_id: v.id, product_id: p.id, handle: p.handle, produto: at ? null : titulo, colecao, tamanho: tam, acabamento: acab, preco, foto_url: url, foto_origem: url ? origem : null, disponivel: v.available === true, novo: !at });\n  });\n});\nfunction CALC_USD(c) { return '$' + String(Math.floor(Math.abs(c) / 100)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',') + '.' + String(Math.abs(c) % 100).padStart(2, '0'); }\nif (ativos.length && feedSkus.length < Math.ceil(ativos.length * 0.8)) return abortar('feed parcial: ' + feedSkus.length + ' SKUs de ' + ativos.length + ' ativos');\n// --- SQL unico com CTEs\nconst vals = linhas.map(l => '(' + [lit(l.sku), int(l.variant_id), int(l.product_id), lit(l.handle), lit(l.produto || l.sku), lit(l.colecao), lit(l.tamanho), lit(l.acabamento), int(l.preco), lit(l.foto_url), lit(l.foto_origem), bool(l.disponivel)].join(', ') + ')');\nlet sql = 'WITH up AS (INSERT INTO hz_catalogo (sku, variant_id, product_id, handle, produto, colecao, tamanho, acabamento, preco_shopify_cents, foto_url, foto_origem, disponivel_shopify, ativo, ausente_syncs, sincronizado_em, atualizado_em)' +\n  ' SELECT v.sku, v.variant_id, v.product_id, v.handle, v.produto, v.colecao, v.tamanho, v.acabamento, v.preco, v.foto_url, v.foto_origem, v.disponivel, true, 0, NOW(), NOW()' +\n  ' FROM (VALUES ' + vals.join(', ') + ') AS v(sku, variant_id, product_id, handle, produto, colecao, tamanho, acabamento, preco, foto_url, foto_origem, disponivel)' +\n  // foto: um feed momentaneamente sem imagem (ou com host fora do cdn.shopify.com) NAO apaga a foto guardada: foto_url,\n  // foto_origem, foto_b64 e foto_sha256 ficam como estao; so uma URL nova troca a origem (o download substitui o b64 depois)\n  ' ON CONFLICT (sku) DO UPDATE SET variant_id = EXCLUDED.variant_id, product_id = EXCLUDED.product_id, handle = EXCLUDED.handle, preco_shopify_cents = EXCLUDED.preco_shopify_cents,' +\n  ' foto_origem = CASE WHEN EXCLUDED.foto_url IS NOT NULL AND hz_catalogo.foto_url IS DISTINCT FROM EXCLUDED.foto_url THEN EXCLUDED.foto_origem ELSE hz_catalogo.foto_origem END,' +\n  ' foto_url = COALESCE(EXCLUDED.foto_url, hz_catalogo.foto_url), foto_b64 = hz_catalogo.foto_b64, foto_sha256 = hz_catalogo.foto_sha256,' +\n  ' disponivel_shopify = EXCLUDED.disponivel_shopify, ativo = true, ausente_syncs = 0, sincronizado_em = NOW(), atualizado_em = NOW() RETURNING sku)' +\n  ', aus AS (UPDATE hz_catalogo SET ausente_syncs = ausente_syncs + 1, ativo = (ausente_syncs + 1 < 2), atualizado_em = NOW() WHERE ativo AND sku <> ALL(' + arr(feedSkus) + ') RETURNING sku, ativo)';\nconst desativados = ativos.filter(r => feedSkus.indexOf(r.sku) < 0 && r.ausente_syncs + 1 >= 2).map(r => r.sku);\nconst ausentes1 = ativos.filter(r => feedSkus.indexOf(r.sku) < 0 && r.ausente_syncs + 1 < 2).map(r => r.sku);\nconst partes = [];\nif (novos.length) partes.push('SKU novo no feed (entra a_confirmar e sem medida): ' + novos.join(', '));\nif (desativados.length) partes.push('SKU desativado (2 sincronizações sem ele): ' + desativados.join(', '));\nif (precoMudou.length) partes.push('preço mudou no Shopify e as invoices desses SKUs estão travadas até você aprovar: ' + precoMudou.join('; '));\nif (hostErrado.length) partes.push('foto fora do cdn.shopify.com (a foto guardada foi mantida): ' + hostErrado.join(', '));\nif (semUrl.length) partes.push(semUrl.length + ' SKU(s) vieram sem URL de foto no feed (a foto guardada foi mantida): ' + semUrl.join(', '));\nif (partes.length && cfgBool(cfg.alertas_ativos)) sql += \", al AS (INSERT INTO giulia_mensagens_agendadas (destinatario_numero, destinatario_nome, conteudo, agendado_para, status) VALUES ('\" + THIAGO + \"', 'Thiago', \" + lit('Horizon (sync do catálogo): ' + partes.join(' | ')) + \", NOW() AT TIME ZONE 'America/Sao_Paulo', 'pendente') RETURNING id)\";\nsql += ' SELECT (SELECT count(*) FROM up) AS upsert, (SELECT count(*) FROM aus) AS ausentes;';\n// fotos a baixar: URL mudou, ou linha sem foto guardada com URL valida\nconst fotosNovas = linhas.filter(l => l.foto_url && (!porSku[l.sku] || porSku[l.sku].foto_url !== l.foto_url || !porSku[l.sku].tem_foto)).map(l => ({ sku: l.sku, foto_url: l.foto_url }));\nreturn [{ json: { abortado: false, sql: semCifrao(sql), fotos_novas: fotosNovas, resumo: { paginas: paginas.length, produtos: products.length, variantes: linhas.length, sem_sku: semSku, novos: novos.length, ausentes_1: ausentes1.length, desativados: desativados.length, preco_mudou: precoMudou.length, host_errado: hostErrado.length, sem_url: semUrl.length, fotos_novas: fotosNovas.length } } }];"
+   }
+  },
+  {
+   "id": "n60-executar-upsert-catalogo",
+   "name": "Executar Upsert Catalogo",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    280,
+    300
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  },
+  {
+   "id": "n61-fotos-a-baixar",
+   "name": "Fotos a Baixar",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    500,
+    300
+   ],
+   "parameters": {
+    "jsCode": "\nconst f = ($('Montar Upsert Catalogo').first().json || {}).fotos_novas || [];\nreturn f.filter(x => /^https:\\/\\/cdn\\.shopify\\.com\\//i.test(String(x.foto_url)) && /^[A-Z0-9-]+$/.test(String(x.sku))).map(x => ({ json: { sku: x.sku, foto_url: x.foto_url } }));"
+   }
+  },
+  {
+   "id": "n-baixar-foto",
+   "name": "Baixar Foto",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "retryOnFail": true,
+   "maxTries": 2,
+   "waitBetweenTries": 5000,
+   "onError": "continueRegularOutput",
+   "position": [
+    720,
+    300
+   ],
+   "parameters": {
+    "url": "={{ $json.foto_url }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Accept",
+       "value": "image/jpeg"
+      }
+     ]
+    },
+    "options": {
+     "response": {
+      "response": {
+       "responseFormat": "file",
+       "outputPropertyName": "data"
+      }
+     },
+     "batching": {
+      "batch": {
+       "batchSize": 1,
+       "batchInterval": 1000
+      }
+     },
+     "timeout": 30000
+    }
+   }
+  },
+  {
+   "id": "n62-converter-foto",
+   "name": "Converter Foto",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    940,
+    300
+   ],
+   "parameters": {
+    "jsCode": "\nconst lit = s => (s === null || s === undefined) ? 'NULL'\n  : \"convert_from(decode('\" + Buffer.from(String(s), 'utf8').toString('base64') + \"','base64'),'UTF8')\";\nconst litJson = o => lit(JSON.stringify(o)) + '::jsonb';\nconst int = v => { const n = parseInt(v, 10); if (!Number.isFinite(n) || String(n) !== String(v).trim()) throw new Error('inteiro invalido: ' + v); return n; };\nconst intOuNull = v => (v === null || v === undefined || v === '') ? 'NULL' : String(int(v));\nconst digitos = s => String(s || '').replace(/[^0-9]/g, '');\nconst litDate = s => { if (s == null || s === '') return 'NULL';\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(s))) throw new Error('data invalida'); return lit(String(s)) + '::date'; };\nconst arr = a => (Array.isArray(a) && a.length) ? 'ARRAY[' + a.map(lit).join(',') + ']::text[]' : \"'{}'::text[]\";\nconst bool = v => (v === true ? 'true' : 'false');\nconst cfgBool = v => String(v == null ? '' : v).trim().toLowerCase() === 'true';\nconst cfgInt = (v, min, max, padrao) => { const n = parseInt(String(v == null ? '' : v).trim(), 10);\n  return (Number.isFinite(n) && n >= min && n <= max) ? n : padrao; };\nconst semCifrao = sql => { if (String(sql).includes('$')) throw new Error('SQL com cifrao'); return sql; };\nconst THIAGO = '5511910441709';\n// constantes de build (lib-wf.desligarEnvios troca para false): com os envios desligados nada vai para\n// giulia_memoria / giulia_mensagens_agendadas (nenhuma mensagem saiu) e o webhook REAL recusa (so o de teste responde)\nconst ENVIOS_LIGADOS = true;\nconst MODO_REAL_LIBERADO = true;\nvar SHA_K = [\n  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,\n  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,\n  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,\n  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,\n  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,\n  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,\n  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,\n  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2\n];\nfunction sha256Hex(buf) {\n  var l = buf.length, n = ((l + 9 + 63) >> 6) << 6;\n  var b = new Uint8Array(n);\n  b.set(buf); b[l] = 0x80;\n  var dv = new DataView(b.buffer);\n  dv.setUint32(n - 8, Math.floor(l / 0x20000000)); dv.setUint32(n - 4, (l << 3) >>> 0);\n  var h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];\n  var w = new Uint32Array(64);\n  function rotr(x, r) { return (x >>> r) | (x << (32 - r)); }\n  for (var off = 0; off < n; off += 64) {\n    for (var i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4);\n    for (i = 16; i < 64; i++) {\n      var s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);\n      var s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);\n      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;\n    }\n    var a = h[0], bb = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];\n    for (i = 0; i < 64; i++) {\n      var S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25), ch = (e & f) ^ (~e & g);\n      var t1 = (hh + S1 + ch + SHA_K[i] + w[i]) >>> 0;\n      var S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22), mj = (a & bb) ^ (a & c) ^ (bb & c);\n      var t2 = (S0 + mj) >>> 0;\n      hh = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = bb; bb = a; a = (t1 + t2) >>> 0;\n    }\n    h[0] = (h[0] + a) >>> 0; h[1] = (h[1] + bb) >>> 0; h[2] = (h[2] + c) >>> 0; h[3] = (h[3] + d) >>> 0;\n    h[4] = (h[4] + e) >>> 0; h[5] = (h[5] + f) >>> 0; h[6] = (h[6] + g) >>> 0; h[7] = (h[7] + hh) >>> 0;\n  }\n  return h.map(function (x) { return ('00000000' + x.toString(16)).slice(-8); }).join('');\n}\n\n\nconst origem = $('Fotos a Baixar').all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const sku = origem[i] && origem[i].json ? origem[i].json.sku : null;\n  if (!sku || !/^[A-Z0-9-]+$/.test(sku)) continue;\n  if (items[i].json && items[i].json.error) { out.push({ json: { sku, ok: false, motivo: 'download falhou', sql: 'SELECT 0;' } }); continue; }\n  let buf = null;\n  try { buf = await this.helpers.getBinaryDataBuffer(i, 'data'); } catch (e) { buf = null; }\n  if (!buf || buf.length < 4 || buf[0] !== 0xFF || buf[1] !== 0xD8) { out.push({ json: { sku, ok: false, motivo: 'nao e JPEG', sql: 'SELECT 0;' } }); continue; }\n  const sha = sha256Hex(buf);\n  const sql = \"UPDATE hz_catalogo SET foto_b64 = '\" + buf.toString('base64') + \"', foto_sha256 = \" + lit(sha) + ', foto_atualizada_em = NOW(), atualizado_em = NOW() WHERE sku = ' + lit(sku) + ' RETURNING sku;';\n  out.push({ json: { sku, ok: true, bytes: buf.length, sql: semCifrao(sql) } });\n}\nreturn out;"
+   }
+  },
+  {
+   "id": "n63-salvar-foto",
+   "name": "Salvar Foto",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    1160,
+    300
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Agenda Sync Catalogo": {
+   "main": [
+    [
+     {
+      "node": "Carregar Catalogo Atual",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Rodar Sync Manual": {
+   "main": [
+    [
+     {
+      "node": "Carregar Catalogo Atual",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Carregar Catalogo Atual": {
+   "main": [
+    [
+     {
+      "node": "Baixar Catalogo Shopify",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Baixar Catalogo Shopify": {
+   "main": [
+    [
+     {
+      "node": "Montar Upsert Catalogo",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar Upsert Catalogo": {
+   "main": [
+    [
+     {
+      "node": "Executar Upsert Catalogo",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Executar Upsert Catalogo": {
+   "main": [
+    [
+     {
+      "node": "Fotos a Baixar",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fotos a Baixar": {
+   "main": [
+    [
+     {
+      "node": "Baixar Foto",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Baixar Foto": {
+   "main": [
+    [
+     {
+      "node": "Converter Foto",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Converter Foto": {
+   "main": [
+    [
+     {
+      "node": "Salvar Foto",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "saveExecutionProgress": false,
+  "saveManualExecutions": false,
+  "saveDataErrorExecution": "all",
+  "saveDataSuccessExecution": "all",
+  "errorWorkflow": "ltVUUCOCDYKMmtnT",
+  "timezone": "America/New_York",
+  "executionOrder": "v1",
+  "callerPolicy": "workflowsFromSameOwner"
+ }
+}

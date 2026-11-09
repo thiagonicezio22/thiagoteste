@@ -1,0 +1,931 @@
+[
+ {
+  "area": "infra",
+  "checks": [
+   {
+    "item": "Inventário n8n vs snapshot 13/09 (ops/n8n-snapshot-2026-09-13.json)",
+    "status": "OK",
+    "evidence": "GET /api/v1/workflows?limit=100 -> 52 workflows, 46 ativos (snapshot: 51/45). Diferença = +1: CKjhkfLOJ57zdGFg 'GIULIA - TEMP SQL Runner ck2 (apagar depois)' (runner desta auditoria). Nenhum id faltando, nenhuma mudança de ativo/inativo, nenhum rename. Os 3 workflows '05 - Audio Poller' duplicados (2 inativos) já existiam no snapshot."
+   },
+   {
+    "item": "Workflows GIULIA ativos (esperado 18) e WF15 Error Handler ativo",
+    "status": "OK",
+    "evidence": "18 workflows GIULIA (01..16 + '17 - GIULIA Financeiro' + '18 - GIULIA Email'), todos active=true; 19 contando o TEMP ck2. WF15 ltVUUCOCDYKMmtnT active=true e funcionando: gravou giulia_erros_log ids 58-60 hoje 11:52-11:56 UTC e agendou alerta id 75 (criado 11:52:49, enviado 11:53:48 UTC). 17 GIULIA apontam errorWorkflow=ltVUUCOCDYKMmtnT (WF15 e ck2 não, correto)."
+   },
+   {
+    "item": "Workflows com TEMP no nome",
+    "status": "OK",
+    "evidence": "Somente CKjhkfLOJ57zdGFg 'GIULIA - TEMP SQL Runner ck2 (apagar depois)' (49 execuções = esta auditoria). Nenhum outro TEMP sobrando.",
+    "fix_hint": "Desativar e apagar o ck2 ao final da auditoria (regra de ouro 4)."
+   },
+   {
+    "item": "n8n no ar (healthz / API)",
+    "status": "OK",
+    "evidence": "GET /healthz HTTP 200; API respondeu todas as chamadas. Nenhuma execução 'running' presa (1 do Audio Poller vista em 13:04 UTC terminou em <1 min); 0 'waiting'. Imagem n8nio/n8n:2.8.3 (Easypanel)."
+   },
+   {
+    "item": "WF07 Briefing matinal HOJE 13/10 (10:00 UTC = 07:00 BRT) para os 3 donos",
+    "status": "OK",
+    "evidence": "Execução 769116 success 10:00:00-10:00:25 UTC. giulia_memoria: 'Bom dia! Resumo de terca, 13/10' gravado às 10:00:22 UTC para 5511964070127 (Jota), 5511910441709 (Thiago) e 17869660718 (Andre). Jota também recebeu 1 cartão de aniversário (Cassiano) no mesmo minuto."
+   },
+   {
+    "item": "WF07 Briefing ONTEM 12/10",
+    "status": "OK",
+    "evidence": "Execução 743435 success 10:00:00-10:00:20 UTC; memoria 'Bom dia! Resumo de segunda, 12/10' às 10:00:20 UTC para os 3 donos (e 11/10 às 10:00:18 idem)."
+   },
+   {
+    "item": "WF06 Cobrar tarefas (cron 0 7,16 NY = 11:00/20:00 UTC)",
+    "status": "OK",
+    "evidence": "4 execuções success: 11/10 20:00, 12/10 11:00, 12/10 20:00, 13/10 11:00 UTC. Nenhuma mensagem '^(Bom dia|Boa tarde|Boa noite)! Voc' em giulia_memoria desde 11/10 porque o SQL 'Tarefas pra Cobrar' retornou 0 linhas (exec 770225/754117: Montar Cobranca items=0): Thiago tem 0 tarefas pendentes (30 canceladas, 3 feitas); Andre tem 9 pendentes mas é filtrado pela regra 'dono = Thiago OU mensagem de usuário nos últimos 5 dias' (Andre sem msg de usuário). Comportamento por desenho (modo eco), não falha."
+   },
+   {
+    "item": "WF11 Fechamento do dia (cron horário, envia às 21h locais)",
+    "status": "OK",
+    "evidence": "49 execuções success nas últimas 48h (todas as horas até 13:00 UTC hoje). Memoria: '*Fechamento do dia - 10/10*' (11/10 00:00 UTC) e '- 11/10' (12/10 00:00 UTC, exec 732765 enviou via UAZAPI) para Thiago. Fechamento de 12/10 NÃO saiu por desenho: exec 758399 (13/10 00:00 UTC) carregou Thiago com gastos/tarefas/contas/lembretes/rotina todos vazios e o código 'Montar Fechamento' linha 52-53 silencia dia sem nada. Andre/Jota não recebem (sem msg de usuário em 5 dias; ultimo_relatorio_diario 28/08 e 02/09). giulia_donos.ultimo_relatorio_diario de Thiago = 2026-10-12 (claim ok)."
+   },
+   {
+    "item": "WF02 Scheduler de lembretes (cron 1 min, saveSuccess=none)",
+    "status": "OK",
+    "evidence": "Prova via dados: 'Lembrete enviado: Tomar os remedios antes de dormir' 13/10 02:00:25 UTC (Andre, 22:00 NY); 12/10 12:00:21 'Pagar a EPDM com Isac' (Thiago, 09:00 BRT); 12/10 13:30:17 e 11/10 13:30:18 (Andre 09:30 NY). Alerta giulia_mensagens_agendadas id 75 criado 11:52:49 e enviado 11:53:48 UTC hoje = scheduler vivo às 11:53 UTC. giulia_lembretes: 219 enviados, 2 pendentes (Andre 09:30 e 22:00 NY de hoje = 13:30/02:00 UTC, ainda não vencidos às 13:12 UTC), nenhum atrasado. 66/66 mensagens_agendadas enviadas."
+   },
+   {
+    "item": "WF04 Sumarizar memória (domingo 04:00 NY = 08:00 UTC)",
+    "status": "OK",
+    "evidence": "giulia_memoria_resumos: último resumo de Andre criado 2026-10-11 08:00:22 UTC (domingo), 12 resumos no total; Thiago 2 (último 05/07)."
+   },
+   {
+    "item": "WF13 Orçamentos followup / WF14 Trials / WF16 Recebíveis (cron horário)",
+    "status": "OK",
+    "evidence": "Cada um com 49 execuções success nas últimas 48h, última 13:00:01 UTC hoje (ids 772528/772527/772529). Tabelas giulia_orcamentos e giulia_recebiveis vazias (nada a enviar)."
+   },
+   {
+    "item": "WF01 Pipeline (webhook giulia-msg)",
+    "status": "OK",
+    "evidence": "Execução 731551 success 11/10 22:51:23-22:51:34 UTC (mode webhook); memoria: user Thiago 22:51 -> resposta 'Anotado. Amanhã de manhã eu te lembro de pagar o Isac.' e o lembrete foi criado e disparado 12/10 09:00 BRT. Volume baixo: 10 msgs de usuário de Thiago em 30 dias; Andre e Jota 0 (Jota último 29/08)."
+   },
+   {
+    "item": "WF18 Email (IMAP + SMTP)",
+    "status": "WARN",
+    "evidence": "Funciona: 5 execuções success 12-13/10 (última 09:57 UTC), 6 emails salvos e notificados (Nubank 08:52 e 09:57 UTC hoje -> memoria '📧 Email novo'). PORÉM giulia_erros_log tem 21 registros '18 - GIULIA Email / node ? / erro desconhecido' desde 14/09 (16 até 06/10 + 5 nos últimos 7 dias: 12/10 15:57 e 16:03; 13/10 11:52, 11:54, 11:56 UTC), sem execução de erro correspondente na API = erros do trigger IMAP (reconexão), cada rajada gera alerta ⚠️ ao Thiago com 'Exec ?'.",
+    "fix_hint": "No WF15 'Montar Alerta' capturar também j.trigger?.error?.message para o alerta não vir 'erro desconhecido'; verificar estabilidade IMAP do provedor (reconexões ~1x/dia em rajadas de 2-3).",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO com consultas proprias. Execucoes WF18 (NNUd29aBLloX72to) na API: 5 success (745060 12/10 11:30Z, 745974 12:21Z, 745981 12:22Z, 767917 13/10 08:52Z, 769070 09:57Z), 0 com status=error. giulia_emails: 193 emails (187 notificados), ids 256-261 recebidos 12-13/10 todos notificado=true; memoria ids 3343-3351 '📧 Email novo' correspondentes (Nubank 13/10 08:52 e 09:57 UTC). giulia_erros_log workflow '18 - GIULIA Email': 21 registros desde 14/09 (17/09 x2, 23/09 x2, 24/09 x3, 25/09 x2, 28/09 x2, 29/09 x4, 30/09 x1 = 16 ate 06/10; + 12/10 15:57:54 e 16:03:19; 13/10 11:52:49, 11:54:42, 11:56:04 UTC = 5 nos ultimos 7 dias), todos node='?' mensagem='erro desconhecido'. Nenhuma execucao de WF18 existe nesses horarios (nem error nem success), compativel com erro do no 'Email Trigger IMAP' (emailReadImap, forceReconnect=60) que nao gera execucao. Causa do 'erro desconhecido' confirmada no codigo de WF15 'Montar Alerta': le apenas j.execution.id/.lastNodeExecuted/.error.message e ignora j.trigger.error, logo execId='?', node='?', msg='erro desconhecido'. Alertas chegaram ao Thiago: giulia_mensagens_agendadas tem 29 linhas '⚠️ 1 erro(s) no 18 - GIULIA Email ... (node ?): erro desconhecido. Exec ?' (09/08 a 13/10 11:52), todas status=enviado (ultimas: id 74 12/10 15:58 e id 75 13/10 11:53 UTC). Nuance extra: o dedup de 30 min falha em erros simultaneos - pares criados no mesmo segundo (ids 58/59, 60/61, 62/63, 67/68, 69/70) geraram 2 alertas identicos enviados juntos. A causa exata (reconexao IMAP vs. outro erro do provedor) NAO e verificavel porque a mensagem do trigger nao e capturada."
+   },
+   {
+    "item": "WF03 Sync Gastos, WF05 Rotina, WF08 Reunião, WF09 Contas, WF10/12/17 (webhooks)",
+    "status": "UNKNOWN",
+    "evidence": "saveSuccess=none ou disparo só por webhook: nenhuma execução salva nas últimas 48h e nenhum dado que gerasse envio (gastos: último 25/07; giulia_rotina 0 linhas; contas_pagar pendentes 0; reuniões todas sem agendado_para; planilhas_fin 4 linhas sem uso). Sem erro registrado para eles em giulia_erros_log. Não verificável sem disparar webhook (proibido).",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO, com 1 correcao factual. Nas 640 execucoes salvas na API (janela 11/10 13:00Z a 13/10 13:43Z) nao ha nenhuma de AEVYq2LMB608RnU8 (WF03), 5kfBHcPbR0UMQxMK (WF05), J1Sj1a3aTvcPQ391 (WF08), nqLalQVouNGgh4EQ (WF09), q8HWnaLoiBTVXP0a (WF10), WnNoWQX8IJKy6MgP (WF12) nem qojjGwPdhIVwcpu3 (WF17). Settings: WF03/05/08/09/10 saveDataSuccessExecution=none (sucesso nunca salvo); WF12 e WF17 saveDataSuccessExecution=all mas sao so webhook (giulia-orcamento, giulia-financeiro) e nao foram chamados em 48h. Todos ativos e com errorWorkflow=ltVUUCOCDYKMmtnT; giulia_erros_log nos ultimos 7 dias so tem WF02 (06/10) e WF18. Dados: WF03 'Gastos Pendentes' filtra sheets_synced=false AND dono_numero='5511910441709' - os 12 gastos nao sincronizados sao do Andre (ids 7-9) e do Antonio suspenso (66-77), ou seja, nada do Thiago a sincronizar (ultimo sync 24/07 16:00Z, ultimo gasto 25/07). CORRECAO: giulia_rotina tem 9 linhas (nao 0), todas ativa=false - efeito igual (WF05 'Tarefas do Dia' filtra r.ativa=TRUE); nenhuma msg na memoria as 15:00 UTC (cron '0 11' NY) nos ultimos 7 dias. giulia_contas_pagar: 1 paga, 2 canceladas, 0 pendentes. giulia_reunioes: so id 1 tem agendado_para (17/05, dispensada), ids 9-12 sem data. giulia_planilhas_fin: 4 chaves (epdm-antigo, horizon, lojao, obras) versao 1, ultima 21/08; giulia_fin_pendentes: 1 linha cancelada (id 7, 27/07). Sem disparar webhook (proibido) nao ha como provar que executam - permanece UNKNOWN."
+   },
+   {
+    "item": "Saúde pós-migração SQLite->Postgres (erros_log desde 13/09: sqlite / timed out / lock)",
+    "status": "OK",
+    "evidence": "Por dia: 2026-09-13 = 3 (todos 'Timeout waiting for lock SqliteWriteConnectionMutex', WF02 Preparar Msgs, 07:10/07:40/10:57 = dia da migração); 2026-10-06 = 1 ('Task request timed out after 60 seconds', WF02 Preparar Notificacoes 13:52, isolado). Zero 'sqlite'/'lock' desde 14/09. Total erros_log desde 13/09: 26 em 12 dias distintos (21 são o IMAP acima, 1 WF07 'connection aborted' UAZAPI entre 14/09-06/10)."
+   },
+   {
+    "item": "Execuções com status=error (últimos 7 dias)",
+    "status": "WARN",
+    "evidence": "API retornou só 4 erros (1 página, sem cursor) e o histórico de execuções cobre apenas ~48h (mais antiga 2026-10-11T13:00:04Z) — 7 dias não são verificáveis pela API. Nos 48h: 0 erros GIULIA; 3x '04 - Pipeline Principal Julian' (13/10 12:04, 12:10, 12:11 UTC, node 'Validar Regras Julian' lança exceção com o texto do cliente, [line 26]; sem errorWorkflow configurado) e 1x '25 - ML Perguntas Lojao Aquatico' HTTP 429 (12/10 19:00 UTC).",
+    "fix_hint": "Fora do escopo GIULIA, mas compartilham o n8n: revisar o throw na linha 26 de 'Validar Regras Julian' e apontar errorWorkflow para o WF15 ou similar.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO e atualizado. API com paginacao completa: agora 5 execucoes error (auditor viu 4; nova 773513 em 13/10 13:35:52Z). 4x '04 - Pipeline Principal Julian' (Xkz4b53YdWhlX8uN): 771458 12:04Z, 771585 12:10Z, 771604 12:11Z, 773513 13:35Z, todas lastNodeExecuted='Validar Regras Julian', mensagem = texto do cliente + '[line 26]'; 1x '25 - ML Perguntas Lojao Aquatico' (t5TaS1awbkp5fLsZ) 753054 12/10 19:00Z, node 'Monitor Vendas ML', 'Request failed with status code 429'. Nenhum dos dois tem settings.errorWorkflow (confirmado). 0 erros em workflows GIULIA na janela. Janela de 48h confirmada por duas vias: execucao mais antiga salva = 721021 (WF11) 2026-10-11T13:00:04Z, e env do n8n no Easypanel EXECUTIONS_DATA_MAX_AGE=48 / EXECUTIONS_DATA_PRUNE=true / PRUNE_MAX_COUNT=3000 - 7 dias realmente nao sao verificaveis pela API; para GIULIA a unica fonte de 7 dias e giulia_erros_log (so WF02 06/10 'Task request timed out after 60 seconds' em 'Preparar Notificacoes' e os 5 do WF18). CORRECAO do fix_hint: a linha 26 de 'Validar Regras Julian' e um throw intencional ('STALE_RESPONSE_ABORT: cliente enviou nova mensagem durante processamento, abortando resposta obsoleta'), controle de fluxo por design, nao bug; apontar errorWorkflow para o WF15 geraria alerta ⚠️ ao Thiago a cada aborto - nao recomendado sem antes filtrar esse prefixo."
+   },
+   {
+    "item": "Fuso dos crons GIULIA (instância n8n em America/New_York)",
+    "status": "WARN",
+    "evidence": "Saída do Schedule Trigger mostra 'Timezone: America/New_York (UTC-04:00)' e nenhum workflow tem settings.timezone. Crons com hora fixa em NY: WF07 '0 6' (hoje = 07:00 BRT), WF06 '0 7,16', WF09 '30 7', WF05 '0 11', WF04 '0 4 * * 0'. Em 2026-11-01 (fim do horário de verão em NY, UTC-5) todos atrasam 1h em Brasília: briefing 08:00, cobrança 09:00/18:00, contas 09:30, rotina 13:00. Os horários-calculados (WF11 21h local, WF06 modo diária 7-10h) usam timezone do dono e não são afetados.",
+    "fix_hint": "Antes de 01/11: definir settings.timezone=America/Sao_Paulo nesses 5 workflows e ajustar as expressões (ex.: WF07 '0 7 * * *'), via scripts/deploy-workflows.sh. Não verificável sem escrita.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO integralmente. Saida real do Schedule Trigger nas execucoes salvas: WF07 769116 (13/10) e 743435 (12/10) startedAt 10:00:00Z com timestamp '06:00:00.004-04:00' e 'Timezone: America/New_York (UTC-04:00)'; WF06 770225 11:00:01Z = 07:00-04:00 e 754117 20:00:00Z = 16:00-04:00. Nenhum dos 18 workflows GIULIA tem settings.timezone (settings dumpados). Env do n8n no Easypanel nao define GENERIC_TIMEZONE nem TZ (default do n8n = America/New_York). Expressoes confirmadas: WF07 '0 6 * * *' (no 'Cron 7h Brasilia'), WF06 '0 7,16 * * *', WF09 '30 7 * * *', WF05 '0 11 * * *', WF04 '0 4 * * 0'. zoneinfo: NY muda de UTC-4 para UTC-5 em 2026-11-01; a partir dai WF07 = 11:00Z = 08:00 BRT, WF06 = 09:00/18:00 BRT, WF09 = 09:30 BRT, WF05 = 13:00 BRT, WF04 = 06:00 BRT (dom). Brasil sem horario de verao. Nao afetados (confirmado no codigo): WF11 'Montar SQL Claim' usa to_char(NOW() AT TIME ZONE timezone,'HH24')::int = 21 (fechamento de 11/10 gravado as 2026-10-12 00:00:17Z = 21:00 BRT); WF06 modo diaria usa BETWEEN 7 AND 10 na timezone do dono; WF11/13/14/16 sao '0 * * * *'. Correcao de settings exige escrita - nao verificavel aqui."
+   },
+   {
+    "item": "Easypanel: serviços habilitados",
+    "status": "OK",
+    "evidence": "GET projects.listProjectsAndServices HTTP 200: projetos 'whats' e 'post'; 10 serviços, todos enabled=true: n8n (n8nio/n8n:2.8.3, mem 1024/5120 MB, cpu 0.5/2), n8n-db (postgres:17, db n8n), evolution-api (v2.3.7), evolution-api-db (postgres:17), evolution-api-redis (redis:7), chatwoot/chatwoot-db/chatwoot-redis/chatwoot-sidekiq (v4.11.1), gotenberg 8. Campo env não lido."
+   },
+   {
+    "item": "Postgres (julian_db) saúde",
+    "status": "OK",
+    "evidence": "PostgreSQL 17.11, TimeZone Etc/UTC, now() 13:06 UTC coerente com relógio. 8 backends (1 active, 2 idle, 5 background). giulia_memoria 2202 linhas (62 dead, autovacuum 01/10), giulia_lembretes 222, giulia_erros_log 57, giulia_pessoas 1458 (CRM Jota). Runner SQL respondeu todas as consultas."
+   },
+   {
+    "item": "Dados velhos que o briefing cobra todo dia (higiene, fora de infra)",
+    "status": "WARN",
+    "evidence": "Briefing de Thiago hoje lista 4 reuniões 'pendente_aprovacao_thiago' sem agendado_para criadas em 29/07, 23/08, 23/08 e 24/08 (ids 9-12, ex.: 'Visita à Canopy ... 25/08/2026'). Briefing de Andre lista 9 tarefas atrasadas desde 17/07 com cobranca_count=46 que nunca mais são cobradas (filtro de 5 dias). giulia_envios_pendentes id 5 'aguardando_confirmacao' expirado em 19/09 ainda no banco.",
+    "fix_hint": "Thiago dispensar/aprovar reuniões 9-12 e decidir sobre as 9 tarefas do Andre (cancelar ou renovar prazo); limpar envio pendente 5.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO. giulia_reunioes ids 9 (Eros, criada 2026-07-29 19:14Z), 10 e 11 (554898576378, 23/08 00:26Z e 00:27Z), 12 (Nicolás 'Visita à Canopy em SP | Disponibilidade: Amanhã, 25/08/2026', 24/08 21:32Z): status pendente_aprovacao_thiago, agendado_para NULL. Briefing do Thiago hoje (memoria id 3353, 2026-10-13 10:00:22Z) lista exatamente '#9 Eros', '#10', '#11', '#12' em 'Aguardando tua aprovacao'; o de 12/10 (id 3340) idem. Andre (17869660718): 9 tarefas status=pendente ids 17-25, prazo 2026-07-17, cobranca_count=46, proxima_cobranca_em 2026-08-28 15:00Z (ja vencida); briefing diario do Andre de 01/10 a 13/10 (ids 3199..3352) traz 'Tarefas pendentes (9)'. Motivo de nao serem mais cobradas confirmado na SQL de WF06 'Tarefas pra Cobrar': exige dono = Thiago OU msg role='user' do dono nos ultimos 5 dias; giulia_memoria tem 0 linhas role='user' para 17869660718 (38 linhas, todas assistant, desde 01/10) e nenhuma cobranca 'tarefas pendentes:' enviada a ele. giulia_envios_pendentes id 5: destinatario Andre Amorim, status aguardando_confirmacao, criado 2026-09-19 00:51Z, expira_em 2026-09-19 01:51Z, enviado_em NULL - segue no banco. Limpeza requer escrita/decisao do Thiago."
+   }
+  ],
+  "notes": "Auditoria 100% somente leitura (GETs na API n8n/Easypanel e SELECTs via runner ck2); nenhum webhook disparado, nenhum envio. Horário da checagem: 13/10 12:50-13:13 UTC. Resumo: infraestrutura saudável — 52 workflows (51 + runner), 18 GIULIA ativos, WF15 ativo e comprovadamente funcionando, briefing de hoje e de ontem entregue aos 3 donos às 10:00 UTC, scheduler/cobrança/fechamento/horários rodando com sucesso, zero erro sqlite/lock desde a migração, Easypanel com todos os serviços enabled. Pontos de atenção: (1) ruído do trigger IMAP do WF18 (21 'erro desconhecido' desde 14/09, 5 na última semana) gerando alertas pouco informativos; (2) crons de hora fixa em America/New_York vão atrasar 1h em Brasília a partir de 01/11/2026; (3) histórico de execuções do n8n retido por ~48h, então 'erros em 7 dias' só é auditável via giulia_erros_log; (4) 3 erros hoje no '04 - Pipeline Principal Julian' (não-GIULIA, sem error workflow); (5) itens velhos (reuniões jul/ago, 9 tarefas do Andre de 17/07) sendo repetidos no briefing diário. Arquivos de apoio: /home/user/thiagoteste/ops/n8n-snapshot-2026-09-13.json (gabarito), /tmp/claude-0/-home-user-thiagoteste/46e0e517-f29e-5e6f-b738-f2e0a8076033/scratchpad/wf_list.json, execs_by_wf.json, execs_error.json, easypanel.json (contém tokens de serviço do Easypanel — não compartilhar). Lembrar de desativar e apagar o 'GIULIA - TEMP SQL Runner ck2' ao fim da auditoria."
+ },
+ {
+  "area": "thiago",
+  "checks": [
+   {
+    "item": "Cadastro do dono (giulia_donos)",
+    "status": "OK",
+    "evidence": "5511910441709 Thiago: status=ativo, timezone=America/Sao_Paulo, moeda=BRL, relatorio_diario=true, cobranca_modo=padrao, eco_avisado_em=null, ultimo_relatorio_diario=2026-10-12."
+   },
+   {
+    "item": "Volume de mensagens dele (role=user) por semana, ultimas 5 semanas",
+    "status": "WARN",
+    "evidence": "Semanas (seg-dom, BRT): 07/09=1, 14/09=4, 21/09=3, 28/09=0, 05/10=2 -> 10 mensagens em 5 semanas; nos ultimos 14 dias so 2 (ambas em 11/10). Historico total desde 02/07: 237 user / 903 assistant. Uso baixo, nao e falha do sistema.",
+    "fix_hint": "Nao e problema tecnico; apenas sinal de baixo engajamento do dono.",
+    "verified": true,
+    "verifier_evidence": "Reproduzido com date_trunc('week', created_at - 3h) em giulia_memoria from_numero=5511910441709 role=user: 07/09=1, 14/09=4, 21/09=3, 28/09=0 (sem linha), 05/10=2 -> 10 em 5 semanas. Ultimos 14 dias: 2 msgs, ambas 11/10 (id 3332 07:30 BRT 'Reseta tudo'; id 3335 19:51 BRT 'Me lembra amanha de pagar a epdm com Isac'). Totais: 237 user (min 03/07 02:08 UTC = 02/07 BRT) / 903 assistant (min 02/07 19:00 UTC). Contexto adicional que o auditor nao citou: agosto tinha 22-47 msgs/semana (24/08=47), semana 31/08=7, queda brusca a partir de 07/09. Nao e falha tecnica: as 2 msgs de 11/10 foram atendidas (3333 'Cancelei 3 tarefas'; lembrete id 300 criado p/ 12/10 09:00 local, status=enviado, memoria 3344 'Lembrete enviado' as 12:00:21 UTC = 09:00 BRT). Sem variante de numero (so '5511910441709', 1140 linhas)."
+   },
+   {
+    "item": "Ultima mensagem dele e resposta",
+    "status": "OK",
+    "evidence": "id 3335, 11/10/2026 19:51 BRT: 'Me lembra amanha de pagar a epdm com Isac' -> resposta imediata (id 3336, mesmo segundo): 'Anotado. Amanha de manha eu te lembro de pagar o Isac.' Lembrete id 300 criado para 12/10 09:00 e disparado pontualmente."
+   },
+   {
+    "item": "Qualidade das respostas (todas as 9 trocas user/assistant dos ultimos 30 dias)",
+    "status": "OK",
+    "evidence": "14/09 'Me mande anexo' -> anexo PDF 71KB; 15/09 3 tarefas -> 'joguei as tres na sua lista'; 18/09 pedido de email ofensivo -> recusou; 18/09 'me ligue andre' -> pediu confirmacao; 21/09 responder email Rough Country -> rascunho + 'Sim' -> 'Feito, ja enviei'; 25/09 'Eu euro o PDF me envia' -> anexo Nubank 114KB; 11/10 'Reseta tudo' -> cancelou 3 tarefas; 11/10 lembrete -> anotado. Todas coerentes."
+   },
+   {
+    "item": "Respostas de erro tecnico ('problema tecnico', 'travou', 'nao consegui', 'erro', 'falha', 'tente novamente')",
+    "status": "OK",
+    "evidence": "0 ocorrencias em mensagens role=assistant para o Thiago nos ultimos 30 dias."
+   },
+   {
+    "item": "Tarefas pendentes",
+    "status": "OK",
+    "evidence": "0 pendentes. Historico total: 30 canceladas, 3 feitas."
+   },
+   {
+    "item": "Tarefas concluidas/canceladas nos ultimos 30 dias",
+    "status": "OK",
+    "evidence": "3 canceladas em 11/10 (ids 77 'Levar receita dos remedios', 78 'Comprar passagem China', 79 'Organizar minha viagem'; criadas 15/09 20:01, cobranca_count=11 cada). 0 marcadas como feitas nos 30 dias."
+   },
+   {
+    "item": "Comando de limpar/zerar/cancelar tarefas e se funcionou",
+    "status": "OK",
+    "evidence": "'Reseta tudo' em 11/10 07:30 BRT (id 3332) -> resposta id 3333 no mesmo segundo: 'Cancelei 3 tarefas: - Levar receita dos remedios - Comprar passagem China - Organizar minha viagem. Lista zerada.' Tabela giulia_tarefas confirma status=cancelada nas 3. Fechamento de 11/10 21:00 ja mostrou 'Pendencias: nenhuma'."
+   },
+   {
+    "item": "Cobranca de tarefas (WF06) enquanto havia pendentes",
+    "status": "OK",
+    "evidence": "11 cobrancas 'Voce tem 3 tarefas pendentes' entre 16/09 e 09/10 (08:00/17:00 BRT, espacamento crescente: 16,17,19,20,22,23,25,28/09, 02,05,09/10) = cobranca_count 11 nas 3 tarefas. Parou apos o cancelamento em 11/10. WF06 ativo, execucoes 11/10-13/10 success."
+   },
+   {
+    "item": "Lembretes pendentes futuros",
+    "status": "OK",
+    "evidence": "0 pendentes. Historico: 18 enviados, 1 cancelado."
+   },
+   {
+    "item": "Lembretes ATRASADOS (pendente com disparar_em < agora local - 10 min)",
+    "status": "OK",
+    "evidence": "0 linhas (consulta com now() at time zone 'America/Sao_Paulo' - interval '10 minutes')."
+   },
+   {
+    "item": "Lembretes enviados nos ultimos 7 dias",
+    "status": "OK",
+    "evidence": "1: id 300 'Pagar a EPDM com Isac', disparar_em 12/10 09:00 (local), enviado_em 12/10 09:00 BRT, status=enviado; giulia_memoria 'Lembrete enviado: Pagar a EPDM com Isac' em 12/10 09:00:21 BRT. Pontual (WF02)."
+   },
+   {
+    "item": "Gastos nos ultimos 30 dias / ultimo gasto",
+    "status": "WARN",
+    "evidence": "0 gastos nos ultimos 30 dias (soma R$ 0). Ultimo gasto: id 75 'Almoco' R$ 45,00 em 24/07/2026 (sheets_synced=true). Historico: 9 gastos, R$ 25.046,11, 0 nao sincronizados. Modulo sem uso ha 81 dias; fechamento diario sempre diz 'nenhum registrado'.",
+    "fix_hint": "Sem acao tecnica; so uso. Sync com Sheets (WF03) nao tem backlog.",
+    "verified": true,
+    "verifier_evidence": "giulia_gastos dono=5511910441709: 0 linhas nos ultimos 30 dias tanto por data_gasto quanto por criado_em (soma 0). Ultimo: id 75 'Almoco' 45.00 categoria alimentacao data_gasto 2026-07-24, criado 24/07 15:51 UTC, sheets_synced=true (sync 16:00 UTC). Historico: 9 linhas, soma 25046.11, 0 nao sincronizadas, max(data_gasto)=24/07 -> 81 dias ate 13/10. Nenhum gasto com dono_numero nulo. Fechamentos 07/10-11/10 (ids 3278, 3299, 3314, 3324, 3337) trazem '*Gastos de hoje:* nenhum registrado'. Achado confirmado integralmente."
+   },
+   {
+    "item": "Contas a pagar pendentes/vencidas",
+    "status": "OK",
+    "evidence": "0 pendentes ou vencidas. Historico: 1 paga, 2 canceladas."
+   },
+   {
+    "item": "Financeiro: giulia_fin_pendentes",
+    "status": "OK",
+    "evidence": "0 pendentes. Unico registro: id 7 (chave horizon, criado 27/07, lembrado 03/08 12:00, status=cancelado em 03/08)."
+   },
+   {
+    "item": "Financeiro: planilhas (giulia_planilhas_fin) - defasadas e nao recebidas",
+    "status": "WARN",
+    "evidence": "4 cadastradas, todas versao 1: horizon DEFASADA (atualizada 24/07 14:20), obras DEFASADA (24/07 14:20), lojao DEFASADA (20/08 22:56), epdm-antigo nao defasada (somente leitura, 24/07). NAO RECEBIDAS: paraguai ('Horizon Paraguai - Financeiro.xlsx') e pessoal ('Financeiro Pessoal - Thiago.xlsx') nao existem na tabela. Nenhum arquivo novo desde 20/08; nenhuma interacao financeira nos ultimos 30 dias.",
+    "fix_hint": "Thiago precisa enviar as planilhas atualizadas (horizon, obras, lojao) e as duas que faltam (paraguai, pessoal) pelo WhatsApp para o WF17 registrar.",
+    "verified": true,
+    "verifier_evidence": "giulia_planilhas_fin tem 4 linhas (todas dono Thiago, versao 1): horizon editavel defasada=true atualizado 24/07 17:20:47 UTC (=14:20 BRT); obras editavel defasada=true 24/07 17:20:59 UTC (=14:20 BRT); lojao editavel defasada=true 21/08 01:56 UTC (=20/08 22:56 BRT); epdm-antigo editavel=false defasada=false 24/07 16:54 UTC. Chaves 'paraguai' e 'pessoal' ausentes; docs confirmam que sao esperadas: FEATURE-FINANCEIRO.md:122-123 ('5 planilhas... Horizon Paraguai - Financeiro.xlsx e Financeiro Pessoal - Thiago.xlsx') e MANUAL-IA-FINANCEIRO.md:14-15. FEATURE-FINANCEIRO.md:145 ja registrava em 21/08 exatamente este estado (3 defasadas, 2 nao recebidas) -> inalterado ha 53 dias. giulia_fin_pendentes: 1 unica linha (id 7, horizon, status cancelado, 27/07). Ultima interacao financeira real na memoria: 22/08 10:47 BRT (id 2354, IA avisando que a planilha de Obras esta defasada); nos ultimos 60 dias so notificacoes de email citam 'financeir'."
+   },
+   {
+    "item": "Facts ativos e ideias",
+    "status": "OK",
+    "evidence": "32 facts ativos (17 profissional, 7 preferencia, 7 contexto, 1 pessoal; ultimo atualizado 11/10 22:51 UTC). 5 ideias (ultima 07/08/2026)."
+   },
+   {
+    "item": "Briefing matinal chegando (ultimos 3 dias)",
+    "status": "OK",
+    "evidence": "1 por dia as 07:00 BRT: 13/10 07:00:22 (id 3353), 12/10 07:00:20 (id 3340), 11/10 07:00:18 (id 3327). Nos 30 dias: 29 briefings, unico buraco 27/09 (giulia_erros_log WF07 'Enviar UAZAPI: The connection was aborted' em 27/09 10:00:37 UTC). WF07 ativo; execucoes 12/10 e 13/10 10:00 UTC success."
+   },
+   {
+    "item": "Conteudo do briefing: reunioes 'aguardando tua aprovacao' obsoletas",
+    "status": "WARN",
+    "evidence": "Todo briefing (pelo menos desde 14/09) repete os mesmos 4 itens: #9 Eros (criada 29/07), #10 e #11 554898576378 (23/08), #12 Nicolas 'Disponibilidade: Amanha, 25/08/2026' (24/08) - giulia_reunioes status=pendente_aprovacao_thiago ha 50-76 dias. WF07 seleciona 'status = pendente_aprovacao_thiago' sem corte de idade; Thiago nunca mandou 'aprovar reuniao'. Ruido diario que vai parar de ser lido.",
+    "fix_hint": "Thiago aprovar/dispensar #9-#12, ou WF07 limitar a reunioes criadas nos ultimos N dias / auto-dispensar apos prazo (exige escrita; nao verificavel sem escrita).",
+    "verified": true,
+    "verifier_evidence": "giulia_reunioes: 4 linhas status=pendente_aprovacao_thiago: #9 Eros (lead 36) criada 29/07 19:14 UTC; #10 e #11 554898576378 (lead 40) criadas 23/08 00:26/00:27 UTC (= 22/08 21:26 BRT, pequena correcao de data); #12 Nicolas 'Visita a Canopy em SP | Disponibilidade: Amanha, 25/08/2026' criada 24/08 21:32 UTC. Idades 50-76 dias; agendado_para NULL em todas. WF07 node 'Coletar Dados' confirmado: subquery reunioes_pendentes = 'FROM giulia_reunioes WHERE d.numero = ''5511910441709'' AND status = ''pendente_aprovacao_thiago''' sem filtro de idade; 'Formatar Briefing' sempre emite a secao se reunioesPend.length>0. Memoria: briefing com 'Aguardando tua aprovacao' em TODOS os dias 14/09-13/10 (29 ocorrencias; unico dia sem briefing = 27/09, ver item de erros); briefing de 13/10 07:00 BRT (id 3353) lista exatamente #9-#12. Secao existe desde 06/07 (id 816, com #1 e #3). Thiago nunca mandou 'aprovar reuniao'; em 24/07 (id 1408) pediu 'pode remover os aguardando aprovacao' (#1 e #3 viraram dispensada), sinal de que trata como ruido. Correcao exige escrita (nao verificavel aqui)."
+   },
+   {
+    "item": "Fechamento do dia chegando (ultimos 3 dias)",
+    "status": "OK",
+    "evidence": "21:00 BRT em 09/10 (id 3314), 10/10 (id 3324), 11/10 (id 3337, cita 'Amanha ja agendado: 09:00 Pagar a EPDM com Isac'). 12/10 NAO foi enviado POR DESIGN: execucao n8n 758399 (13/10 00:00 UTC) success, 'Carregar Dia' retornou Thiago (data_local 12/10) mas 'Montar Fechamento' emitiu 0 itens - regra 'dia sem nada: silencio' (jsCode linha 53; docs/OPERACAO-ACESSOS.md:73); em 12/10 nao havia gasto, tarefa, conta nem lembrete para amanha. 27 fechamentos em 30 dias. WF11 ativo, sem execucoes com erro."
+   },
+   {
+    "item": "Erros de workflow que atingem o Thiago (giulia_erros_log, 30 dias)",
+    "status": "WARN",
+    "evidence": "'18 - GIULIA Email': 21 registros 'erro desconhecido' (node '?') entre 17/09 e 13/10 11:56 UTC (2 em 12/10, 3 em 13/10). WF02 Scheduler: 1x 'Task request timed out after 60 seconds' (06/10 13:52 UTC, node Preparar Notificacoes). WF07: 1x 27/09 (conexao abortada). Apesar disso giulia_emails nos 7 dias: 29 recebidos, 29 notificados. Email e exclusivo do Thiago - cruzar com a area email.",
+    "fix_hint": "Area email: identificar o node que gera 'erro desconhecido' no WF18 (handler esta logando node '?').",
+    "verified": true,
+    "verifier_evidence": "Contagens reproduzidas: 23 linhas em 30 dias = 21x '18 - GIULIA Email' node '?' 'erro desconhecido' (17/09 07:49 -> 13/10 11:56 UTC; por dia: 17/09=2, 23/09=2, 24/09=3, 25/09=2, 28/09=2, 29/09=4, 30/09=1, 12/10=2, 13/10=3) + 1x WF02 'Preparar Notificacoes' 'Task request timed out after 60 seconds' 06/10 13:52 UTC + 1x WF07 'Enviar UAZAPI' 'connection was aborted' 27/09 10:00:37 UTC. Emails 7 dias: 29 recebidos / 29 notificados (06/10 15:08 -> 13/10 09:57 UTC). CORRECOES/ACRESCIMOS: (a) o auditor nao notou que os alertas gravados tambem trazem 'Exec ?' (giulia_mensagens_agendadas ids 64-75): WF15 'Montar Alerta' le node/mensagem/execId de j.execution, logo o payload chegou SEM objeto execution. Esse e o formato que o n8n usa para falha do proprio trigger (chave 'trigger', nao 'execution') -> os 21 erros sao falhas do node 'Email Trigger IMAP' (conexao/reconnect, forceReconnect=60), nao de um node de processamento; a mensagem real e descartada por WF15. Consistente com a API: 0 execucoes status=error para WF18 (so 5 execs armazenadas, todas success, 12-13/10) e os horarios dos erros (13/10 11:52-11:56 UTC) nao coincidem com nenhum email (ultimo 09:57). Inferencia por codigo + formato do payload; confirmacao direta impossivel pois WF15 tem saveDataSuccessExecution=none (0 execs) -> nao verificavel sem escrita. (b) Impacto real: 18 alertas '⚠️ 1 erro(s) no ... (node ?): erro desconhecido. Exec ?' com status=enviado para o Thiago em 30 dias (15 do WF18) = ruido sem informacao util; nao aparecem em giulia_memoria. (c) O erro do WF07 em 27/09 custou o briefing daquele dia: nenhuma linha assistant entre 09:00-12:00 UTC de 27/09 (todos os outros dias 14/09-13/10 tem). (d) 6 emails notificado=false sao de 07/08 e 04/09 (backfill da ativacao, por design do codigo). Execucoes de erro globais na API (Xkz4b53YdWhlX8uN '04 - Pipeline Principal Julian', t5TaS1awbkp5fLsZ '25 - ML Perguntas') sao de workflows nao-GIULIA, fora desta area."
+   },
+   {
+    "item": "Qualidade das notificacoes de email recebidas por ele",
+    "status": "WARN",
+    "evidence": "Notificacoes de Nubank/C6 chegam com mojibake: 'OlÃ¡, Thiago NicÃ©zio', 'automÃ¡tico', 'contrataÃ§Ã£o' (ids 3351 e 3350 em 13/10, 3312 em 09/10) - charset/quoted-printable nao decodificado no WF18. As 3 notificacoes WeChat de 12/10 09:21-09:22 sao 3 emails distintos (message_ids diferentes), nao duplicacao.",
+    "fix_hint": "WF18: decodificar charset do corpo (ISO-8859-1/quoted-printable) antes de montar a notificacao.",
+    "verified": true,
+    "verifier_evidence": "Confirmado com precisao adicional. Os 'ids 3351, 3350, 3312' sao ids de giulia_memoria (giulia_emails vai so ate id 261): 3351 13/10 06:57 BRT 'OlÃ¡, Thiago NicÃ©zio Seu Pix AutomÃ¡tico', 3350 13/10 05:52 BRT 'automÃ¡tico... concluÃ­do', 3312/3313 09/10 17:19 BRT C6 'contrataÃ§Ã£o... concluÃ­d'. O mojibake ja esta gravado em giulia_emails.corpo (ids 260/261): 69 de 110 emails dos ultimos 30 dias (63%) tem 'Ã' no corpo, 0 em assunto/de_nome (headers RFC2047 decodificados ok); 99 emails desde 07/08. 60 notificacoes assistant para o Thiago em 30 dias carregam mojibake (Nubank 19, Avianca 13+8, Grainger 6, C6 2, Gol 3, Althacargo 4...). Causa raiz testada: corpo.encode('latin-1').decode('utf-8') restaura perfeitamente ('Olá, Thiago Nicézio Seu Pix Automático', 'contratação do financiamento... concluída') -> bytes UTF-8 interpretados como Latin-1 antes do Code node; WF18 'Preparar Email Recebido' usa String(j.textPlain || j.text) sem tratamento de charset. Fix correto = re-decodificar latin1->utf8 quando detectar padrao 'Ã'/'Â' (direcao oposta ao fix_hint 'decodificar ISO-8859-1'). Defeitos menores no mesmo node: entidades '&zwnj;' nao removidas e prefixo '96' nos corpos Nubank/C6. WeChat 12/10: giulia_emails 257/258/259, message_ids distintos (tencent_7DD4..., tencent_89FD..., tencent_9C57...), md5 do corpo identico (e8086e10...), execs n8n 745974 (12:21:52) e 745981 (12:22:10, 2 emails) -> 3 emails reais, nao duplicacao do sistema."
+   }
+  ],
+  "notes": "Resumo: para o Thiago o sistema esta funcionando - sem FAIL. Tudo que ele pediu nos ultimos 30 dias foi atendido (anexos, email enviado, tarefas criadas/zeradas, lembrete pontual), briefing diario e fechamento chegam, nada atrasado ou pendente. Os WARNs sao de uso (poucas mensagens, nenhum gasto desde 24/07, planilhas defasadas e paraguai/pessoal nunca enviadas) e de ruido (4 reunioes de jul/ago repetidas todo dia no briefing; mojibake e 'erro desconhecido' no WF18 Email). Limites: a entrega real no celular nao e verificavel em modo leitura (UAZAPI respondeu status 'Pending' na execucao 732765; a prova usada foi giulia_memoria + execucoes n8n). Execucoes de sucesso do WF07/WF06 so ficam retidas por ~2 dias, por isso o buraco de 27/09 foi comprovado via erros_log + ausencia na memoria. Nenhuma escrita, envio ou webhook foi disparado nesta auditoria."
+ },
+ {
+  "area": "andre",
+  "checks": [
+   {
+    "item": "giulia_donos: cadastro do Andre (17869660718)",
+    "status": "OK",
+    "evidence": "status='ativo', nome_completo='Andre Amorim', timezone='America/New_York', moeda='USD', idioma pt-BR, cobranca_modo='diaria', relatorio_diario=true, trial_dias=NULL e acesso_expira_em=NULL (acesso sem prazo), criado_em 2026-07-03 13:01 UTC. ultimo_relatorio_diario=2026-08-28. eco_avisado_em=2026-08-29 11:00 UTC (modo eco ligado ha 45 dias)."
+   },
+   {
+    "item": "Mensagens do Andre (role=user) desde 2026-09-12",
+    "status": "WARN",
+    "evidence": "ZERO. giulia_memoria tem 37 linhas dele, todas role='assistant', de 2026-10-01 10:00 UTC a 2026-10-13 10:00 UTC (3 automaticas/dia: briefing + 2 lembretes). Linhas anteriores foram resumidas/apagadas pelo WF04 (domingos; mantem so as 30 mais recentes por dono): giulia_memoria_resumos ids 3-14 cobrem 03/07 -> 01/10; resumo 13 (10/09->23/09) tem 41 msgs e resumo 14 (24/09->01/10) tem 21 msgs = so automaticas (3/dia). Provas indiretas: eco_avisado_em continua em 29/08 (o eco_off do WF14, que roda de hora em hora, zeraria se houvesse msg dele em 5 dias) e as cobrancas de tarefa pararam em 28/08 11:00 UTC (WF06 exige msg user em 5 dias). Ultima msg real dele estimada em 2026-08-24 02:55 UTC (= 23/08 23:55 BRT / 22:55 NY, inicio do resumo 10, horario nao-automatico); bracket seguro: entre 23/08 11:00 e 24/08 11:00 UTC. Ou seja: ~51 dias sem falar com a assistente.",
+    "fix_hint": "Nao e defeito do sistema. Se o Thiago quiser confirmar com 100% de certeza, consultar o historico do chat no UAZAPI/WhatsApp (nao fiz: so leitura, sem endpoint de leitura mapeado no repo).",
+    "verified": true,
+    "verifier_evidence": "Refutacao tentada por 4 vias independentes, todas convergem para ZERO mensagens dele. (1) giulia_memoria: 38 linhas de 17869660718 (uma a mais que o auditor: id 3356, 13/10 13:30 UTC), 100% role='assistant', horarios exclusivamente 02:00/10:00/13:30 UTC (12+13+13). (2) Resumos do WF04 batem exatamente com 3 automaticas/dia: resumo 12 (03/09 10:00->10/09 02:00) esperado 21 = 21; resumo 13 (10/09 10:00->23/09 13:30) esperado 41 = 41; resumo 14 (24/09 02:00->01/10 02:00) esperado 22, salvo 21 - a linha faltante e o briefing de 27/09, que falhou para TODOS os donos (giulia_erros_log id 47, WF07 'Enviar UAZAPI: The connection was aborted' 27/09 10:00:37; nenhuma memoria as 10:00 de 27/09 para nenhum dono). Uma msg dele geraria +2 linhas (user+resposta), nao cabe. (3) giulia_donos.eco_avisado_em segue 2026-08-29 11:00:00 UTC; o CTE eco_off do WF14 zera esse campo se houver msg user em 5 dias, e o WF14 roda de hora em hora com sucesso (execs 768049/769115/770226/771343/772527 hoje; 0 execucoes com erro desde 12/09). (4) Fonte externa ao banco: UAZAPI POST /message/find (consulta local, somente leitura, nao e /send/*) para chatid 17869660718@s.whatsapp.net devolve 23 msgs (retencao ~7 dias: 06/10 10:00 -> 13/10 13:30 UTC), todas fromMe=true, ZERO recebidas. Pipeline esta vivo para os outros (linhas user de 5 numeros desde 12/09, Thiago ate 11/10 22:51 UTC; WF01 0 erros desde 12/09), e o numero dele era processado antes (resumo 3: 93 msgs em 11 dias de julho). Bracket da ultima msg real: WF14 so roda 8h-22h BRT; eco_on disparou na 1a rodada de 29/08 (11:00 UTC) e nao na ultima de 28/08 (01:00 UTC de 29/08) => ultima msg user entre 24/08 01:00 e 24/08 11:00 UTC, coerente com periodo_inicio do resumo 10 = 24/08 02:55:08 UTC (23/08 22:55 NY). Bracket do auditor (23/08 11:00 - 24/08 11:00) e correto, apenas mais largo. Residual: a retencao do UAZAPI e ~7 dias, entao 12/09-06/10 depende da inferencia pelo banco (que e fechada)."
+   },
+   {
+    "item": "Ultimas 6 trocas user/assistant (exibidas em BRT = UTC-3)",
+    "status": "WARN",
+    "evidence": "Nao existe nenhuma troca user/assistant no periodo: as 6 ultimas linhas sao todas automaticas da assistente: (1) 13/10 07:00 BRT 'Bom dia! Resumo de terca, 13/10' [id 3352]; (2) 12/10 23:00 BRT 'Lembrete enviado: Tomar os remedios antes de dormir' [3349]; (3) 12/10 10:30 BRT 'Lembrete enviado: Tomar os remedios da manha' [3348]; (4) 12/10 07:00 BRT briefing [3339]; (5) 11/10 23:00 BRT lembrete noite [3338]; (6) 11/10 10:30 BRT lembrete manha [3334]. Nenhuma linha role='user' na tabela para o numero dele.",
+    "verified": true,
+    "verifier_evidence": "Reproduzido: ids 3352 (13/10 10:00:22 UTC = 07:00 BRT, briefing), 3349 (13/10 02:00 UTC = 12/10 23:00 BRT, lembrete noite), 3348 (12/10 13:30 UTC = 10:30 BRT, lembrete manha), 3339 (12/10 10:00 UTC), 3338 (12/10 02:00 UTC), 3334 (11/10 13:30 UTC) - conversao do auditor correta. Desde a auditoria entrou id 3356 (13/10 13:30:21 UTC = 10:30 BRT / 09:30 NY, 'Lembrete enviado: Tomar os remedios da manha'). Nenhuma linha role='user' para o numero. Complemento: no UAZAPI as ultimas 5 saidas (12/10 10:00, 12/10 13:30, 13/10 02:00, 13/10 10:00, 13/10 13:30 UTC) estao com status 'Delivered'."
+   },
+   {
+    "item": "Lembretes pendentes",
+    "status": "OK",
+    "evidence": "2 pendentes, ambos recorrencia='diaria': id 302 'Tomar os remedios da manha' disparar_em 2026-10-13 09:30 (local NY); id 303 'Tomar os remedios antes de dormir' disparar_em 2026-10-13 22:00. Nenhum preso em 'processando'. Historico: 91+91 enviados desde 14/07 + 1 avulso ('Falar com Adilson sobre as cortinas do apt de Miami', 14/07 11:00, enviado). As 09:50 NY de hoje o de 09:30 ainda nao venceu — correto."
+   },
+   {
+    "item": "Lembretes enviados nos ultimos 7 dias e horario vs 09:30/22:00 NY",
+    "status": "OK",
+    "evidence": "15 linhas 'Lembrete enviado' entre 06/10 02:00 UTC e 13/10 02:00 UTC (ids 3254..3349), sem falha de dia. Manha sempre as 13:30:12-22 UTC = 09:30 EDT; noite sempre as 02:00:16-27 UTC = 22:00 EDT. Em giulia_lembretes, enviado_em - disparar_em = 04:00:12 a 04:00:27 em todos os 14 lembretes de 06/10 a 12/10 (4h = offset EDT). WF02 compara disparar_em com NOW() AT TIME ZONE d.timezone (IANA do dono), entao a virada do DST em 01/11 sera tratada sozinha. Recorrencia re-insere +1 dia corretamente."
+   },
+   {
+    "item": "Tarefas pendentes e cobranca_count",
+    "status": "WARN",
+    "evidence": "9 pendentes = exatamente as ids 17-25 de julho (criadas 2026-07-10 14:38 UTC, prazo 2026-07-17, atrasadas ha 88 dias): Invoices dos vasos; Drenagem do jardim do showroom; Preco do painel com o eletricista; Organizar o warehouse; Fotografar os vasos novos; Decidir evento SP 15/08; Empresa do telao; Validar empresa de marketing; Validar terrenos em Homestead. cobranca_count=46 em todas; ultima_cobranca_em 2026-08-28 11:00 UTC; proxima_cobranca_em 2026-08-28 15:00 (vencida, bloqueada pela regra dos 5 dias). Zero tarefas 'feita'/'cancelada' -> ele NUNCA usou 'limpa todas' (recurso existe desde 12/09 e ele nao fala desde 24/08). As 9 aparecem todo dia no briefing ('Tarefas pendentes (9)... e mais 3').",
+    "fix_hint": "Decisao do Thiago: cancelar as 9 por SQL (status='cancelada') ou combinar com o Andre. Nao executado (auditoria somente leitura).",
+    "verified": true,
+    "verifier_evidence": "Reproduzido linha a linha: ids 17-25, dono 17869660718, criada_em 2026-07-10 14:38:59 UTC, prazo 2026-07-17 (88 dias atrasadas em 13/10), status 'pendente' em todas (GROUP BY status retorna so 'pendente': 9 - zero feita/cancelada), cobranca_count=46 em todas, ultima_cobranca_em 2026-08-28 11:00:04 UTC, proxima_cobranca_em 2026-08-28 15:00:04. O +4h vem da versao do WF06 vigente na epoca (commit 3970f0e usava INTERVAL '4 hours'; trocado por 8/24/72h no commit 44ea7cc de 04/09) - nao e inconsistencia. SQL 'Tarefas pra Cobrar' do WF06 ao vivo exige EXISTS msg role='user' nos ultimos 5 dias para dono != Thiago, logo bloqueio confirmado. Briefing de hoje (memoria 3352 e execucao 769116) traz '*Tarefas pendentes (9):*' com 6 linhas + '...e mais 3 (manda \"minhas tarefas\")'. 'limpa todas' entrou no commit 180e6ab de 12/09 (confere). Nuance que o auditor nao disse: a dica 'limpa todas' so aparece no texto de cobranca do WF06, que parou em 28/08, antes de o recurso existir; o briefing nao a menciona - ou seja, o Andre nunca foi informado desse comando."
+   },
+   {
+    "item": "Briefing matinal 'Bom dia! Resumo' nos ultimos 3 dias",
+    "status": "OK",
+    "evidence": "Enviado todo dia: 10/10 (sab) 10:00:17 UTC [id 3316], 11/10 (dom) 10:00:18 [3326], 12/10 (seg) 10:00:20 [3339], 13/10 (ter) 10:00:22 [3352] = 06:00 NY / 07:00 BRT. Conteudo: 2 lembretes fixos + 9 tarefas atrasadas (6 listadas + 'e mais 3'). Execucao WF07 769116 (13/10 10:00) success, lastNode 'Salvar Memoria Briefing'; no 'Enviar UAZAPI' o item do 17869660718 voltou messageid 3EB0F15E873710133A339B status 'Pending' (aceito pela UAZAPI; entrega/leitura nao verificavel por aqui). Briefing e o unico fluxo que continua no modo eco — por design."
+   },
+   {
+    "item": "Cobranca de tarefas (WF06) — coerencia com a regra dos 5 dias",
+    "status": "OK",
+    "evidence": "SQL do WF06 (versao ao vivo, updatedAt 13/09): exige EXISTS msg role='user' nos ultimos 5 dias (exceto Thiago) e, para cobranca_modo='diaria', hora local entre 07 e 10. Andre sem msg desde 24/08 -> nenhuma cobranca desde 28/08 11:00 UTC (07:00 NY, dentro da janela). Nenhuma mensagem de cobranca na memoria dele nos ultimos 30 dias. WF06 execs 12/10 11:00, 12/10 20:00 e 13/10 11:00 UTC = success, 0 erros. Faz sentido com o que foi achado."
+   },
+   {
+    "item": "Fechamento do dia (WF11) para o Andre",
+    "status": "OK",
+    "evidence": "Pausado pelo modo eco (mesma condicao de 5 dias no CTE 'alvo' do WF11): ultimo_relatorio_diario=2026-08-28, nenhum 'Fechamento do dia' na memoria dele desde entao. Esperado conforme docs/TRIALS-ACESSO.md. WF11 roda de hora em hora com success (execs 06:00-13:00 UTC de 13/10)."
+   },
+   {
+    "item": "Modo eco e tentativa de 'toque pessoal' do Thiago",
+    "status": "WARN",
+    "evidence": "Eco ligado em 2026-08-29 11:00 UTC; Thiago avisado (memoria id 2676, 29/08 08:00 BRT: 'Andre Amorim esta ha 5+ dias sem responder - ativei o modo eco...'). Em 19/09 00:51 UTC o Thiago pediu 'Por favor me ligue andre' -> giulia_envios_pendentes id 5 ('Oi Andre... O Thiago pediu para voce ligar para ele') ficou status 'aguardando_confirmacao', expirou 01:51 UTC e NUNCA foi enviado (Thiago nao confirmou). Ou seja, nenhum contato humano via assistente chegou ao Andre.",
+    "fix_hint": "Thiago falar direto com o Andre (fora da assistente) ou repetir o pedido e confirmar o envio.",
+    "verified": true,
+    "verifier_evidence": "Reproduzido: giulia_donos.eco_avisado_em = 2026-08-29 11:00:00.479 UTC; memoria id 2676 (Thiago, 29/08 11:00:05 UTC = 08:00 BRT) com o texto do evento eco_on do WF14; ultimo_relatorio_diario = 2026-08-28 confirma que o fechamento parou junto. giulia_envios_pendentes id 5: destinatario 17869660718 'Andre Amorim', texto 'Oi Andre... O Thiago pediu para voce ligar para ele', status 'aguardando_confirmacao', enviado_em NULL, criado 19/09 00:51:10 UTC, expira 01:51:10; memoria 3004 (Thiago 'Por favor me ligue andre' 00:51:11) -> 3005 ('Vou mandar pro Andre pedir pra ele te ligar. Confirma?') e nenhuma confirmacao depois. Nuances omitidas pelo auditor: (a) 1 min antes (id 3002, 00:50:45) o Thiago pediu para enviar um e-mail ofensivo ao andre.amorim1@icloud.com e a assistente recusou (3003); (b) em 27/08 13:51 e 13:54 UTC (2 dias ANTES do eco) o Thiago enviou ao Andre 2 e-mails via WF18 (giulia_email_pendentes 35 e 36, assunto 'Pergunta rapida', status 'enviado') - conteudo pessoal/provocativo, nao contato de negocio. Portanto 'nenhum contato humano via assistente' vale para WhatsApp e para o periodo pos-eco; por e-mail houve 2 envios em 27/08."
+   },
+   {
+    "item": "Horario do briefing para o Andre apos fim do DST nos EUA (01/11)",
+    "status": "WARN",
+    "evidence": "Cron do WF07 e '0 6 * * *' e dispara as 10:00 UTC -> instancia n8n opera em UTC-4 (hoje = 06:00 NY e 07:00 BRT). Env do servico n8n no Easypanel (GET inspectService) nao tem GENERIC_TIMEZONE/TZ (so EXECUTIONS_DATA_PRUNE/MAX_AGE/PRUNE_MAX_COUNT), entao o fuso vem da configuracao da instancia e nao consegui ler se e America/New_York (segue DST) ou offset fixo. Se for America/New_York, apos 01/11 o briefing dos donos BR passa para 08:00 BRT; se fixo, o do Andre passa para 05:00 NY. Lembretes NAO sao afetados (usam timezone do dono).",
+    "fix_hint": "Thiago conferir Settings do n8n (timezone da instancia) antes de 01/11.",
+    "verified": true,
+    "verifier_evidence": "Consegui resolver o UNKNOWN com evidencia indireta forte. Fatos: cron do WF07 '0 6 * * *' dispara 10:00:00 UTC (execucao 769116 startedAt 2026-10-13T10:00:00.342Z; WF06 '0 7,16' roda 11:00/20:00 UTC; WF04 '0 4 * * 0' gera resumos as 08:00 UTC) => instancia em UTC-4. Nenhum workflow tem settings.timezone (API). Servico n8n no Easypanel = imagem n8nio/n8n:2.8.3 e o env nao contem GENERIC_TIMEZONE nem TZ (so WEBHOOK_URL, NODE_OPTIONS, EXECUTIONS_*, N8N_RUNNERS_*, DB_*). Documentacao oficial do n8n (docs.n8n.io, timezone-localization): GENERIC_TIMEZONE default = America/New_York, 'important for schedule nodes (such as Cron)'. UTC-4 hoje = EDT, coerente. Conclusao: a instancia segue America/New_York e o DST acaba em 01/11/2026 02:00 NY => a partir de 01/11 o '0 6' passa a 11:00 UTC: Andre continua 06:00 NY (sem mudanca), mas Thiago e Jota passam a receber o briefing as 08:00 BRT (hoje 07:00). WF06 '0 7,16' vai para 09:00/18:00 BRT (ainda dentro da janela 7-10h do modo 'diaria'). WF02 (lembretes usam NOW() AT TIME ZONE d.timezone), WF11 e WF14 (cron horario) nao mudam. Residual: nao li o valor dentro do n8n (/rest/settings publico nao expoe timezone na 2.8.3 e a API publica nao tem endpoint); a inferencia e docs + ausencia de env + offset observado. Fix nao executado (exige escrita: GENERIC_TIMEZONE=America/Sao_Paulo no Easypanel + ajustar crons, ou settings.timezone por workflow)."
+   },
+   {
+    "item": "Erros relacionados ao Andre (giulia_erros_log / execucoes)",
+    "status": "OK",
+    "evidence": "Nenhuma entrada em giulia_erros_log com o numero dele nos ultimos 30 dias. WF02/06/07/11 sem execucoes com status=error. Unico erro do WF02 na semana (06/10 13:52 UTC, no 'Preparar Notificacoes', timeout 60s) nao e dele — o lembrete das 13:30 daquele dia foi enviado normalmente (id 3261)."
+   },
+   {
+    "item": "Resumos de memoria do Andre (WF04) — qualidade",
+    "status": "WARN",
+    "evidence": "12 resumos (ids 3-14), ultimo criado 2026-10-11 08:00 UTC. O texto salvo esta truncado (~150-200 chars, ex.: termina em 'Tipos') e o Gemini confunde o dono: 'relatorios diarios para Thiago Nicezio', 'O usuario Thiago (chamado de Andre na conversa)'. Nao afeta o Andre hoje (ele nao conversa), mas o contexto que o WF01 carregaria dele esta pobre.",
+    "fix_hint": "Fora do escopo desta area; registrar para a auditoria do WF04 (prompt do resumo + tamanho salvo).",
+    "verified": true,
+    "verifier_evidence": "Confirmado e com causa parcial. giulia_memoria_resumos ids 3-14 (12 resumos, ultimo criado 2026-10-11 08:00:22 UTC, msg_count 21-93): length(resumo) entre 133 e 205 chars, varios comecando no meio da frase (id 3 'e showroom), Miro e Tiago ($1.000...', id 4 'eletricista (preco do painel)...', id 12 'ados ... 7. **Final Polish**:' - parece trecho de raciocinio do modelo). Confusao de dono confirmada (id 5 'O usuario Thiago (chamado de Andre na conversa)', ids 6-13 'relatorios diarios para Thiago Nicezio'). Causa certa da confusao: o system prompt do no 'Preparar Prompts' do WF04 diz literalmente que a conversa e entre 'o Thiago Nicezio (user)' e a Giulia para QUALQUER from_numero. Causa da truncagem: 'Montar SQL' usa candidates[0].content.parts[0].text (modelo gemini-3.5-flash) e substring(0,2000); como o salvo tem <210 chars, o fragmento vem da propria resposta do Gemini - nao determinavel so leitura (WF04 nao salva execucoes de sucesso). DEFEITO EXTRA do WF04 encontrado: 'Montar SQL' usa items[0] e $('Preparar Prompts').first(), logo so o PRIMEIRO dono e sumarizado a cada domingo - na pratica sempre o Andre (todos os resumos desde 19/07 sao dele), enquanto Thiago (1140 linhas desde 02/07) e Jota (492 desde 15/07) nunca mais foram sumarizados desde 05/07 apesar de >50 linhas. Nao prejudica o Andre; registrar na auditoria do WF04."
+   },
+   {
+    "item": "Outros modulos usados pelo Andre",
+    "status": "OK",
+    "evidence": "giulia_gastos: 3 lancamentos, ultimo 2026-07-03. giulia_contas_pagar: 0. Lembrete avulso: 1 (14/07). Uso real concentrado nas 2 primeiras semanas de julho (resumo 3: 93 msgs entre 03/07 e 14/07)."
+   },
+   {
+    "item": "CONCLUSAO: o Andre esta usando a assistente?",
+    "status": "WARN",
+    "evidence": "NAO. Ele so recebe automaticos: 3 mensagens/dia (briefing 06:00 NY + remedios 09:30 e 22:00 NY), ~150 mensagens desde a ultima fala dele (~23/08 22:55 NY), sem nenhuma resposta. As 9 tarefas de julho seguem intocadas apos 46 cobrancas cada. Tecnicamente tudo que deveria chegar para ele esta chegando no horario certo (lembretes exatos no fuso NY, briefing diario, eco pausando o resto conforme a regra). Quem precisa agir e o Thiago (contato humano / limpar as tarefas), nao o sistema.",
+    "fix_hint": "Sugestoes para o Thiago decidir: (1) ligar/falar com o Andre fora da assistente; (2) cancelar as 9 tarefas de julho para o briefing parar de repetir a lista; (3) avaliar se vale manter os 2 lembretes de remedio (unico valor que ele recebe hoje).",
+    "verified": true,
+    "verifier_evidence": "Confirmado: NAO usa. Evidencia independente do UAZAPI (POST /message/find, somente leitura): ultimos 7 dias = 23 mensagens enviadas (3/dia: 10:00, 13:30, 02:00 UTC = 06:00, 09:30, 22:00 EDT), TODAS com status 'Delivered' (chegaram ao aparelho), nenhuma 'Read' (se ele mantem confirmacao de leitura ativa, nem abriu a conversa em 7 dias - ressalva: pode estar desativada) e ZERO recebidas. Volume: 38 linhas vivas + 125 sumarizadas desde 24/08 = 163 (~150 automaticas + cauda de cobranca/fechamento ate 28/08). Correcao de rigor ao auditor: 'tudo esta chegando' nao podia ser provado so pelo banco, porque o no 'Enviar Lembrete UAZAPI' do WF02 tem continueOnFail=true e 'Finalizar Lembrete' marca enviado + grava memoria independentemente da resposta HTTP; o 'Delivered' do UAZAPI e que fecha a prova (para os ultimos 7 dias). Uma falha real: briefing de 27/09 nao foi enviado a nenhum dono (erros_log 47, conexao abortada com o UAZAPI). Tarefas: 9 de julho intactas, 46 cobrancas cada, e ele nunca recebeu a dica 'limpa todas'. Sugestoes do auditor seguem validas (contato humano direto; cancelar as 9 por SQL; decidir se mantem os 2 lembretes de remedio); nada executado (auditoria somente leitura)."
+   }
+  ],
+  "notes": "Auditoria 100% somente leitura: apenas SELECTs via o runner SQL temporario, GETs na API do n8n (workflows, execucoes, 1 execucao com dados) e 1 GET no Easypanel (inspectService, sem alterar nada). Nenhum POST em uazapi.com, nenhum webhook disparado, nenhuma escrita no banco. Horas em UTC salvo quando marcado BRT/NY (NY hoje = EDT = UTC-4; BRT = UTC-3). Limitacao: giulia_memoria so guarda as 30 linhas mais recentes por dono (WF04 resume e apaga aos domingos), entao a prova direta de 'nenhuma msg dele' cobre 01/10->13/10; para 12/09->30/09 a prova e indireta (resumos com contagem = so automaticas + eco_avisado_em intacto desde 29/08 + cobrancas paradas em 28/08). Entrega/leitura no WhatsApp nao verificavel (UAZAPI devolve 'Pending' no envio). Workflows ao vivo (WF02/06/07/11/14) conferidos no n8n, todos ativos com updatedAt 13/09 (iguais ao gabarito)."
+ },
+ {
+  "area": "jota",
+  "checks": [
+   {
+    "item": "giulia_donos - cadastro do Jota (5511964070127)",
+    "status": "OK",
+    "evidence": "status=ativo, nome=Jota, timezone=America/Sao_Paulo, idioma=pt, moeda=BRL, relatorio_diario=true, criado_em 15/07/2026 por 5511910441709, trial_dias=null e acesso_expira_em=null (sem expiracao), cobranca_modo=padrao."
+   },
+   {
+    "item": "Modo eco (5+ dias sem mensagem)",
+    "status": "WARN",
+    "evidence": "Ultima mensagem dele (role=user) em 28/08 21:09 BRT (id 2665) -> 45 dias sem interacao. eco_avisado_em=2026-09-03 01:00 UTC e Thiago foi avisado em 02/09 22:00 BRT (memoria id 2774: 'Jota esta ha 5+ dias sem responder - ativei o modo eco'). ultimo_relatorio_diario=02/09 e coerente: fechamento 21h pausado pelo eco (WF11 e quem atualiza essa coluna). Nos ultimos 30 dias so existem mensagens de assistant as 07:00 (briefing+cartoes); nenhuma fora desse horario.",
+    "fix_hint": "Nao e defeito tecnico, mas e sinal de abandono: o Jota parou de usar exatamente apos o fracasso de 28/08 (ver item FAIL abaixo). Vale um toque pessoal do Thiago depois de corrigir a inscricao.",
+    "verified": true,
+    "verifier_evidence": "Refutacao tentada e falhou; tudo bate. giulia_donos (Jota 5511964070127): status=ativo, timezone=America/Sao_Paulo, eco_avisado_em=2026-09-03 01:00:02 UTC, ultimo_relatorio_diario=2026-09-02. Ultima msg role=user: id 2665 em 2026-08-29 00:09:41 UTC (= 28/08 21:09 BRT) -> 45,5 dias ate hoje. Aviso ao Thiago: memoria id 2774 em 2026-09-03 01:00:12 UTC (02/09 22:00 BRT) 'Jota esta ha 5+ dias sem responder - ativei o modo eco'. Regra conferida no codigo live: WF14 Trials (eco_on = dono ativo != Thiago sem msg user em 5 dias; eco_off quando volta a falar) e WF11 Fechamento (claim exige msg user nos ultimos 5 dias, exceto Thiago, e e o UPDATE giulia_donos SET ultimo_relatorio_diario). Ultimo fechamento do Jota: id 2773 em 03/09 00:00 UTC (02/09 21h BRT), 9 min antes do corte -> coerente. Ultimos 30 dias: 106 msgs assistant pro Jota, 100% na hora 10 UTC (07:00 BRT), 0 msgs user, nenhuma msg fora desse horario."
+   },
+   {
+    "item": "Ultimas trocas do Jota (28/08, ids 2645-2666)",
+    "status": "WARN",
+    "evidence": "21:03 pede controle de inscritos/pagos por evento; 21:05 'Crie o evento Serra do Itapeti (29/8)' -> criada #4 OK; 21:06 'Alexandre Smitch se inscreveu...' -> 'Nao achei essa pessoa na tua base'; 21:07 'Nao precisa estar na base, apenas grave esse nome' -> mesma recusa; 21:07 'Ja enroscamos'; 21:08 assistente PROMETE 'se o nome nao estiver na base, eu ja cadastro ele na hora' (id 2658); 21:09 nova tentativa -> mesma recusa (id 2664); 21:09 '[mensagem nao-textual]' -> 'Recebi, mas nao consegui ler por aqui'. Depois disso ele nunca mais escreveu.",
+    "fix_hint": "A promessa do id 2658 foi alucinacao da IA: o codigo nao faz cadastro automatico. Alinhar prompt com capacidade real ou implementar o cadastro on-the-fly.",
+    "verified": true,
+    "verifier_evidence": "Ids e horarios conferidos um a um (UTC-3): 2645 21:03 pede controle de inscritos/pagos; 2649 21:05 'Crie o evento Serra do Itapeti (29/8)' -> 2650 'Expedicao criada: Serra do Itapeti — 29/08/2026 (#4)'; 2651 21:06 'Alexandre Smitch se inscreveu' -> 2652 'Nao achei essa pessoa na tua base'; 2653 21:07 'Nao precisa estar na base' -> 2654 mesma recusa; 2655 'Ja enroscamos' -> 2656 mesma recusa (3a vez seguida); 2658 21:08 promete 'se o nome nao estiver na base, eu ja cadastro ele na hora'; 2660 promete 'Vou registrar essa turma separada' (2a promessa sem respaldo); 2662 lista 'Serra do Itapeti (faltam 1 dias) 0 inscrito(s) · 0 pago(s)'; 2663 21:09 -> 2664 recusa; 2665 '[mensagem nao-textual]' -> 2666 'Recebi, mas nao consegui ler por aqui'. Msgs user do Jota por dia desde 01/08: 03/08=13, 04/08=5, 06/08=1, 07/08=1, 08/08=4, 27/08=2, 28/08=11 e NADA depois. O codigo do WF01 nao tem cadastro on-the-fly (ver item seguinte), logo 2658/2660 foram promessas vazias da IA."
+   },
+   {
+    "item": "inscrever_expedicao com pessoa fora da base",
+    "status": "FAIL",
+    "evidence": "WF01 em producao (updatedAt 12/09/2026) ainda contem no prompt 'A pessoa PRECISA estar na base' e no Formatar Resposta Final 'Nao achei essa pessoa na tua base' (candidatos=0 -> recusa, sem INSERT em giulia_pessoas). Nenhum commit desde 28/08 tocou inscricao/expedicao (ultimos: 08/08). Resultado: giulia_expedicao_inscritos tem 0 registros no sistema inteiro; 'Alexandre Smitch' nao existe em giulia_pessoas.",
+    "fix_hint": "No Decidir Acao, quando candidatos=0 e nome_pessoa informado: INSERT em giulia_pessoas (dono, nome, grupo='piloto') e seguir com a inscricao (ou orientar a IA a chamar o cadastro antes). Atualizar o texto do prompt. Testar ao vivo com aviso ao Thiago.",
+    "verified": true,
+    "verifier_evidence": "WF01 live (Tm1Ec80tegOqWS4N, active, updatedAt 2026-09-12T11:42:53Z): Montar Prompt contem 'A pessoa PRECISA estar na base - o sistema copia tipo e telefone sozinho'. Decidir Acao, acao inscrever_expedicao: CTE match = SELECT em giulia_pessoas por tokens do nome; alvo so quando count(match)=1; INSERT apenas em giulia_expedicao_inscritos; as unicas 2 ocorrencias de 'INSERT INTO giulia_pessoas' no Decidir Acao sao importar_planilha e importar_pessoas (importacao em lote), nenhuma no caminho da inscricao. Formatar Resposta Final: candidatos===0 -> 'Nao achei essa pessoa na tua base. Confere o nome (\"procura o fulano\" ajuda) ou cadastra antes.' Git: o commit 180e6ab (12/09) tocou workflows/01-GIULIA-Pipeline.json, mas os blocos inscrever_expedicao de Montar Prompt/Decidir Acao/Formatar Resposta Final sao byte-identicos antes e depois dele; ultimo commit que alterou a string de recusa = 013cadc (08/08); HEAD == live nesses 3 nos. Banco: giulia_expedicao_inscritos = 0 linhas no sistema; giulia_pessoas sem nenhum nome ILIKE '%smitch%'."
+   },
+   {
+    "item": "Base CRM giulia_pessoas do Jota - tamanho/enriquecimento",
+    "status": "WARN",
+    "evidence": "1.458 cadastros, 999 com nascimento (459 sem), 121 com telefone, 71 com grupo (54 piloto, 16 acompanhante, 1 'Pilotos' fora do padrao), 0 com familia. criado_em min 17/07 02:48 UTC, max 17/07 11:05 UTC: NENHUM registro novo/atualizado desde 17/07 - numeros identicos aos de 07/08 no doc. O reenvio da planilha pedido em 08/08 (import 2.0) nunca aconteceu.",
+    "fix_hint": "Pedir de novo a planilha completa ao Jota (o import 2.0 faz upsert sem duplicar). Normalizar grupo 'Pilotos' -> 'piloto'.",
+    "verified": true,
+    "verifier_evidence": "Numeros reconfirmados (correcao de nome de coluna: telefone e a coluna `numero`; nao existe coluna de atualizacao, entao 'atualizado desde 17/07' nao e verificavel - so 'criado'). dono 5511964070127 (unico dono com cadastros): 1.458 registros, 999 com nascimento, 459 sem, 121 com numero, 71 com grupo (piloto 54, acompanhante 16, 'Pilotos' 1), 0 com familia; criado_em min 2026-07-17 02:48:12 UTC, max 2026-07-17 11:05:36 UTC (lotes: 02h=49, 03h=101, 11h=1.308). docs/FEATURE-CRM-JOTA.md (07/08) traz exatamente 1.458/999/459/121. O pedido de reenvio esta na msg id 1983 (08/08 02:44 UTC: 'me reenvia aquela planilha completa UMA vez'); depois disso o Jota so escreveu em 27/08 (2 msgs, telefone do Daniel) e 28/08 (11 msgs, expedicoes) - nenhuma planilha (uploads de planilha ficam na memoria como content='' e os ultimos sao de 17/07, ids 1179-1223). Nenhuma pessoa criada apos 17/07 11:05 UTC. Obs: WF07 trata 'Pilotos' via startsWith('piloto'), entao o rotulo fora do padrao nao quebra o briefing."
+   },
+   {
+    "item": "Duplicatas e janela LLM de 16/07 (qualidade dos aniversarios)",
+    "status": "WARN",
+    "evidence": "73 nomes duplicados (112 registros extras); 52 nomes com MAIS DE UMA data de nascimento distinta. Ex.: 'Marcelino Toribio Junior' 5x (ids 28,70,117,167,237) com nascimentos 03/06, 12/06, 15/06, 16/06 e 17/06/1963 -> recebe ate 5 cartoes em junho, 4 com data errada. Os 150 registros da janela LLM (criado_em < 17/07 10:00 UTC, 149 com nascimento) continuam na base - limpeza prevista no doc nao foi feita.",
+    "fix_hint": "Apos reimport confirmado: deletar os 150 da janela LLM e deduplicar por lower(nome) mantendo o registro com telefone/grupo. Ate la, cartoes de aniversario podem sair em data errada.",
+    "verified": true,
+    "verifier_evidence": "Reconfirmado e com prova de que JA esta acontecendo (nao e so projecao pra junho): 73 nomes duplicados por lower(trim(nome)) = 112 registros extras; 52 nomes com >1 nascimento distinto. Marcelino Toribio Junior ids 28/70/117/167/237 com nascimentos 17/06, 03/06, 15/06, 12/06 e 16/06/1963 (3 deles com o mesmo telefone). Janela LLM: 150 registros com criado_em < 17/07 10:00 UTC (todos entre 02:48 e 03:05 UTC), 149 com nascimento - intactos. Cartoes repetidos ja enviados (memoria, content '🎂 ...' pro Jota desde 08/08: 190 cartoes em 61 dias): Alessandro William de Azevedo 4 cartoes (14, 15, 18, 20/08), IANO ANDRE COSTA 4 (mesmas datas), Catia Maria Mattos do Espirito Santo 4 (10, 11, 12, 17/09), Robinson Perez Sacco 4 (14, 19, 20, 22/09), Clair Gil 3 (12-14/09), Luiz Henrique Alves Pazzini 3 (25, 26, 28/08), Carlos Eduardo Lucas em 29/08 E 29/09, Jose Walter Lanza Junior em 26/09 e 07/10 - 11 pessoas com cartao repetido em dias diferentes em ~2 meses. WF07 live nao deduplica por nome (json_agg direto de giulia_pessoas por MM-DD)."
+   },
+   {
+    "item": "Cartoes de aniversario enviados nos ultimos 30 dias (14/09-13/10)",
+    "status": "OK",
+    "evidence": "77 cartoes (content comecando com o emoji de bolo) vs 79 aniversariantes esperados pela base. Dia a dia a contagem bate com a base em 29 de 30 dias (ex.: 19/09 6/6, 21/09 7/7, 29/09 7/7, 11/10 3/3), sempre as 07:00 BRT junto do briefing, um cartao por aniversariante. Unica lacuna: 27/09 (2 esperados, 0 enviados) por falha do WF07. 25/09 tinha 0 aniversariantes (correto, nenhum cartao)."
+   },
+   {
+    "item": "Aniversariante de HOJE 13/10 e envio",
+    "status": "OK",
+    "evidence": "Base: 1 aniversariante, Cassiano Gotti Martins (nasc. 13/10/1980, 46 anos, sem telefone/grupo). Enviado: briefing id 3354 'Resumo de terca, 13/10 - Aniversariantes hoje: Cassiano Gotti Martins (46 anos)' e cartao id 3355 'Parabens, Cassiano! ... Equipe Jota Expedicoes Off-Road', ambos 07:00:22 BRT. Execucao WF07 769116 success (10:00:00-10:00:25 UTC)."
+   },
+   {
+    "item": "Briefing matinal para o Jota nos ultimos 3 dias",
+    "status": "OK",
+    "evidence": "11/10 07:00:18 BRT (3 aniversariantes: Denis Matiussi, Douglas de Oliveira gama, Jader Henrique brandt + 3 cartoes); 12/10 07:00:20 (Alessandro de Oliveira Preto + cartao); 13/10 07:00:22 (Cassiano + cartao). Execucoes WF07 743435 (12/10) e 769116 (13/10) success; historico anterior nao retido pelo n8n. Nos ultimos 30 dias: 29 briefings em 29 dias distintos (so faltou 27/09)."
+   },
+   {
+    "item": "Falha do briefing em 27/09 (afetou o Jota)",
+    "status": "WARN",
+    "evidence": "giulia_erros_log id 47: workflow 'GIULIA - 07 Briefing Matinal', node 'Enviar UAZAPI', 'The connection was aborted, perhaps the server is offline', 27/09 10:00:37 UTC. Nenhum dono recebeu briefing naquele dia (0 mensagens assistant entre 09:50 e 10:30 UTC). Jota perdeu briefing + 2 cartoes (Luiz Fernando Gelezov 64 anos, Marcio Emerson Zima 56 anos). Nao houve reenvio. No JSON do WF07 o no Enviar UAZAPI esta sem retryOnFail/maxTries.",
+    "fix_hint": "Ativar retryOnFail (3 tentativas, 30-60s) no no Enviar UAZAPI do WF07 e deployar via scripts/deploy-workflows.sh.",
+    "verified": true,
+    "verifier_evidence": "Erro e falta de retry confirmados; a frase 'nenhum dono recebeu' precisa de ressalva. giulia_erros_log id 47: workflow 'GIULIA - 07 Briefing Matinal', node 'Enviar UAZAPI', 'The connection was aborted, perhaps the server is offline', 2026-09-27 10:00:37 UTC (unico erro do dia). Aniversariantes do Jota em 27/09 (giulia_pessoas MM-DD=09-27): Luiz Fernando Gelezov (1962, 64) e Marcio Emerson Zima (1970, 56). 0 msgs assistant entre 09:50 e 10:30 UTC em 27/09 pra qualquer dono; sem reenvio (proxima msg ao Jota = briefing de 28/09 10:00:13 so com nomes de 28/09). WF07 live (updatedAt 13/09): no Enviar UAZAPI sem retryOnFail/maxTries, timeout 30000 ms, onError padrao; fluxo Formatar Briefing -> Enviar UAZAPI -> Salvar Memoria Briefing. RESSALVA: a memoria so e gravada DEPOIS do no HTTP, que dispara todos os itens (ORDER BY d.numero: Andre, Thiago, Jota) e aborta tudo se um falha - logo a ausencia na memoria prova a falha do no, nao que zero mensagens sairam. Os 37 s (inicio + timeout de 30 s) sugerem que ja a 1a requisicao falhou, mas a execucao de 27/09 nao existe mais no n8n (WF07 so retem 12/10 e 13/10) e o UAZAPI /message/find devolve apenas os ultimos 7 dias -> entrega individual nao verificavel. Extra: Jota tambem ficou sem briefing em 12/09 (erros_log id 30, 'Formatar Briefing' timeout 10:04 UTC) - os 2 unicos dias sem msg as 10 UTC desde 29/08 sao 12/09 e 27/09."
+   },
+   {
+    "item": "Expedicoes (giulia_expedicoes / giulia_expedicao_inscritos)",
+    "status": "WARN",
+    "evidence": "1 expedicao do Jota: id 4 'Serra do Itapeti', data_ini 29/08/2026, destino/data_fim/vagas/valor = null, status AINDA 'aberta' 45 dias depois do evento; inscritos = 0. Tabela giulia_expedicao_inscritos esta vazia (0 linhas no sistema). Como e a unica 'aberta', qualquer 'inscreve fulano' sem nome de expedicao cairia nela (Decidir Acao pega a primeira aberta por data_ini).",
+    "fix_hint": "Fechar/concluir automaticamente expedicoes com data_ini < hoje (ou no WF05/WF11) e marcar a #4 como concluida. Precisa de escrita - nao feito nesta auditoria.",
+    "verified": true,
+    "verifier_evidence": "giulia_expedicoes tem exatamente 1 linha: id 4, dono 5511964070127, nome 'Serra do Itapeti', data_ini 2026-08-29, destino/data_fim/vagas/valor NULL, status 'aberta', criado_em 2026-08-29 00:05:54 UTC; giulia_expedicao_inscritos = 0 linhas. Decidir Acao (WF01 live): sem expedicao_match, alvoExp = SELECT id FROM giulia_expedicoes WHERE dono_numero=... AND status='aberta' ORDER BY data_ini NULLS LAST LIMIT 1 -> confirmado que 'inscreve fulano' cairia na #4. Nenhum dos 18 workflows GIULIA live contem 'UPDATE giulia_expedicoes' - nao ha fechamento automatico nem sequer acao manual de fechar/cancelar (so INSERT em criar_expedicao e SELECTs). WF07 so lista expedicoes com data_ini >= hoje, entao a #4 ja nao aparece no briefing (dano limitado ao fluxo de inscricao/listagem)."
+   },
+   {
+    "item": "giulia_erros_log mencionando Jota ou o numero dele (30 dias)",
+    "status": "OK",
+    "evidence": "0 registros com '5511964070127' ou 'jota' em workflow/node/mensagem. Erros globais no periodo: 21 do '18 - GIULIA Email' (ultimo 13/10 11:56 UTC, nao afeta o Jota), 1 do WF07 (27/09, afetou - item acima), 1 do WF02 Scheduler (06/10 13:52 UTC timeout; Jota tem 0 lembretes pendentes, nao afetado)."
+   },
+   {
+    "item": "Mensagem nao-textual de 28/08 21:09 (possivel planilha/print)",
+    "status": "UNKNOWN",
+    "evidence": "memoria id 2665 '[mensagem nao-textual]' respondida com 'Recebi, mas nao consegui ler por aqui. Me manda em texto ou audio.' Nao ha como saber pelo banco o tipo de midia (metadata=null). Se era a planilha de clientes, o import nao ocorreu (nenhuma pessoa criada apos 17/07).",
+    "fix_hint": "Conferir no UAZAPI/n8n qual tipo de midia chegou (imagem? documento xlsx?) e se o WF01 roteia documento para importar_planilha.",
+    "verified": false,
+    "verifier_evidence": "Tipo exato nao verificavel: memoria id 2665 content='[mensagem nao-textual]', metadata NULL (metadata e NULL em 100% das linhas da tabela); UAZAPI POST /message/find do chat do Jota (leitura) devolve so 23 msgs de 06/10 a 13/10 com hasMore=false, sem alcancar 28/08; execucao do WF01 de 28/08 nao retida no n8n; nenhum erro em giulia_erros_log entre 28/08 23:00 e 29/08 02:00 UTC. PORÉM a hipotese 'planilha/print' e REFUTADA pelo codigo do WF01 live: em Validar Mensagem, imagem/PDF/xlsx/csv/txt/outro documento retornam cedo com texto=legenda; no Decidir Acao a memoria recebe '[imagem: <url>] legenda' pra imagem/PDF e content='' pra planilha (ex.: uploads do Jota em 17/07, ids 1179-1223, estao como ''). '[mensagem nao-textual]' so e gerado quando o payload NAO e audio/imagem/documento: sticker (excluido explicitamente de isImage), video, reaction, contato ou localizacao. WF01 roteia xlsx/xls/csv (mime sheet/ms-excel/csv ou extensao) -> Agregar Planilha -> importar_planilha, entao uma planilha teria sido processada e nao recusada. Resposta 2666 bate com a regra do prompt pra '[mensagem nao-textual]'."
+   },
+   {
+    "item": "Artes do Jota em giulia_config (cartao visual, capa de expedicao)",
+    "status": "OK",
+    "evidence": "CARTAO_ANIV_5511964070127 presente (116.380 chars base64 PNG), CAPA_EXP_BG (166.228) e CAPA_EXP_LAYOUT (710) presentes. Envio do cartao visual (acao cartao_parabens) e PDFs nao foram testados end-to-end: nao verificavel sem escrita/envio real."
+   },
+   {
+    "item": "Tarefas e lembretes do Jota",
+    "status": "OK",
+    "evidence": "0 tarefas abertas e 0 lembretes pendentes em giulia_tarefas/giulia_lembretes - nada preso ou vencido."
+   },
+   {
+    "item": "Workflows relevantes ativos no n8n",
+    "status": "OK",
+    "evidence": "WF01 Pipeline (upd 12/09), WF07 Briefing (upd 13/09), WF15 Error Handler (ativo), WF05/06/11/14 ativos. Total 52 workflows / 46 ativos vs gabarito 13/09 51/45 - o +1 e o runner SQL temporario desta auditoria."
+   }
+  ],
+  "notes": "Resumo: o motor de aniversarios do Jota esta rodando com precisao (29/30 briefings, 77/79 cartoes, hoje 13/10 enviado as 07:00:22 BRT para Cassiano Gotti Martins). Os problemas sao de produto/dados, nao de infraestrutura: (1) FAIL - a inscricao em expedicao exige a pessoa na base; em 28/08 o Jota tentou 4x inscrever 'Alexandre Smitch', a IA prometeu cadastrar na hora e falhou de novo; ele disse 'Ja enroscamos' e nunca mais usou (45 dias em modo eco, inscritos = 0 no sistema inteiro). Nada foi corrigido no WF01 desde entao. (2) Base congelada desde 17/07 com 73 nomes duplicados e 52 nomes com datas de nascimento divergentes (Marcelino Toribio Junior recebe ate 5 cartoes em junho) - os 150 registros suspeitos da janela LLM de 16/07 continuam la; o reenvio da planilha nunca veio. (3) 27/09 o UAZAPI caiu no WF07 (no sem retry) e ninguem recebeu briefing; Jota perdeu 2 cartoes. (4) Expedicao 'Serra do Itapeti' (29/08) segue 'aberta' vazia. Prioridade sugerida: corrigir inscrever_expedicao (cadastro on-the-fly) -> Thiago dar um toque pessoal no Jota pedindo a planilha -> limpar duplicatas -> retry no Enviar UAZAPI do WF07 -> auto-fechar expedicoes passadas. Tudo nesta auditoria foi somente leitura (SELECT via runner + GET na API n8n); nenhuma mensagem enviada, nada escrito."
+ },
+ {
+  "area": "email",
+  "checks": [
+   {
+    "item": "WF18 ativo e configurado (GET /api/v1/workflows/NNUd29aBLloX72to)",
+    "status": "OK",
+    "evidence": "'18 - GIULIA Email' active=true, 19 nos (nenhum disabled), versionId 8ba9b76e..., updatedAt 2026-09-13T19:17:04Z (mesmo dia do gabarito), settings: errorWorkflow=ltVUUCOCDYKMmtnT (WF15), saveDataSuccessExecution=all, callerPolicy=workflowsFromSameOwner. Credenciais: IMAP 'Email Thiago IMAP', SMTP 'Email Thiago SMTP' (fromEmail 'Thiago Nicezio <contato@thiagonicezio.com>'), Postgres 'PostgreSQL Julian'. Webhook POST giulia-email presente. giulia_config GIULIA_EMAIL_SENHA definida (13 chars)."
+   },
+   {
+    "item": "Live == repo (workflows/18-GIULIA-Email.json) == snapshot 13/09",
+    "status": "OK",
+    "evidence": "19 nos no repo e no live, 0 nos a mais/menos, 0 diferencas de parametros (ignorando placeholders __GIULIA_*__/uuids), connections identicas. Snapshot 13/09: nodes=19, active=true, saveSuccess=all, errorWorkflow=ltVUUCOCDYKMmtnT. Nada mudou no WF18 desde a ultima auditoria."
+   },
+   {
+    "item": "No 'Email Trigger IMAP': downloadAttachments=true",
+    "status": "OK",
+    "evidence": "parameters: mailbox=INBOX, postProcessAction=read, downloadAttachments=true, options.forceReconnect=60, allowUnauthorizedCerts=false."
+   },
+   {
+    "item": "No 'Preparar Email Recebido': loop por lote ('for (let idx')",
+    "status": "OK",
+    "evidence": "L4 'for (let idx = 0; idx < items.length; idx++)', L55 'await this.helpers.getBinaryDataBuffer(idx, k)', L61 descarta binario < 20 bytes, L44 LIM_MB=15, L40 regra 36h (notificar=false), L79 'ON CONFLICT (message_id) ... DO NOTHING', L82 push com pairedItem {item: idx}. Mode=runOnceForAllItems, sem items[0]/.first()."
+   },
+   {
+    "item": "No 'Preparar Anexos': 'RETURNING email_id'",
+    "status": "OK",
+    "evidence": "L12: INSERT INTO giulia_email_anexos (...) VALUES ... RETURNING email_id; (comentario L10 explica o motivo). Mode=runOnceForEachItem. Sem anexo devolve 'SELECT 1;' (L8). Execucao 769070 confirma: Gravar Anexos items_out=1 mesmo sem anexo e o item seguiu pro Notificar?."
+   },
+   {
+    "item": "esc() com tratamento de '$'+digito (string \"' || '\") nos Code nodes",
+    "status": "OK",
+    "evidence": "Mesma linha em Preparar Email Recebido (L8), Preparar Anexos (L7), Pos Notificacao (L6) e Finalizar Envio (L5): .replace(/'/g, \"''\").replace(/\\$(?=\\d)/g, \"' || '$$' || '\"). WF01 live (Tm1Ec80tegOqWS4N): 'Montar SQL Memoria' e 'Memoria Anexo' tambem tem \"' || '\" + '$$'. 'Montar Envio' nao monta SQL (nao precisa)."
+   },
+   {
+    "item": "Recebidos: giulia_emails ultimos 30 dias",
+    "status": "OK",
+    "evidence": "110 emails em 30d (193 no total desde 07/08), distribuidos em 25 dias distintos (pico 13 em 08/10 SP; min 1). notificado=true: 110/110 (0 false). Duplicata de message_id: 0. Top remetentes: nubank 19, avianca notification 13, roughcountry 8+6, althacargo 6. Os 6 notificado=false de todos os tempos sao anteriores a 30d (regra das 36h/recuperacao de 04/09)."
+   },
+   {
+    "item": "Ultimo e-mail recebido (sinal de vida do IMAP)",
+    "status": "OK",
+    "evidence": "id 261, de todomundo@nubank.com.br (Nubank), assunto 'Pagamento da conta TELEFONICA BRASIL S.A.', recebido_em 2026-10-13 09:57:18 UTC (06:57 BRT) = 0 dias / ~3.4h antes da checagem. Memoria 3351 (📧 Email novo...) gravada 09:57:19 e execucao n8n 769070 success 09:57:18-19 batem. Maior gap de trafego em 30d: 46.3h (10/10 13:12 -> 12/10 11:30 UTC), compativel com fim de semana."
+   },
+   {
+    "item": "Execucao recente ponta a ponta (exec 769070, includeData)",
+    "status": "OK",
+    "evidence": "status=success, lastNodeExecuted='Registrar Notificacao'. Caminho: Email Trigger IMAP(1) -> Preparar Email Recebido(1, notificar=true) -> Salvar Email(1) -> Preparar Anexos(1) -> Gravar Anexos(1) -> Notificar?(true=1,false=0) -> Avisar Thiago Email (UAZAPI /send/text respondeu messageid 3EB052DF0E355ADB36BFFE, status Pending, 1018ms) -> Pos Notificacao -> Registrar Notificacao. Total ~1.1s."
+   },
+   {
+    "item": "Anexos capturados: giulia_email_anexos ultimos 30 dias",
+    "status": "OK",
+    "evidence": "30 anexos (ids 26-56) de 15 emails, todos application/pdf, 14.315 B a 490.648 B (nenhum acima do limite de 15 MB), b64_len coerente com tamanho (~1.33x). Ultimo: 2026-10-09 20:19 UTC, email_id 253 (C6 'C6 Auto: contratacao concluida': attachment_0.pdf 272.356 B + BOLETO_AU0004221285.pdf 14.315 B). Exemplos: email 177 Somatec 'HONORARIOS 09/2026' 6 PDFs; email 185 Somatec fiscal 4 PDFs; email 168 GOL 2 PDFs. Orfaos (sem giulia_emails): 0. Total historico 52 anexos / 17,5 MB brutos; tabela ocupa 23 MB."
+   },
+   {
+    "item": "Enviados: giulia_email_pendentes por status (30 dias)",
+    "status": "OK",
+    "evidence": "30d: enviado=1 (id 40, 2026-09-21 16:41 UTC, para customersupport@roughcountry.com, 'Re: [Zowie] - ticket', resolvido_em 16:41:44 = 21s apos criar). Memoria '📤 Email enviado' em 21/09 16:41:44 confirma. Historico total: enviado=33, cancelado=3, pendente=0. Nenhum outro status estranho."
+   },
+   {
+    "item": "Pendentes antigos (status='pendente' e criado_em < now()-7d)",
+    "status": "OK",
+    "evidence": "0 linhas. Nao ha pendente de envio orfao."
+   },
+   {
+    "item": "Caminho SMTP (envio) funcionando hoje",
+    "status": "UNKNOWN",
+    "evidence": "Ultimo envio real com sucesso foi em 21/09 (22 dias). Nenhum erro de SMTP no giulia_erros_log nem execucao com erro no n8n, mas tambem nenhum envio desde entao. Verificar exige um envio real (confirmar_email -> webhook giulia-email -> SMTP), que e escrita/mensagem real — nao verificavel nesta auditoria somente leitura.",
+    "fix_hint": "Quando for oportuno, Thiago manda um email de teste pra ele mesmo ('manda um email de teste pra contato@...' -> 'confirma') e confere o '📤 Email enviado' + o retorno pelo IMAP.",
+    "verified": false,
+    "verifier_evidence": "Fatos do auditor corroborados, mas o estado atual do SMTP nao e verificavel sem envio real. Evidencia independente: giulia_email_pendentes tem 33 'enviado' + 3 'cancelado'; ultimo 'enviado' = id 40 (Re: [Zowie] - ticket -> customersupport@roughcountry.com), criado 2026-09-21 16:41:23 UTC, resolvido 16:41:44 UTC (22 dias). giulia_memoria id 3051 '📤 Email enviado ✅' em 21/09 16:41:44 UTC e a RESPOSTA do destinatario entrou pelo IMAP as 20:02:38 UTC do mesmo dia (giulia_emails id 173) -> SMTP entregou de fato em 21/09. Desde entao 0 pendentes criados e 0 mensagens de usuario contendo 'mail' apos 21/09 17:00 -> ninguem tentou enviar. WF18 ao vivo (updatedAt 2026-09-13, ou seja, a MESMA versao que enviou em 21/09): caminho Webhook Email (POST giulia-email) -> Preparar Envio Email -> Carregar Pendente Email -> Montar Envio -> Tem Envio? -> Enviar Email SMTP (emailSend v2.1, credencial 'Email Thiago SMTP', retryOnFail=true, from contato@thiagonicezio.com) -> Finalizar Envio -> Gravar Envio -> Confirmar Pro Thiago, intacto e ativo. Todos os 41 erros do WF18 no giulia_erros_log sao de trigger (node '?'), nenhum e de execucao/SMTP. CORRECAO ao auditor: 'nenhuma execucao com erro no n8n' so vale para 48h — n8n roda com EXECUTIONS_DATA_PRUNE=true, EXECUTIONS_DATA_MAX_AGE=48 (execucao mais antiga guardada: 2026-10-11 14:00 UTC), entao o historico do n8n nao cobre os 22 dias. Teste real exige confirmar_email -> webhook -> SMTP (escrita/mensagem real) — nao verificavel nesta auditoria."
+   },
+   {
+    "item": "Execucoes com erro do WF18 no n8n (status=error, limit 10)",
+    "status": "OK",
+    "evidence": "0 execucoes com erro. Historico retido e curto: so 5 execucoes (todas success, modo trigger) de 2026-10-12 11:30 UTC a 2026-10-13 09:57 UTC, ou seja, so ~26h de retencao — erros de execucao mais antigos que isso nao seriam mais inspecionaveis. Mas os 3 erros de hoje (11:52-11:56 UTC) caem dentro da janela retida e NAO aparecem como execucao, logo nao foram falhas de execucao."
+   },
+   {
+    "item": "giulia_erros_log WF18 ultimos 30 dias",
+    "status": "WARN",
+    "evidence": "21 registros, todos workflow='18 - GIULIA Email', node='?', mensagem='erro desconhecido' (unico tipo de erro do WF18; total historico 41). Primeiro 2026-09-17 07:49 UTC, ultimo 2026-10-13 11:56:04 UTC. Por dia (UTC): 17/09 2, 23/09 2, 24/09 3, 25/09 2, 28/09 2, 29/09 4, 30/09 1, 12/10 2, 13/10 3. Varios chegam em pares com ms de diferenca (ids 38/39, 40/41, 42/43, 48/49, 50/51). Cruzamento: 0 emails em +-10 min de qualquer erro e nenhuma execucao com erro no n8n -> sao erros de TRIGGER (conexao IMAP caindo/reconectando; forceReconnect=60min), nao emails perdidos. Apos cada dia de erro o IMAP voltou a entregar (ex.: erros 12/10 15:57/16:03 -> emails 13/10 08:52 e 09:57). Causa exata: o WF15 'Montar Alerta' le so j.execution.* (L6-L9); erro de trigger vem em j.trigger.error e cai em '?'/'erro desconhecido', entao a mensagem real nao foi gravada. WF15 tem saveDataSuccessExecution=none (0 execucoes salvas) -> impossivel ler o payload original.",
+    "fix_hint": "No WF15 'Montar Alerta', ler tambem j.trigger: const msg = (j.execution&&j.execution.error&&j.execution.error.message) || (j.trigger&&j.trigger.error&&j.trigger.error.message) || 'erro desconhecido'; e node = ... || (j.trigger ? 'trigger('+(j.trigger.mode||'')+')' : '?'). Deploy via scripts/deploy-workflows.sh. Depois disso o proximo erro mostra a causa (ex.: 'read ECONNRESET' / 'Connection closed' do imap.hostinger.com).",
+    "verified": true,
+    "verifier_evidence": "Reconsultado: 21 registros em 30d (ids 38-46, 48-54, 56-60), 41 no historico (ago 9, set 27, out 5), TODOS workflow='18 - GIULIA Email', node='?', mensagem='erro desconhecido'. Primeiro 2026-09-17 07:49:11 UTC, ultimo 2026-10-13 11:56:04 UTC. Por dia (UTC) bate exatamente: 17/09 2, 23/09 2, 24/09 3, 25/09 2, 28/09 2, 29/09 4, 30/09 1, 12/10 2, 13/10 3. Pares com <20 ms: 38/39 (15 ms), 40/41 (1 ms), 42/43 (9 ms), 48/49 (2 ms), 50/51 (5 ms) — e tambem 5/6, 8/9, 10/11 em agosto. Cruzamento emails x erros: 0 emails em +-10 min dentro dos 30d (correto); no historico todo ha 3 casos em 09/09 (erros 22-24 13:52-14:02 UTC vs email id 148 as 14:01:42), ou seja, email entrou ENTRE os erros — reforça que sao quedas de trigger, nao emails perdidos. Recuperacao confirmada em todo dia de erro: 17/09 07:49 -> email 09:05; 23/09 08:43 -> 09:05; 24/09 01:14/09:06 -> 13:03; 25/09 05:40 -> 09:23; 28/09 04:22 -> 10:30; 29/09 08:17 -> 19:42; 30/09 09:32 -> 11:03; 12/10 16:03 -> 13/10 08:52. Causa confirmada NO CODIGO: WF15 'Montar Alerta' linhas 6-10 leem so j.execution.id/lastNodeExecuted/error.message, nada de j.trigger; no n8n 2.8.3 (imagem n8nio/n8n:2.8.3) execute-error-workflow.ts monta {trigger:{error,mode},workflow} quando nao ha executionId (falha de trigger) -> vira '?'/'erro desconhecido'. Os pares tem explicacao no fonte 2.8.3 de EmailReadImapV2.node.ts: numa queda de conexao disparam conn.on('error') -> emitError(error) E conn.on('close') -> emitError('Imap connection closed unexpectedly'), duas chamadas do Error Trigger com ms de diferenca; active-workflow-manager.ts emitError remove o workflow dos ativos e chama addQueuedWorkflowActivation (reativacao automatica) = a recuperacao observada. WF15 ao vivo: saveDataSuccessExecution=none, saveDataErrorExecution=all, 0 execucoes guardadas. CORRECAO: 'nenhuma execucao com erro no n8n' so cobre 48h (EXECUTIONS_DATA_MAX_AGE=48); dentro da janela, os 5 erros recentes (12/10 15:57, 16:03; 13/10 11:52, 11:54, 11:56) nao tem execucao de erro no WF18 (0 erro, 5 sucesso), consistente com erro de trigger; para setembro a prova e so o conteudo do erros_log. Mensagem real nao recuperavel por leitura: endpoints de log do Easypanel (13 nomes tRPC testados) devolvem 404. Fix hint do auditor e coerente com o payload do n8n."
+   },
+   {
+    "item": "IMAP vivo DEPOIS dos 3 erros de hoje (11:52-11:56 UTC)",
+    "status": "UNKNOWN",
+    "evidence": "Ultimo email entrou 09:57 UTC, ANTES dos erros de hoje; ate ~13:25 UTC nenhum email novo chegou (1,5h sem trafego e normal pra esta caixa: media ~3,7 emails/dia). A API publica do n8n nao expoe o estado do trigger ativo. Nos dias anteriores o padrao foi sempre de recuperacao, mas provar hoje exige mandar um email pra caixa (escrita) — nao verificavel nesta auditoria.",
+    "fix_hint": "Thiago manda qualquer email pra contato@thiagonicezio.com e confere se o '📧 Email novo' chega no WhatsApp em ate ~1 min. Se nao chegar: desativar/reativar o WF18 no n8n (recria a conexao IMAP).",
+    "verified": false,
+    "verifier_evidence": "Rechecado as 14:09:45 UTC (11:09 BRT): ultimo email continua sendo id 261 (Nubank, 2026-10-13 09:57:18 UTC), ultima execucao do WF18 e a 769070 (09:57:18, sucesso); nenhum email nem execucao apos os erros de 11:52:49, 11:54:42 e 11:56:04 UTC -> 4h12m de silencio. Isso NAO e anormal pra esta caixa: em 30d, 39 dos 110 intervalos entre emails passam de 4h e 33 passam de 6h (maior: 46,3h). Hoje os 3 erros sao isolados (~2 min entre eles), padrao diferente dos pares de ms de setembro, mas erros isolados ja ocorreram (24/09 09:06, 29/09 08:08 e 08:17, 30/09 09:32, 12/10 15:57 e 16:03) e em todos os casos o IMAP voltou a entregar. O n8n 2.8.3 reativa o trigger sozinho (emitError -> activeWorkflows.remove + addQueuedWorkflowActivation), mas o estado vivo do trigger nao e exposto: GET /workflows/NNUd29aBLloX72to mostra active=true (flag do banco, nao a conexao), nao ha endpoint publico de activation errors e os logs do container nao sao acessiveis pela API do Easypanel (404). Provar hoje exige mandar um email pra caixa (escrita) — nao verificavel nesta auditoria. Fix hint (desativar/reativar o WF18 se nao chegar) e adequado."
+   },
+   {
+    "item": "Alertas de erro do WF18 enviados ao Thiago (ruido)",
+    "status": "WARN",
+    "evidence": "giulia_mensagens_agendadas: 16 alertas status='enviado' em 30d, todos com o texto '⚠️ 1 erro(s) no 18 - GIULIA Email na ultima meia hora. Ultimo (node ?): erro desconhecido. Exec ?...' — sem informacao util pra agir. 5 vezes foram DOIS alertas identicos no mesmo instante (ids 58/59, 60/61, 62/63, 67/68, 69/70): o dedup de 30 min do WF15 ('WHERE NOT EXISTS ... criado_em > NOW()-30min') nao segura quando duas execucoes do Error Handler rodam em paralelo (race), e o contador mostra '1 erro(s)' em vez de 2.",
+    "fix_hint": "Alem de incluir j.trigger.error.message (item acima), tratar o par de erros de trigger: opcao simples e um advisory lock no SQL do 'Salvar Alerta' (SELECT pg_advisory_xact_lock(hashtext(workflow))) antes do INSERT condicional, ou agrupar por workflow+minuto.",
+    "verified": true,
+    "verifier_evidence": "Reconsultado giulia_mensagens_agendadas (30d, conteudo LIKE '%erro(s)%'): 18 linhas status='enviado', das quais 16 do WF18 com texto IDENTICO '⚠️ 1 erro(s) no 18 - GIULIA Email na ultima meia hora. Ultimo (node ?): erro desconhecido. Exec ?. Se seguir aparecendo, olha o servidor.' (as outras 2: WF07 em 27/09 e WF02 em 06/10, essas com node e mensagem uteis). Pares no mesmo instante (<2 s, mesmo texto): 58/59 (17/09 07:49:11), 60/61 (23/09 08:43:18), 62/63 (24/09 01:14:02), 67/68 (28/09 04:22:39), 69/70 (29/09 07:29:21) — 5 pares, confirmado. O criado_em de cada alerta e identico ao do erro correspondente no erros_log (ex.: 07:49:11.014047 = erros_log 38 e alerta 58) -> mesma transacao, duas execucoes concorrentes do WF15. Race confirmada no codigo do 'Montar Alerta': linhas 20-21 fazem 'WHERE NOT EXISTS (SELECT 1 ... criado_em > NOW() - INTERVAL 30 minutes)' sem lock; a origem da concorrencia e o IMAP node do n8n 2.8.3 emitir 2 erros por queda ('error' + 'close'); o contador da linha 17 so enxerga o proprio INSERT em giulia_erros_log -> '1 erro(s)' nos dois. Entrega: WF02 'Claim Msgs Agendadas Devidas' (FOR UPDATE SKIP LOCKED, LIMIT 20) -> 'Preparar Msgs' gera um send_text POR LINHA, sem dedup de conteudo -> 'Enviar Msg UAZAPI' -> Wait 30s -> UPDATE status='enviado'; os dois itens de cada par tem enviado_em identico (ex.: 07:50:38.930237) = mesmo tick, logo o sistema registra 2 mensagens iguais pro Thiago por par. Ressalva: essas mensagens nao aparecem em giulia_memoria (0 linhas com 'erro(s) no 18'), entao a entrega real no WhatsApp nao foi verificada de forma independente (nenhuma consulta a UAZAPI feita); a evidencia e o status='enviado' + enviado_em do proprio sistema. Fix hint (pg_advisory_xact_lock(hashtext(workflow)) antes dos INSERTs, ou agrupar por workflow+minuto) e coerente: o SQL roda numa unica query multi-statement (transacao implicita), entao o lock serializa as duas execucoes e a segunda ve a linha da primeira no NOT EXISTS."
+   },
+   {
+    "item": "Lado WF01 do modulo de email (acoes e gate)",
+    "status": "OK",
+    "evidence": "WF01 live (updatedAt 2026-09-12): acoes enviar_email (4 ocorrencias), confirmar_email (4), cancelar_email (3), listar_emails (4), enviar_anexo_email (3) presentes no prompt/roteamento; chamada ao webhook giulia-email e UAZAPI /send/media presentes; 'Montar SQL Memoria' e 'Memoria Anexo' com o esc() corrigido. Gate de 3 camadas (so 5511910441709) nao foi re-testado ao vivo (exigiria mandar mensagem como outro dono) — ultima validacao documentada 23/08."
+   },
+   {
+    "item": "Mensagens reais / escrita durante a auditoria",
+    "status": "OK",
+    "evidence": "Nenhum POST em uazapi.com, nenhum webhook de producao disparado, nenhum UPDATE/INSERT/DELETE, nenhum workflow criado/alterado. Somente GET na API do n8n e SELECT via runner temporario (giulia_memoria/giulia_erros_log/giulia_mensagens_agendadas consultadas apenas em leitura)."
+   }
+  ],
+  "notes": "Resumo: o modulo de e-mail esta funcionando. Recepcao IMAP -> Postgres -> WhatsApp com 110/110 emails avisados em 30 dias, 30 anexos PDF guardados (todos < 15 MB, 0 orfaos), 0 duplicatas, ultimo email hoje 06:57 BRT e execucao completa ate 'Registrar Notificacao'. Envio SMTP: 1 email em 30d (21/09), 0 pendentes antigos; sem envios desde entao, entao o SMTP de hoje nao esta provado. O WF18 ao vivo e identico ao repo e ao gabarito de 13/09 e carrega todos os fixes documentados (lote por item, getBinaryDataBuffer(idx,k), RETURNING email_id, esc() com ' || '$' || '). Unico ponto de atencao: 21 'erro desconhecido' (node ?) do WF18 em 30d, que NAO sao emails perdidos (0 execucoes com erro no n8n, 0 emails sumidos ao redor, IMAP sempre voltou) e sim quedas da conexao IMAP (erros de trigger) que o WF15 nao sabe descrever porque so le j.execution — e que geraram 16 alertas vazios pro Thiago, 5 deles duplicados por race no dedup. Correcao sugerida e pequena e fica no WF15 (ler j.trigger.error.message + lock no dedup); nao foi aplicada por ser auditoria somente leitura. Dois itens ficaram UNKNOWN por exigirem escrita: SMTP funcionando hoje (precisa de envio real) e IMAP vivo apos os erros de 11:52-11:56 UTC de hoje (precisa de email de teste na caixa). Token UAZAPI aparece hardcoded no no 'Avisar Thiago Email' do live (esperado: deploy injeta; repo tem placeholder) — nao reproduzido aqui."
+ },
+ {
+  "area": "erros",
+  "checks": [
+   {
+    "item": "giulia_erros_log - volume 30 dias e separacao pre/pos-migracao",
+    "status": "OK",
+    "evidence": "23 linhas entre 2026-09-17 07:49 UTC e 2026-10-13 11:56 UTC (janela de 30d comeca 2026-09-13 ~13:30 UTC). TODAS pos-migracao (>= 2026-09-13 19:20): 0 linhas pre-migracao dentro da janela. Por workflow: '18 - GIULIA Email' 21, 'GIULIA - 02 Scheduler Lembretes' 1 (2026-10-06 13:52 UTC), 'GIULIA - 07 Briefing Matinal' 1 (2026-09-27 10:00 UTC). Por semana (segunda): 14/09=2 (WF18), 21/09=8 (WF18 7 + WF07 1), 28/09=7 (WF18), 05/10=1 (WF02), 12/10=5 (WF18). Contexto pre-migracao (fora da janela, 34 linhas desde 07/08): rajada 2026-09-12 10:04 UTC com 'Task request timed out after 60 seconds' em WF02/03/07/08/11/13 e 'Timeout waiting for lock SqliteWriteConnectionMutex' em WF02 ate 2026-09-13 10:57 UTC - nenhum desses padroes voltou apos a migracao, exceto 1 timeout de task runner em 06/10.",
+    "fix_hint": ""
+   },
+   {
+    "item": "WF18 Email - 21 erros 'erro desconhecido' (node '?', Exec '?')",
+    "status": "WARN",
+    "evidence": "Mensagem mais frequente: 'erro desconhecido' (21/21), node '?', ultima 2026-10-13 11:56:04 UTC (hoje, 3 ocorrencias 11:52/11:54/11:56). 5 pares com timestamp identico (ex.: 09-17 07:49:11.014 e .028) => 16 eventos reais. Causa: WF18 e disparado por 'Email Trigger IMAP' (n8n-nodes-base.emailReadImap, forceReconnect=60); quando a conexao IMAP cai, o n8n chama o error workflow com payload {trigger:{error}, workflow} SEM 'execution' - o codigo de WF15 ('Montar Alerta') so le j.execution.*, por isso loga '?'/'erro desconhecido'/'Exec ?'. Nao ha nenhuma execucao de WF18 com status error no n8n (5 execucoes retidas, todas success, 12/10 11:30 -> 13/10 09:57 UTC). Impacto ao usuario: nenhum detectado - giulia_emails recebeu 110 emails em 26 dias distintos do periodo, e apos CADA erro o proximo email foi ingerido no mesmo dia (ex.: erro 09-17 07:49 -> email 09:05; erro 10-12 16:03 -> email 10-13 08:52). Mesmo padrao ja existia antes da migracao (20 linhas identicas ate 09-09). Classificacao: BAIXO (ruido de reconexao IMAP), mas gera alertas inuteis pro Thiago (ver item de alertas). Nao da pra provar que nenhum email foi perdido durante a janela de desconexao sem olhar a caixa postal (UNKNOWN nesse ponto).",
+    "fix_hint": "Em WF15 'Montar Alerta', ler tambem $json.trigger?.error?.message / node quando j.execution nao existir, e marcar como 'reconexao IMAP' (opcionalmente suprimir o alerta ao Thiago para esse caso). Exige escrita/deploy - nao feito.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO com consultas proprias. giulia_erros_log: 21 linhas de '18 - GIULIA Email' entre 2026-09-17 07:49:11 e 2026-10-13 11:56:04 UTC (ids 38-46, 48-54, 56-60), todas node='?' e mensagem='erro desconhecido'; 20 linhas identicas antes da janela (09/08 -> 09/09), total 41 all-time, 1 unica mensagem distinta. Correcao de redacao: os 5 pares NAO tem timestamp identico, diferem 1.4-14.8 ms (ex.: 38=.014047 vs 39=.028890; 40/41 1.4 ms; 42/43 8.5 ms; 48/49 1.8 ms; 50/51 4.7 ms) -> 16 eventos reais, como o auditor concluiu. Mecanismo confirmado: WF15 'Montar Alerta' (codigo lido via API) so le j.execution.id/lastNodeExecuted/error.message e cai em '?'/'erro desconhecido'; WF18 'Email Trigger IMAP' = n8n-nodes-base.emailReadImap com options.forceReconnect=60, postProcessAction=read; n8n (WorkflowExecuteAdditionalData.executeErrorWorkflow) envia {trigger:{error,mode},workflow} sem 'execution' quando o erro vem do trigger. n8n API: WF18 tem 0 execucoes com status error e 5 success (745060 12/10 11:30 -> 769070 13/10 09:57 UTC), apesar de saveDataSuccessExecution=all - coerente com erro de trigger (nao gera execucao). WF18 nao foi redeployado desde 2026-09-13 19:17:04 UTC (updatedAt) -> os 3 erros de hoje (11:52:49, 11:54:42, 11:56:04) nao sao efeito de deploy; os horarios dos 16 eventos tambem nao batem com o reconnect forcado de 60 min (ativacao 19:17 -> so 09-29 08:17 cai no :17), ou seja, sao quedas inesperadas da conexao IMAP, nao o reconnect programado. Impacto: giulia_emails = 110 emails em 26 dias distintos (09-14 13:22 -> 10-13 09:57 UTC), identico ao auditor; apos cada erro houve email ingerido no mesmo dia (09-17 07:49 -> 09:05; 09-23 08:43 -> 09:05; 09-24 01:14 -> 13:03; 09-25 05:24 -> 09:23; 09-28 04:22 -> 10:30; 09-29 07:29 -> 19:42; 09-30 09:32 -> 11:03), EXCETO 10-12 15:57/16:03 -> proximo email so 10-13 08:52 (dia seguinte) - o proprio auditor citou esse caso, mas a frase 'no mesmo dia' nao vale para ele. Ponto em aberto: apos os 3 erros de hoje nao entrou nenhum email (ultimo 09:57 UTC, agora ~14:15 UTC) e a API publica do n8n nao expoe activationErrors -> saude atual do trigger IMAP = UNKNOWN; perda de email na janela de desconexao continua nao verificavel sem olhar a caixa (IMAP com postProcessAction=read tende a recuperar UNSEEN na reconexao). Classificacao BAIXO/ruido mantida."
+   },
+   {
+    "item": "WF07 Briefing Matinal - erro 2026-09-27 10:00:37 UTC em 'Enviar UAZAPI'",
+    "status": "FAIL",
+    "evidence": "Mensagem: 'The connection was aborted, perhaps the server is offline' (UAZAPI fora do ar as 07:00 BRT). Exec 355280 ja foi podada do n8n (retencao 48h). No WF07 o no 'Enviar UAZAPI' nao tem retryOnFail nem onError, e 'Salvar Memoria Briefing' vem DEPOIS do envio: a execucao abortou inteira. Prova de impacto: giulia_memoria tem registros as ~10:00 UTC em TODOS os outros 29 dias da janela (2 donos ate 30/09, 3 a partir de 01/10), e 2026-09-27 e o UNICO dia sem nenhum registro de briefing (nem Thiago 5511910441709 nem Jota 5511964070127). Classificacao: CRITICO (briefing nao entregue a 2 donos), ocorrencia unica, sem recorrencia em 16 dias (WF07 success em 12/10 10:00 e 13/10 10:00 UTC, execs 769116 etc.).",
+    "fix_hint": "Ativar retryOnFail (ex.: 3 tentativas, 30-60s) no no 'Enviar UAZAPI' do WF07 (e nos equivalentes de WF02/WF06/WF11) para tolerar quedas curtas da UAZAPI. Exige escrita/deploy - nao feito.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO. giulia_erros_log id 47: 'GIULIA - 07 Briefing Matinal' / 'Enviar UAZAPI' / 'The connection was aborted, perhaps the server is offline' em 2026-09-27 10:00:37.965 UTC (07:00 BRT). WF07 lido via API (updatedAt 2026-09-13 19:17 UTC, versao atual): 'Enviar UAZAPI' (httpRequest, timeout 30000 ms) SEM retryOnFail/onError/continueOnFail; cadeia Cron -> Coletar Dados -> Formatar Briefing -> Enviar UAZAPI -> Salvar Memoria Briefing (este sim com continueOnFail) -> falha no envio aborta a execucao inteira antes de salvar memoria. Prova de impacto independente: giulia_memoria tem exatamente 1 linha assistant 'Bom dia! Resumo de ...' entre 09:59-10:02 UTC para Thiago e para Jota em TODOS os dias de 09-13 a 10-13 (Andre a partir de 10-01), e 2026-09-27 e o UNICO dia sem nenhuma (Thiago nesse dia so tem fechamento 00:00, email 02:10 e email 14:06; Jota zero linhas no dia). Execucao 355280 nao existe mais (retencao 48h: execucao mais antiga retida = 2026-10-11 14:00 UTC). Refinamento da causa: 'The connection was aborted, perhaps the server is offline' e o texto que o n8n usa para ECONNABORTED (timeout da requisicao, aqui 30 s); erro aos 37 s da execucao = Coletar Dados (~5-11 s nas execucoes normais) + 30 s de timeout no 1o envio. Nas execucoes retidas 743435 (12/10) e 769116 (13/10) 'Enviar UAZAPI' leva 11-15 s para 4 itens e termina success. O alerta do WF15 (giulia_mensagens_agendadas id 66, criado 10:00:37) foi ENVIADO via UAZAPI pelo WF02 as 10:01:38 UTC -> a UAZAPI respondia 61 s depois; indisponibilidade curta, retry de 30-60 s teria resolvido. Sem recorrencia: WF07 success em 12/10 e 13/10 10:00 UTC e briefing em memoria todos os dias ate 13/10. CRITICO mantido (briefing de 2 donos nao entregue). Nota ao fix_hint: WF02 ('Enviar Lembrete/Msg/Notificacao UAZAPI') e WF11 ('Enviar Texto/Grafico') ja tem continueOnFail (nao abortam, mas tambem nao tem retry); WF06 'Enviar UAZAPI' esta como o WF07 (sem nada)."
+   },
+   {
+    "item": "WF02 Scheduler Lembretes - erro 2026-10-06 13:52:03 UTC em 'Preparar Notificacoes'",
+    "status": "OK",
+    "evidence": "Mensagem: 'Task request timed out after 60 seconds' (timeout do task runner do n8n em no Code), Exec 592391 ja podada. Sem impacto: nenhum lembrete devido naquele minuto (lembrete 287 do Andre, 09:30 NY, foi enviado 13:30:16 UTC, 22 min antes do erro); design de claim com status 'processando' e re-claim apos 15 min garante reentrega. Saude geral: 60/60 lembretes do Andre nos ultimos 30d enviados com atraso medio 0.3 min (max 27s); lembrete 302 de hoje enviado 13:30:21 UTC; 0 lembretes/mensagens presos em 'processando'; apenas 2 'pendente' (futuros: 303 e 304). Pre-migracao o mesmo no falhava com lock do SQLite (3x) - nao voltou. Classificacao: BAIXO (transitorio, 1 ocorrencia em 30d).",
+    "fix_hint": ""
+   },
+   {
+    "item": "n8n /executions?status=error - agrupamento por workflow",
+    "status": "WARN",
+    "evidence": "Apenas 4 execucoes com erro existem (1 pagina, sem nextCursor), todas entre 2026-10-12 19:00 e 2026-10-13 12:11 UTC. Por workflow: '04 - Pipeline Principal Julian' (Xkz4b53YdWhlX8uN) 3x, '25 - ML Perguntas Lojao Aquatico' (t5TaS1awbkp5fLsZ) 1x. ZERO execucoes com erro de workflows GIULIA. Motivo da amostra curta: Easypanel env EXECUTIONS_DATA_MAX_AGE=48 (horas), EXECUTIONS_DATA_PRUNE=true, PRUNE_MAX_COUNT=3000 - historico do n8n cobre so ~48h (execucao mais antiga vista: 2026-10-11 20:00 UTC). Atencao: o runner SQL desta auditoria gerou 100 execucoes em 10 min (pagina 1 inteira era 'GIULIA - TEMP SQL Runner ck2'), o que consome o teto de 3000 e pode expulsar execucoes de outros workflows antes das 48h. Historico de 30 dias de erros so existe em giulia_erros_log (e so para os 17 workflows GIULIA que apontam errorWorkflow=WF15).",
+    "fix_hint": "Para rastrear 30 dias no n8n, subir EXECUTIONS_DATA_MAX_AGE (ex.: 336h) e MAX_COUNT, ou manter o giulia_erros_log como fonte. Apagar o runner temporario ao fim da auditoria (regra 4).",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO, com numeros atualizados (consulta as ~14:11 UTC). GET /executions?status=error&limit=100: 5 execucoes (1 pagina, nextCursor null) - '04 - Pipeline Principal Julian' (Xkz4b53YdWhlX8uN) x4 (771458 12:04, 771585 12:10, 771604 12:11 e 773513 13:35 UTC de 13/10 - esta ultima surgiu depois da passada do auditor) e '25 - ML Perguntas Lojao Aquatico' (t5TaS1awbkp5fLsZ) x1 (753054, 12/10 19:00 UTC). ZERO execucoes com erro de workflows GIULIA. Paginacao completa de /executions (limit=250, 4 paginas): 873 execucoes retidas, mais antiga 722089 em 2026-10-11 14:00:00 UTC (= 48h11m atras), mais nova 774507 14:11 UTC -> retencao ~48h confirmada. Easypanel inspectService whats/n8n (env lido, valores sensiveis nao impressos): EXECUTIONS_DATA_PRUNE=true, EXECUTIONS_DATA_MAX_AGE=48, EXECUTIONS_DATA_PRUNE_MAX_COUNT=3000, DB_TYPE=postgresdb, N8N_RUNNERS_ENABLED=true/internal, comentario '13/09/2026: poda de historico'. Risco do runner e real e maior que o auditor viu: 626 das 873 execucoes retidas (72%) sao do 'GIULIA - TEMP SQL Runner ck2' (primeira 12:48:52, 564 so na hora 13h UTC; inclui as minhas consultas); teto de 3000 ainda nao atingido (873), entao ate agora nenhuma execucao foi expulsa por contagem - mas ao ritmo atual chega em poucas horas. Historico de 30 dias so em giulia_erros_log, e so para os 17 workflows com errorWorkflow=WF15 (lista conferida em /workflows: exatamente 17, todos GIULIA). Nota: a execucao mais antiga que o auditor citou (10-11 20:00) difere da minha (10-11 14:00) - ambas ~48h, sem contradicao relevante."
+   },
+   {
+    "item": "n8n - abrir execucoes dos 3 workflows GIULIA com mais erros (includeData)",
+    "status": "UNKNOWN",
+    "evidence": "Nao verificavel: nao ha nenhuma execucao GIULIA com status error retida no n8n (retencao 48h); as execucoes citadas nos alertas (592391 WF02, 355280 WF07) ja foram podadas. Em substituicao foram abertas as 3 execucoes com erro existentes (nao-GIULIA): 771604 e 771585 (Julian 04, 2026-10-13 12:11/12:10 UTC) lastNodeExecuted='Validar Regras Julian', error.message='\"suporte\" [line 26]' e '\"eu tenho ozonio de voces para meu aquari\" [line 26]', description='cliente enviou nova mensagem durante processamento, abortando resposta obsoleta' (abort proposital por design, nao e falha); 753054 (ML Perguntas Lojao Aquatico, 2026-10-12 19:00 UTC) lastNodeExecuted='Monitor Vendas ML', error.message='Request failed with status code 429' (rate limit da API do Mercado Livre).",
+    "fix_hint": "",
+    "verified": false,
+    "verifier_evidence": "Concordo que o item e NAO VERIFICAVEL: /executions?status=error retorna 0 execucoes GIULIA e /executions?workflowId=ltVUUCOCDYKMmtnT (WF15) retorna 0 (WF15 tem saveDataSuccessExecution=none); execucoes 592391 (WF02) e 355280 (WF07) citadas nos alertas nao existem mais (retencao 48h, mais antiga retida 10-11 14:00 UTC). O substituto do auditor foi reconferido com includeData: 771604 e 771585 (Julian 04) lastNodeExecuted='Validar Regras Julian', error.message='\"suporte\" [line 26]' e '\"eu tenho ozonio de voces para meu aquari\" [line 26]', description 'cliente enviou nova mensagem durante processamento, abortando resposta obsoleta'; 771458 (12:04 UTC) message='58.977.102/0001-41 [line 26]' description='\"cnpj' - parece outro erro, mas o codigo do no (lido via API) mostra que a linha 26 e o unico throw: 'STALE_RESPONSE_ABORT: cliente enviou nova mensagem durante processamento...' + amostra da ultima msg; o catch so re-lanca erros que comecam com STALE_RESPONSE_ABORT -> todas as 4 (inclui 773513 13:35) sao o abort intencional por design. 753054 (ML Perguntas Lojao Aquatico, 12/10 19:00:00 UTC) lastNodeExecuted='Monitor Vendas ML', 'Request failed with status code 429' (AxiosError). Para ter 30 dias de execucoes GIULIA seria preciso subir EXECUTIONS_DATA_MAX_AGE (escrita/restart - nao feito)."
+   },
+   {
+    "item": "Sessao ENG (Julian/Lauren/Chatwoot/ML) gera a maioria dos erros?",
+    "status": "WARN",
+    "evidence": "No n8n: SIM, explicitamente - 4/4 (100%) das execucoes com erro retidas sao de workflows de outros projetos (Julian 04 = 3, ML Perguntas Lojao Aquatico = 1); GIULIA = 0 nas ultimas 48h. Esses workflows NAO apontam para o WF15 (so os 17 GIULIA tem errorWorkflow=ltVUUCOCDYKMmtnT; nenhum outro workflow tem errorWorkflow), logo seus erros nao vao para giulia_erros_log nem geram alerta ao Thiago. No giulia_erros_log: 23/23 sao GIULIA por construcao. Classificacao: Julian 04 = BAIXO (abort intencional 'resposta obsoleta' registrado como error); ML 25 = MODERADO (poller de outro projeto com HTTP 429, 1x).",
+    "fix_hint": "Se quiser visibilidade dos projetos ENG, apontar errorWorkflow deles para um handler proprio (nao o WF15, para nao misturar alertas da Giulia). Exige escrita.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO. No n8n (48h): 5/5 (100%) execucoes com erro sao de outros projetos - Julian 04 x4 (todas STALE_RESPONSE_ABORT intencional, ver item anterior) e ML Perguntas Lojao Aquatico x1 (HTTP 429); GIULIA = 0. /workflows?limit=100 (52 workflows, 46 ativos, sem nextCursor): exatamente 17 workflows tem settings.errorWorkflow=ltVUUCOCDYKMmtnT, todos GIULIA (01,02,03,04,05,06,07,08,09,10,11,12,13,14,16,17,18); Julian 04 tem errorWorkflow=None (lido direto), e nenhum workflow nao-GIULIA aponta para o WF15 -> esses erros nao entram em giulia_erros_log nem geram alerta ao Thiago. giulia_erros_log 30d: 23/23 GIULIA por construcao. Classificacao Julian=BAIXO (design), ML=MODERADO (1x 429) mantida. Observacao fora do escopo deste bloco: o workflow nao-GIULIA '18 - Monitor Atendimento Vendedor' (ZTi7ssCfIXIYlt5N) tem updatedAt 2026-10-13 13:02:41 UTC, ou seja, foi alterado hoje durante a auditoria por alguem/alguma sessao - nao e erro, mas vale conferir quem mexeu (regra de somente leitura)."
+   },
+   {
+    "item": "Alertas tecnicos enviados ao Thiago (giulia_mensagens_agendadas)",
+    "status": "WARN",
+    "evidence": "LIKE '%Alerta tecnico%' literal = 0 linhas (o texto real do WF15 e '⚠️ N erro(s) no <workflow> na ultima meia hora...'). Com esse padrao: 18 mensagens em 30d para 5511910441709, todas status='enviado' (~1 min apos criadas, via WF02), em 13 eventos distintos. 16 delas sao do WF18 com texto inutil 'Ultimo (node ?): erro desconhecido. Exec ?' (ids 58-65, 67-72, 74, 75; ultima 2026-10-13 11:52:49 UTC); 1 do WF07 (id 66, 09-27 10:00) e 1 do WF02 (id 73, 10-06 13:52). Falha de dedup: 5 pares duplicados criados no mesmo milissegundo (58/59, 60/61, 62/63, 67/68, 69/70) - o NOT EXISTS de 30 min nao segura inserts concorrentes, Thiago recebeu 2 alertas identicos 5 vezes. Nota: agendado_para e gravado em horario local (NOW() AT TIME ZONE America/Sao_Paulo), consistente com a convencao do projeto.",
+    "fix_hint": "Corrigir o payload de trigger no WF15 (item WF18) elimina ~89% do ruido; para o duplicado, agrupar com advisory lock ou unique parcial por (workflow, minuto). Exige escrita.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO com 2 correcoes de detalhe. (1) 'LIKE Alerta tecnico = 0' vale so para os 30 dias: all-time ha 14 linhas com '⚠️ Alerta tecnico: erro no ...' (ids 19-34, 17/07 a 07/08/2026, formato antigo do WF15); o formato atual e '⚠️ N erro(s) no <wf> na ultima meia hora. Ultimo (node X): msg. Exec N. Se seguir aparecendo, olha o servidor.' (2) Os 5 pares NAO foram criados 'no mesmo milissegundo': deltas de criado_em = 14.8 ms (58/59), 1.4 ms (60/61), 8.5 ms (62/63), 1.8 ms (67/68), 4.7 ms (69/70) - race real do NOT EXISTS de 30 min entre duas execucoes concorrentes do WF15, conclusao do auditor mantida. Cada par tem enviado_em identico (ex.: 58/59 07:50:38.930237; 60/61 08:44:38.931496), i.e., o WF02 processou os dois no mesmo tick e marcou ambos 'enviado' -> Thiago recebeu 2 alertas iguais 5 vezes (quantidade real de entregas na UAZAPI nao verificavel sem log da UAZAPI). Numeros: 18 alertas em 30d (criado_em >= 09-13 12:50) para 5511910441709, 18/18 status=enviado, enviado_em 37 s a 1m27s apos criado_em; por workflow: '18 - GIULIA Email' 16 (ids 58-65, 67-72, 74, 75; ultimo 2026-10-13 11:52:49 UTC, enviado 11:53:48), 'GIULIA - 07 Briefing Matinal' 1 (id 66, 09-27 10:00:37), 'GIULIA - 02 Scheduler Lembretes' 1 (id 73, 10-06 13:52:03). 13 eventos distintos = 18 - 5 duplicatas. agendado_para = criado_em - 3h (ex.: id 66 criado 10:00:37 UTC, agendado 07:00:37), consistente com NOW() AT TIME ZONE 'America/Sao_Paulo' no codigo do WF15. 16/18 (89%) com texto inutil 'Ultimo (node ?): erro desconhecido. Exec ?' confirmado."
+   },
+   {
+    "item": "giulia_memoria do Thiago - reclamacoes de problema tecnico/travou",
+    "status": "OK",
+    "evidence": "0 mensagens de 5511910441709 nos ultimos 30 dias com 'problema tecnico', 'travou', 'tecnic', 'erro', 'falha' ou 'instabilidade' (211 registros dele no periodo, de 2026-09-14 10:00 a 2026-10-13 10:00 UTC). Nenhum incidente reportado pelo dono. giulia_memoria tem 2202 linhas desde 2026-05-20 (sem purga que invalide a busca).",
+    "fix_hint": ""
+   },
+   {
+    "item": "WF15 Error Handler - ativo e funcionando",
+    "status": "OK",
+    "evidence": "Workflow ltVUUCOCDYKMmtnT active=true; 17 workflows GIULIA apontam errorWorkflow para ele (01-14, 16, 17, 18). Prova de funcionamento: insert em giulia_erros_log hoje 2026-10-13 11:56:04 UTC e alerta id 75 criado 11:52:49 e enviado 11:53:48 UTC. Fluxo: Error Trigger -> Montar Alerta (code) -> Salvar Alerta (postgres). Limitacao: nao trata payload de erro de trigger (sem 'execution').",
+    "fix_hint": ""
+   },
+   {
+    "item": "Classificacao final dos grupos de erro (30 dias)",
+    "status": "WARN",
+    "evidence": "CRITICO: 1 evento - WF07 briefing de 27/09 nao entregue a Thiago e Jota (UAZAPI offline 07:00 BRT, sem retry). MODERADO: 1 evento - ML Perguntas Lojao Aquatico HTTP 429 (12/10 19:00 UTC, outro projeto, sem alerta). BAIXO/ruido: WF18 IMAP reconnect 16 eventos (21 linhas, emails continuam entrando); WF02 task runner timeout 1 evento (06/10, sem lembrete afetado); Julian 04 aborts intencionais 3 execucoes (13/10). Nenhuma mensagem de usuario sem resposta ou lembrete perdido foi encontrada no periodo (60/60 lembretes do Andre entregues; 0 presos).",
+    "fix_hint": "",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO com ajustes. CRITICO 1: WF07 27/09 (prova: unico dia sem linha de briefing em giulia_memoria para Thiago e Jota; UAZAPI respondeu de novo 61 s depois - timeout de 30 s sem retry). MODERADO 1: ML 25 exec 753054 HTTP 429 (12/10 19:00 UTC, outro projeto, sem errorWorkflow). BAIXO: WF18 IMAP 16 eventos/21 linhas (emails seguem entrando: 110 em 26 dias); WF02 'Preparar Notificacoes' 'Task request timed out after 60 seconds' 1x em 10-06 13:52:03 UTC - sem lembrete afetado (unico lembrete proximo: Andre id 287 'Tomar os remedios da manha' disparar_em 10-06 09:30 NY, enviado 13:30:16 UTC; unica mensagem agendada na janela era o proprio alerta id 73, enviado 13:52:48); Julian 04 aborts intencionais agora 4 (nao 3; 773513 surgiu 13:35 UTC). Lembretes: Andre 61 enviados de 61 vencidos no periodo (60 ate 10-13 09:00 local + o de 10-13 09:30 enviado 13:30 UTC), 2 pendentes futuros (10-13 22:00 e 10-14 09:30); 0 lembretes pendentes vencidos para todos os donos; giulia_mensagens_agendadas 30d 20/20 enviado; giulia_email_pendentes 1/1 enviado; giulia_envios_pendentes 1 'aguardando_confirmacao' (fluxo de confirmacao, nao erro). 'Nenhuma mensagem de usuario sem resposta': confirmado, mas atencao ao metodo - WF01 grava user e assistant com o MESMO created_at (ex.: 2958/2959 09-15 23:01:18.772160, 3335/3336 10-11 22:51:34.587996), entao uma busca por resposta com created_at > user retorna falsos positivos; com created_at >= user, 16/16 mensagens user em 30d tem resposta pareada e efeito colateral conferido (3 tarefas criadas 09-15 23:01; lembrete 300 'Pagar a EPDM com Isac' criado 10-11 22:51 e enviado; anexos PDF enviados 09-14 e 09-25). Observacao fora do escopo deste bloco (para o verificador de acessos): 4 dos 5 numeros com role=user nos 30d NAO sao donos (557192330311 x3, 554399301790 x2, 5511919351515, 551140041144) e receberam resposta da assistente ('Oi! O Thiago nao trabalha com a venda de mudas...', 'Acho que voce mandou para o numero errado...') pelo caminho 'Verificar Engano/Filtro Engano' do WF01 - parece feature deliberada de 'numero errado', mas toca a regra de ouro 1. Fora da janela: 3 erros WF02 'Timeout waiting for lock SqliteWriteConnectionMutex' em 09-13 07:10/07:40/10:57 UTC (pre-migracao para Postgres as 19:17 do mesmo dia), nao recorreram."
+   }
+  ],
+  "notes": "Somente leitura: nenhuma mensagem enviada, nenhum webhook de producao disparado, nenhuma escrita no banco; n8n consultado so por GET. Relogio no momento da checagem: 2026-10-13 13:31 UTC (10:31 BRT). Fontes: giulia_erros_log (23 linhas/30d), giulia_mensagens_agendadas (18 alertas), giulia_memoria (211 linhas do Thiago/30d), giulia_lembretes, giulia_emails, n8n API (/executions?status=error = 4 linhas, 1 pagina; /workflows = 52 total, 46 ativos incl. o runner temporario), Easypanel env (EXECUTIONS_DATA_MAX_AGE=48, PRUNE_MAX_COUNT=3000), JSON ao vivo de WF15/WF18/WF07/WF02. Principais acoes sugeridas (todas exigem escrita, nao executadas): (1) WF15 'Montar Alerta' ler $json.trigger.error quando nao houver execution e suprimir/rotular reconexao IMAP do WF18 - elimina 16 dos 18 alertas do mes; (2) retryOnFail no 'Enviar UAZAPI' do WF07 (e irmaos) para nao perder briefing em queda curta da UAZAPI; (3) considerar aumentar retencao de execucoes do n8n se quiser auditar erros por API alem de 48h; (4) ao terminar a auditoria, apagar o 'GIULIA - TEMP SQL Runner ck2' (gerou 100 execucoes em 10 min e consome o teto de 3000). Limitacao honesta: nao foi possivel abrir execucoes GIULIA com erro no n8n (nenhuma retida) nem provar que nenhum email foi perdido durante as desconexoes IMAP."
+ },
+ {
+  "area": "codigo",
+  "checks": [
+   {
+    "item": "Mapeamento arquivo <-> id (scripts/deploy-workflows.sh) e download dos 18 workflows ao vivo",
+    "status": "OK",
+    "evidence": "deploy-workflows.sh deploya 18 arquivos (01..18) para os 18 ids do contexto; 00-GIULIA-Setup-DB.json nao e deployado (bootstrap de banco, sem par ao vivo - por design). GET /api/v1/workflows/<id> retornou HTTP 200 para os 18 (ex.: WF01 550 KB, WF17 386 KB, WF15 6.6 KB). Metodo: segredos reais do .env substituidos pelos placeholders __GIULIA_*__ antes de comparar; nenhum valor impresso."
+   },
+   {
+    "item": "WF01 Pipeline (Tm1Ec80tegOqWS4N) <- 01-GIULIA-Pipeline.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos repo=63 / live=63, mesmo conjunto de nomes, 15 code nodes com jsCode identico, parametros/credenciais/connections identicos. active=True. updatedAt live 2026-09-12T11:42:53Z; ultimo commit do arquivo 2026-09-12 11:44:19 UTC (180e6ab) - deploy 86s antes do commit, conteudo igual. Obs: linhas 102/118 do no 'Formatar Resposta Final' contem link com __GIULIA_SHEETS_DOC_ID__ literal (ver item especifico)."
+   },
+   {
+    "item": "WF02 Scheduler Lembretes (sl6gOYuAIwvCRvOP) <- 02-GIULIA-Scheduler.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 15/15, 3 code nodes identicos, connections identicas. active=True. updatedAt live 2026-09-13T19:17:22Z >= ultimo commit 2026-08-07 16:33:47 (03b6682)."
+   },
+   {
+    "item": "WF03 Sync Gastos Sheets (AEVYq2LMB608RnU8) <- 03-GIULIA-Sync-Gastos-Sheets.json",
+    "status": "WARN",
+    "evidence": "Codigo IGUAL (nos 6/6, 1 code node identico, connections identicas, active=True, updatedAt 2026-09-13T19:16:57Z >= commit 2026-07-12 ea43a58). PORÉM o no 'Append Sheets' em PRODUCAO contem os placeholders literais __GIULIA_SHEETS_DOC_ID__ (documentId) e __GIULIA_SHEETS_CRED_ID__ (id da credencial Google Sheets); sheetName='Gastos' (default do script) vs placeholder __GIULIA_SHEETS_TAB__ no repo. Causa: .env nao tem nenhuma var GIULIA_SHEETS_* e o deploy so substitui esses placeholders se a var existir. Evidencia de que ja funcionou: giulia_gastos tem 9 linhas do Thiago com sheets_synced=true (ultimo sheets_synced_em 2026-07-24T16:00 UTC), marcadas pelo no que roda SO apos o Append Sheets ter sucesso. Hoje nao gera erro porque a query filtra dono_numero='5511910441709' e o Thiago tem 0 pendentes (os 12 pendentes sao de 5511951604808 (9, 15-25/07) e 17869660718 (3, 03/07), ignorados pela query). 0 execucoes salvas e 1 erro no giulia_erros_log (2026-09-12 'Task request timed out' no Formatar Linhas). Latente: no proximo gasto do Thiago o cron de 5 min vai falhar a cada 5 min e disparar rajadas no WF15.",
+    "fix_hint": "Recuperar GIULIA_SHEETS_DOC_ID / GIULIA_SHEETS_CRED_ID (credencial 'Google Sheets Giulia' no n8n; doc id da planilha 'Giulia - Gastos Pessoais') e GIULIA_SHEETS_TAB=Gastos, gravar no .env e em docs/OPERACAO-ACESSOS.md (hoje nao cita essas vars), e redeployar WF03 e WF01. Alternativa: fazer o deploy-workflows.sh FALHAR quando o arquivo ainda contem __GIULIA_*__ apos a substituicao (hoje falha silenciosamente).",
+    "verified": true,
+    "verifier_evidence": "Refutacao tentada com fetch proprio da API e SQL proprio; achado CONFIRMADO. Ao vivo: active=True, updatedAt 2026-09-13T19:16:57.916Z, 6 nos, jsCode de 'Formatar Linhas' identico ao repo (ultimo commit do arquivo ea43a58 2026-07-12), conexoes Cron 5min/Webhook Test -> Gastos Pendentes -> Formatar Linhas -> Append Sheets -> Marcar Sincronizado (nenhum no com onError/continueOnFail; logo 'Marcar Sincronizado' so roda se o Append der certo). No 'Append Sheets' ao vivo: documentId.value='__GIULIA_SHEETS_DOC_ID__', credentials.googleSheetsOAuth2Api.id='__GIULIA_SHEETS_CRED_ID__' (name 'Google Sheets Giulia'), sheetName='Gastos' (repo: '__GIULIA_SHEETS_TAB__'). Causa confirmada: .env tem 9 variaveis (EASYPANEL_URL/API_TOKEN, GIULIA_EMAIL_SENHA, GIULIA_GEMINI_API_KEY, GIULIA_UAZAPI_TOKEN, HOSTINGER_API_TOKEN, VPS_HOSTINGER_ID, N8N_URL/API_KEY) e nenhuma GIULIA_SHEETS_*; scripts/deploy-workflows.sh (linhas 70-75) so substitui os placeholders SHEETS se a var existir e nao falha quando sobra '__GIULIA_*__'. SQL giulia_gastos (21 linhas no total, ultimo criado_em 2026-07-25 17:06 UTC, nenhum gasto de nenhum dono nos ultimos 60 dias): Thiago 9 linhas, todas sheets_synced=true (ids 1,2,3,6,53,63,65,74,75; ultimo sheets_synced_em 2026-07-24T16:00:59 UTC), 0 pendentes; 12 pendentes = 9 de 5511951604808 (Antonio, status suspenso, criado_em 15-25/07) + 3 de 17869660718 (Andre, 03/07), ignorados pela query 'WHERE sheets_synced=FALSE AND dono_numero=5511910441709' (sem alwaysOutputData: com 0 linhas o fluxo para antes do Append). API: 0 execucoes salvas de WF03 (sucesso ou erro; retencao EXECUTIONS_DATA_MAX_AGE=48h). giulia_erros_log: 1 registro WF03/'Formatar Linhas' 'Task request timed out after 60 seconds' em 2026-09-12 09:59:46 UTC = janela do incidente do task runner de 12/09 (06:55-07:12 BRT), nao relacionado ao placeholder. Pistas de recuperacao (identificadores, nao segredos): GET /api/v1/credentials mostra 1 credencial googleSheetsOAuth2Api id 53FftATtvTVsC89g, nome 'Google Sheets account' (criada 2026-05-15 16:05, atualizada 2026-07-24 15:55 UTC = 5 min antes do ultimo sync) - o nome difere do 'Google Sheets Giulia' do repo; o doc id real aparece na resposta enviada a 5511964486564 em 2026-07-03 13:15 UTC (giulia_memoria): 1gF7fvZE7_9tgf-8OLwoswkPXmin1MwASEzQFVPbOJH0; aba 'Gastos'. Nao verificavel sem escrita: se o OAuth dessa credencial ainda esta valido (ultimo refresh 24/07) e a rajada de erros a cada 5 min no proximo gasto do Thiago (logica do fluxo confirma o cenario)."
+   },
+   {
+    "item": "WF04 Sumarizar Memoria (DbNuINWG5JBEE08F) <- 04-GIULIA-Sumarizar-Memoria.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 8/8, 2 code nodes identicos. active=True. updatedAt 2026-09-13T19:16:59Z >= commit 2026-07-12 22:10:31 (ea43a58)."
+   },
+   {
+    "item": "WF05 Rotina Diaria (5kfBHcPbR0UMQxMK) <- 05-GIULIA-Rotina-Diaria.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 8/8, 3 code nodes identicos. active=True. updatedAt 2026-09-13T19:16:56Z >= commit 2026-07-12 (ea43a58)."
+   },
+   {
+    "item": "WF06 Cobrar Tarefas (5WhC5PwNoptX5lKm) <- 06-GIULIA-Cobrar-Tarefas.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 7/7, 1 code node identico. active=True. updatedAt 2026-09-13T19:16:56Z >= commit 2026-09-12 11:44:19 (180e6ab)."
+   },
+   {
+    "item": "WF07 Briefing Matinal (ZFr4vsDTHv8TDrXE) <- 07-GIULIA-Briefing-Matinal.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 6/6, 1 code node identico. active=True. updatedAt 2026-09-13T19:17:17Z >= commit 2026-09-12 (180e6ab)."
+   },
+   {
+    "item": "WF08 Lembretes Reuniao Cliente (J1Sj1a3aTvcPQ391) <- 08-GIULIA-Lembretes-Reuniao-Cliente.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 6/6, 1 code node identico. active=True. updatedAt 2026-09-13T19:17:03Z >= commit 2026-07-12 (ea43a58)."
+   },
+   {
+    "item": "WF09 Lembretes Contas (nqLalQVouNGgh4EQ) <- 09-GIULIA-Lembretes-Contas.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 6/6, 1 code node identico. active=True. updatedAt 2026-09-13T19:17:20Z >= commit 2026-07-12 (ea43a58)."
+   },
+   {
+    "item": "WF10 Relatorio Gastos (q8HWnaLoiBTVXP0a) <- 10-GIULIA-Relatorio-Gastos.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 11/11, 4 code nodes identicos. active=True. updatedAt 2026-09-12T11:34:26Z >= commit 2026-07-12 (ea43a58)."
+   },
+   {
+    "item": "WF11 Fechamento do Dia (yISL7XnwlOBkD0Dz) <- 11-GIULIA-Fechamento-Dia.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 9/9, 2 code nodes identicos. active=True. updatedAt 2026-09-13T19:17:23Z >= commit 2026-09-12 (180e6ab)."
+   },
+   {
+    "item": "WF12 Orcamentos PDF (WnNoWQX8IJKy6MgP) <- 12-GIULIA-Orcamentos.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 9/9, 4 code nodes identicos. active=True. updatedAt 2026-09-12T11:34:36Z >= commit 2026-07-24 15:33:17 (40a5ea9)."
+   },
+   {
+    "item": "WF13 Orcamentos Followup (m74g1NvcBTiu08ce) <- 13-GIULIA-Orcamentos-Followup.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 7/7, 2 code nodes identicos. active=True. updatedAt 2026-09-13T19:17:19Z >= commit 2026-08-07 (03b6682)."
+   },
+   {
+    "item": "WF14 Trials (wids1oU1e8EaNrHl) <- 14-GIULIA-Trials.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 7/7, 2 code nodes identicos. active=True. updatedAt 2026-09-13T19:17:23Z >= commit 2026-08-01 01:27:39 (4a40854)."
+   },
+   {
+    "item": "WF15 Error Handler (ltVUUCOCDYKMmtnT) <- 15-GIULIA-Error-Handler.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 3/3, 1 code node identico. active=True (confirmado ao vivo; isArchived=False). updatedAt 2026-09-12T11:34:54Z >= commit 2026-08-07 15:39:26 (3eeb95b). settings.errorWorkflow ausente nele mesmo (correto)."
+   },
+   {
+    "item": "WF16 Recebiveis (BK8oAvp5Mzt4rmUs) <- 16-GIULIA-Recebiveis.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 7/7, 2 code nodes identicos. active=True. updatedAt 2026-09-13T19:16:58Z >= commit 2026-08-07 (03b6682)."
+   },
+   {
+    "item": "WF17 Financeiro (qojjGwPdhIVwcpu3) <- 17-GIULIA-Financeiro.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 25/25, 7 code nodes identicos (gate do Thiago intacto por consequencia). active=True. updatedAt 2026-09-12T11:35:23Z >= commit 2026-08-21 02:02:02 (b9f2812)."
+   },
+   {
+    "item": "WF18 Email (NNUd29aBLloX72to) <- 18-GIULIA-Email.json",
+    "status": "OK",
+    "evidence": "IGUAL. nos 19/19, 6 code nodes identicos. active=True. updatedAt 2026-09-13T19:17:04Z >= commit 2026-09-04 14:24:09 (44ea7cc)."
+   },
+   {
+    "item": "Segredos injetados em producao batem com o .env (UAZAPI token e Gemini key)",
+    "status": "OK",
+    "evidence": "Apos trocar os valores reais do .env pelos placeholders, os 36 pontos de __GIULIA_UAZAPI_TOKEN__ e 4 de __GIULIA_GEMINI_API_KEY__ ficaram identicos ao repo em todos os workflows (nenhum no caiu no fallback 'so linhas com token diferem'). Logo o token/chave ao vivo = .env. Valores nao impressos."
+   },
+   {
+    "item": "Placeholder __GIULIA_SHEETS_DOC_ID__ literal no WF01 em producao (link da planilha nas respostas de gastos)",
+    "status": "WARN",
+    "evidence": "No 'Formatar Resposta Final' (WF01 ao vivo), nas acoes relatorio_gastos e resumo_gastos, para sender 5511910441709 ou 5511964486564 a resposta recebe 'Planilha completa: https://docs.google.com/spreadsheets/d/__GIULIA_SHEETS_DOC_ID__/edit'. Ainda nao foi enviado: 0 mensagens em giulia_memoria contendo 'GIULIA_SHEETS_DOC_ID'; ultimo relatorio/resumo de gastos enviado em 2026-07-25 17:07 UTC (7 no total). Latente: o Thiago recebera link quebrado no proximo relatorio de gastos.",
+    "fix_hint": "Mesma correcao do WF03 (definir GIULIA_SHEETS_DOC_ID no .env e redeployar WF01).",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO com fetch proprio de Tm1Ec80tegOqWS4N (active=True, updatedAt 2026-09-12T11:42:53Z, 63 nos): o jsCode de 'Formatar Resposta Final' contem 2 ocorrencias de 'Planilha completa: https://docs.google.com/spreadsheets/d/__GIULIA_SHEETS_DOC_ID__/edit' (acoes relatorio_gastos e resumo_gastos), condicionadas a dec.sender_numero em ['5511910441709','5511964486564'] - identico ao repo (2 ocorrencias em 01-GIULIA-Pipeline.json, link introduzido no commit 3033f88 de 2026-07-03). E o unico workflow ao vivo com link docs.google.com/spreadsheets. SQL giulia_memoria: 0 mensagens contendo 'GIULIA_SHEETS_DOC_ID'; relatorios/resumos de gastos enviados = 7 (4 pro Thiago, ultimo 2026-07-04 21:57 UTC; 2 pra 5511951604808, ultimo 2026-07-25 17:07:43 UTC - esse numero nao recebe link; 1 pra 5511964486564 em 2026-07-03 13:15 UTC, ainda com o doc id real). Ou seja: o link quebrado ainda nao saiu, mas sai no proximo relatorio/resumo pro Thiago ou pra 5511964486564. Mesma correcao do WF03."
+   },
+   {
+    "item": "Nenhuma edicao manual em workflows GIULIA desde a ultima checagem (13/09)",
+    "status": "OK",
+    "evidence": "updatedAt mais recente entre os 18 GIULIA = 2026-09-13T19:17:23Z (WF11/WF14), anterior ao commit HEAD 1c38e4c de 2026-09-13 19:26:22 UTC. Dois lotes de deploy visiveis: 12/09 11:34-11:42 UTC (WF01,10,12,15,17) e 13/09 19:16-19:17 UTC (demais, sessao da migracao Postgres). Todos com conteudo = repo."
+   },
+   {
+    "item": "Inventario ao vivo vs gabarito ops/n8n-snapshot-2026-09-13.json",
+    "status": "OK",
+    "evidence": "Live: 52 workflows / 46 ativos; snapshot: 51 / 45. Unico id a mais: CKjhkfLOJ57zdGFg 'GIULIA - TEMP SQL Runner ck2 (apagar depois)' (runner desta auditoria, criado 2026-10-13T12:48:46Z - esperado). Nenhum id sumiu, nenhum flag active mudou, errorWorkflow de todos os 51 igual ao snapshot. 19 workflows com 'GIULIA' no nome = 18 + runner. Quantidade de nos igual ao snapshot em 50/51 (excecao abaixo)."
+   },
+   {
+    "item": "Workflow NAO-GIULIA '18 - Monitor Atendimento Vendedor' (ZTi7ssCfIXIYlt5N) editado HOJE fora do repo",
+    "status": "WARN",
+    "evidence": "updatedAt 2026-10-13T13:02:41Z (hoje, ~13 min apos o runner ser criado), versionCounter=93, 6 nos vs 5 no snapshot de 13/09 (novos: code 'Alerta Orcamento Alto' com comentario 'v2 13/09' e postgres 'Orcamento SQL' cuja query vem de $('Processar e Salvar').item.json.orcamento_sql || 'SELECT 1'). 1 execucao hoje 12:59:19Z (webhook, success). Nao esta no repo (repo so versiona GIULIA). Nao da pra saber quem editou as 13:02 via API.",
+    "fix_hint": "Confirmar com o Thiago se a edicao de hoje 10:02 BRT foi dele; se outro agente desta auditoria tocou esse workflow, esta fora da regra 'somente leitura'. Avaliar versionar esse workflow no repo.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO, com a pergunta 'quem editou' parcialmente respondida. Fetch proprio: updatedAt 2026-10-13T13:02:41.887Z, versionCounter 93, 6 nos (Webhook Vendedor POST /monitor-vendedor, Processar e Salvar [code, comentario 'WF18 v2', 25.6 KB], Inserir Postgres, Orcamento SQL [query '={{ $(\\'Processar e Salvar\\').item.json.orcamento_sql || \\'SELECT 1\\' }}'], Alerta Orcamento Alto [code, comentario 'v2 13/09'], Responder OK) vs nodes=5 no snapshot de 13/09 (o snapshot guarda so a contagem; 'quais nos sao novos' e inferencia, nao prova). Runner da auditoria criado 12:48:46Z -> edicao 13m55s depois. A unica execucao salva (772514, success, webhook, 12:59:19 -> 13:02:04Z, 'Processar e Salvar' levou 161 s) foi disparo real da UAZAPI (user-agent uazapiGO-Webhook/1.0, x-forwarded-for 148.251.20.4), nao da auditoria; 0 execucoes com erro; monitoramento_vendedor tem 154 inserts hoje (249 em 07/10) - workflow saudavel. Metadados de versao que a API devolve (campo activeVersion): versao 56be3fa5 criada 13:00:51Z, authors = conta do dono (Thiago), autosaved=false; workflowPublishHistory: deactivated 13:00:57, activated 13:00:58, deactivated 13:02:48, activated 13:02:54, todos pelo userId fe1b8c3f (dono); versionId == activeVersionId (a edicao esta publicada) e nada mudou desde 13:33 (mesmo versionId no cache de outro agente). Ressalva: o runner criado pela auditoria via API tambem aparece com authors = conta do dono (a API key e desse usuario), entao autoria sozinha nao distingue UI de API. Porem nenhum script da auditoria no scratchpad faz PUT/PATCH/POST no n8n (so GETs + o webhook do runner SQL), e o padrao (save explicito + 2 ciclos desativa/ativa em 2 min enquanto uma execucao real rodava) e tipico de edicao manual na UI. Conclusao: edicao feita pela conta do Thiago ~10:00-10:03 BRT, muito provavelmente na UI; nao esta no repo (unica referencia a ZTi7 e o snapshot). Continua WARN por estar fora do versionamento; confirmar com o Thiago continua valido."
+   },
+   {
+    "item": "settings.errorWorkflow aponta para WF15 em todos os workflows GIULIA",
+    "status": "OK",
+    "evidence": "17/17 (WF01-14,16,17,18) com errorWorkflow=ltVUUCOCDYKMmtnT ao vivo e no repo; WF15 sem (correto). executionOrder=v1 em todos."
+   },
+   {
+    "item": "Settings de retencao de execucao nao sao versionados no repo (drift possivel)",
+    "status": "WARN",
+    "evidence": "Repo so grava settings.errorWorkflow + executionOrder. Ao vivo existem saveDataSuccessExecution='none' em WF02,03,04,05,08,09,10,15 e 'all' em WF01,06,07,12,13,16,17,18 (WF11/WF14 sem a chave), alem de saveDataErrorExecution/callerPolicy. Esses valores vivem so no n8n; mudanca manual na UI nao seria detectada nem restaurada pelo deploy.",
+    "fix_hint": "Opcional: incluir saveDataSuccessExecution/saveDataErrorExecution nos 'settings' dos JSON do repo para fixar o comportamento esperado.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO. Repo: os 18 JSON em workflows/ tem settings apenas {executionOrder, errorWorkflow} (00-Setup-DB e 15-Error-Handler so executionOrder); git log -S mostra que saveDataSuccessExecution nunca existiu em nenhum arquivo; deploy-workflows.sh envia settings=new['settings'] (so essas chaves). Ao vivo (fetch proprio dos 18): saveDataSuccessExecution='none' em WF02,03,04,05,08,09,10,15; 'all' em WF01,06,07,12,13,16,17,18; ausente em WF11,14; saveDataErrorExecution='all' em 17 e ausente em WF18; callerPolicy, availableInMCP, saveExecutionProgress e saveManualExecutions tambem existem so ao vivo. Evidencia de que o deploy nem restaura nem detecta: WF10/12/15/17 foram PUT pelo script em 2026-09-12 11:34-11:35 (updatedAt) e continuam com chaves que o payload nao envia - uma mudanca manual na UI persiste silenciosamente apos deploy. Chave ausente = default do n8n (EXECUTIONS_DATA_SAVE_ON_SUCCESS/ON_ERROR nao definidos no Easypanel -> 'all'). Severidade baixa; fix_hint do auditor (versionar saveData* nos JSON) procede."
+   },
+   {
+    "item": "saveDataSuccessExecution mudou de 'all' (snapshot) para ausente em WF11 e WF14 (+3 nao-GIULIA)",
+    "status": "OK",
+    "evidence": "Snapshot de 13/09 registrou saveSuccess='all' para WF11, WF14, '13 - Relatorio Diario Comercial', '02 - Conversation Debounce 15s' e '19b - Relatorio Thiago Bio'; ao vivo a chave nao existe. Provavelmente o snapshot normalizou ausente->'all' (default do n8n), mas o default efetivo depende de EXECUTIONS_DATA_SAVE_ON_SUCCESS no Easypanel, que nao foi consultado (fora do escopo somente-leitura desta area).",
+    "verified": true,
+    "verifier_evidence": "Hipotese do auditor (snapshot normalizou ausente->'all') CONFIRMADA e UNKNOWN resolvido: nao houve mudanca real. (1) Easypanel GET projects.listProjectsAndServices, servico whats/n8n (imagem n8nio/n8n:2.8.3): variaveis EXECUTIONS_* presentes sao EXECUTIONS_TIMEOUT=1800, EXECUTIONS_TIMEOUT_MAX=3600, EXECUTIONS_DATA_PRUNE=true, EXECUTIONS_DATA_MAX_AGE=48, EXECUTIONS_DATA_PRUNE_MAX_COUNT=3000; EXECUTIONS_DATA_SAVE_ON_SUCCESS NAO esta definido -> default do n8n = 'all' -> chave ausente equivale a 'all' (mesmo valor do snapshot). (2) Distribuicao ao vivo nos 52 workflows: none=38, all=8, ausente=6 (WF11, WF14, '13 - Relatorio Diario Comercial', '02 - Conversation Debounce 15s', '19b - Relatorio Thiago Bio' + o runner); snapshot de 13/09 (51): none=38, all=13 = 8 explicitos + 5 ausentes - bate exatamente com normalizacao ausente->'all'. (3) Prova direta: '02 - Conversation Debounce 15s' tem updatedAt 2026-05-20 (nao foi tocado desde antes do snapshot) e esta sem a chave ao vivo, logo o 'all' registrado no snapshot pra ele so pode ser normalizacao, nao valor gravado. (4) O repo nunca teve a chave e o deploy nao a envia, consistente com WF11/WF14 nunca terem tido valor explicito. Efeito pratico: WF11 e WF14 salvam execucoes de sucesso (default 'all'), igual ao que o snapshot indicava."
+   },
+   {
+    "item": "Sintaxe JS dos code nodes do repo (= producao)",
+    "status": "OK",
+    "evidence": "node --check em 58/58 code nodes dos 18 arquivos (envolvidos em async function para permitir return de topo): 0 falhas."
+   },
+   {
+    "item": "Placeholders __GIULIA_*__ restantes em producao (varredura nos 18)",
+    "status": "WARN",
+    "evidence": "Apenas 2 workflows com placeholder literal ao vivo: WF01 (__GIULIA_SHEETS_DOC_ID__) e WF03 (__GIULIA_SHEETS_DOC_ID__, __GIULIA_SHEETS_CRED_ID__). Nenhum placeholder de UAZAPI/GEMINI sobrou. Placeholders SHEETS existem no repo desde 2026-05-15 (a88b616/213afd2); docs/setup-sheets-gastos.md descreve o setup, mas docs/OPERACAO-ACESSOS.md nao cita as vars GIULIA_SHEETS_*.",
+    "verified": true,
+    "verifier_evidence": "CONFIRMADO por varredura propria (regex __GIULIA_[A-Z0-9_]+__ no JSON completo dos 18 GIULIA ao vivo + ZTi7): apenas WF01 ('Formatar Resposta Final': __GIULIA_SHEETS_DOC_ID__) e WF03 ('Append Sheets': __GIULIA_SHEETS_DOC_ID__ e __GIULIA_SHEETS_CRED_ID__). Zero __GIULIA_UAZAPI_TOKEN__ / __GIULIA_GEMINI_API_KEY__ ao vivo (o repo tem 39 ocorrencias UAZAPI e 4 GEMINI, todas substituidas no deploy). git: placeholders SHEETS existem desde a88b616 (2026-05-15 14:55) e 213afd2 (2026-05-15 16:10); docs/setup-sheets-gastos.md existe e descreve documentId e id da credencial; docs/OPERACAO-ACESSOS.md tem 0 ocorrencias de 'sheets' (as vars GIULIA_SHEETS_* so aparecem no cabecalho do deploy-workflows.sh). Complemento util: a credencial Google Sheets existe no n8n (id 53FftATtvTVsC89g, nome 'Google Sheets account', atualizada 2026-07-24 15:55 UTC), mas com nome diferente do que o repo assume ('Google Sheets Giulia'); o doc id real esta na mensagem de 2026-07-03 em giulia_memoria (ver item WF03)."
+   }
+  ],
+  "notes": "Resumo: 18/18 workflows GIULIA em producao sao IGUAIS ao repositorio (nomes, quantidade e conjunto de nos, tipos/versoes, connections, credenciais e jsCode dos 58 code nodes), e nenhum foi editado desde 13/09 (updatedAt max 2026-09-13T19:17:23Z < HEAD 1c38e4c). Os valores reais de UAZAPI/Gemini injetados em producao coincidem com o .env. Unico drift real: as variaveis GIULIA_SHEETS_* nao estao no .env, entao o deploy de 12-13/09 colocou os placeholders literais em producao no WF03 (Append Sheets: documentId e credencial) e no WF01 (link da planilha nas respostas de relatorio/resumo de gastos para o Thiago). Hoje e silencioso (Thiago nao tem gasto pendente e nao pediu relatorio desde 25/07), mas e latente: proximo gasto do Thiago = erro a cada 5 min no WF03 + alertas no WF15; proximo relatorio = link quebrado. Fora do escopo GIULIA, o workflow '18 - Monitor Atendimento Vendedor' foi alterado hoje as 13:02 UTC (10:02 BRT) e tem 1 no a mais que o snapshot - confirmar autoria com o Thiago. Nada foi corrigido (somente leitura). Arquivos de apoio (scratchpad): compare_wf.py, live_wf/*.json, all_wf.json em /tmp/claude-0/-home-user-thiagoteste/46e0e517-f29e-5e6f-b738-f2e0a8076033/scratchpad/."
+ },
+ {
+  "area": "conexoes",
+  "checks": [
+   {
+    "item": "UAZAPI - GET /instance/status (token da Giulia)",
+    "status": "OK",
+    "evidence": "HTTP 200. instance.status=connected, status.connected=true, loggedIn=true, resetting=false. Instancia id rf96f232393cea2, name='thiago ia', profileName='Giulia Mascarenhas', isBusiness=true, jid 5511942350804:44@s.whatsapp.net, systemName=engsolucao. lastDisconnect=2026-08-04 20:21 UTC (nenhuma queda desde entao), currentTime do servidor 2026-10-13 13:34 UTC (hora da checagem)."
+   },
+   {
+    "item": "UAZAPI - GET /instance/all (confirmar instancia unica)",
+    "status": "UNKNOWN",
+    "evidence": "HTTP 401 {\"error\":\"Missing AdminToken Header\"}. O endpoint exige admin token do servidor UAZAPI, que nao existe no .env nem na giulia_config (por desenho). O token da Giulia e escopado a uma unica instancia (rf96f232393cea2), entao do lado do sistema so ha uma instancia alcancavel; a contagem global nao e verificavel sem o admin token.",
+    "fix_hint": "Se quiser confirmar, Thiago consulta o painel engsolucao.uazapi.com com a conta admin. Nao e critico.",
+    "verified": false,
+    "verifier_evidence": "Refutacao tentada: GET https://engsolucao.uazapi.com/instance/all enviando o token da Giulia tambem no header admintoken -> HTTP 401 {\"error\":\"Invalid AdminToken Header\"} (o auditor, sem o header, recebeu 'Missing AdminToken Header'; mesma conclusao: o token da instancia nao e admin). .env e giulia_config nao tem nenhuma chave admin da UAZAPI. Prova independente do lado alcancavel: GET /instance/status com o token -> HTTP 200, instance.id=rf96f232393cea2, name='thiago ia', profileName='Giulia Mascarenhas', status=connected, loggedIn=true, jid 5511942350804, lastDisconnect 2026-08-04 20:21Z, currentTime 2026-10-13 14:23Z. A contagem global de instancias do servidor nao e verificavel sem admin token (sem escrita/credencial extra); mantido UNKNOWN."
+   },
+   {
+    "item": "UAZAPI - webhook de entrada configurado (GET /webhook)",
+    "status": "OK",
+    "evidence": "HTTP 200. 1 webhook: id r2f8a585540f739, enabled=true, url=https://whats-n8n.ghikuu.easypanel.host/webhook/giulia-msg, events=[messages], excludeMessages=[wasSentByApi, isGroupYes], addUrlEvents=false. Aponta exatamente para o WF01 (webhook 'Webhook Giulia', path giulia-msg, POST) e ignora mensagens enviadas pela API e de grupo."
+   },
+   {
+    "item": "UAZAPI - fluxo real de envio/recebimento (prova via banco)",
+    "status": "WARN",
+    "evidence": "Saida: 90 mensagens role=assistant nos ultimos 7 dias (8 hoje), ultima 2026-10-13 13:30 UTC (10:30 BRT). Entrada: ultima mensagem user 2026-10-11 22:51:34 UTC do 5511910441709, com execucao WF01 id 731551 mode=webhook status=success as 22:51:23Z e resposta assistant no mesmo segundo (ida e volta UAZAPI->n8n->Gemini->UAZAPI funcionando). Porem giulia_erros_log registra 1 falha UAZAPI em 30 dias: WF07 'Enviar UAZAPI' em 2026-09-27 10:00:37 UTC 'The connection was aborted, perhaps the server is offline' - e o briefing de 27/09 NAO saiu (nenhuma msg assistant ao Thiago entre 09:55 e 10:15 UTC naquele dia, enquanto 26/09 e 28/09 tem msg as 10:00:13). Unico incidente UAZAPI em 30d, sem retry.",
+    "fix_hint": "Habilitar retryOnFail (ex.: 3 tentativas, 5-10s) nos nos HTTP de envio UAZAPI dos workflows agendados (WF07/WF11/WF06/WF02) para absorver quedas transitorias. Exige deploy (nao feito nesta auditoria).",
+    "verified": true,
+    "verifier_evidence": "Consultas proprias em giulia_memoria (UTC): role=assistant ultimos 7d = 90, hoje (13/10 UTC) = 8, ultima 2026-10-13 13:30:21 — bate exatamente. Ultima msg user: 5511910441709 em 2026-10-11 22:51:34 'Me lembra amanhã de pagar a epdm com Isac' com resposta assistant no mesmo timestamp; n8n execucao 731551 (workflowId Tm1Ec80tegOqWS4N, mode=webhook, status=success, startedAt 22:51:23.616Z, stoppedAt 22:51:34.598Z) — ida e volta confirmada. giulia_erros_log 30d: unico erro de envio = 'GIULIA - 07 Briefing Matinal' / 'Enviar UAZAPI' / 'The connection was aborted, perhaps the server is offline' em 2026-09-27 10:00:37 (1 ocorrencia; 0 outras com uazapi/ECONN/timeout/offline). Briefing: msgs assistant ao Thiago 09:55-10:15 UTC existem em 26/09 10:00:13 e 28/09 10:00:13 e NAO existem em 27/09 (as 3 msgs de 27/09 sao fechamento 00:00, e 2 avisos de email 02:10 e 14:06) — briefing de 27/09 realmente nao saiu. Premissa do fix_hint confirmada ao vivo: os 7 nos HTTP de envio UAZAPI em WF02 (3 nos), WF06, WF07 e WF11 (2 nos) estao com retryOnFail ausente (sem retry). Execucoes de erro do WF07 no n8n = 0 (prune de 48h), coerente. WARN mantido."
+   },
+   {
+    "item": "Gemini - GET /v1beta/models com a chave da Giulia",
+    "status": "OK",
+    "evidence": "HTTP 200, 62 modelos listados (45 gemini-*), sem nextPageToken. gemini-3.5-flash: PRESENTE. gemini-3.1-pro-preview: PRESENTE. O WF01 ao vivo usa exatamente esses dois nomes ('gemini-3.1-pro-preview', 'gemini-3.5-flash') e o endpoint generativelanguage.googleapis.com/v1beta/models/. Prova de geracao real: resposta assistant (54 chars) em 2026-10-11 22:51:34 UTC logo apos mensagem do usuario. 0 erros com 'gemini', '429', 'quota', '403' em giulia_erros_log nos ultimos 30 dias. Outros disponiveis caso precise trocar: gemini-2.5-flash, gemini-2.5-pro, gemini-3-flash-preview, gemini-3.5-flash-lite, gemini-3.6/3.7/3.8-flash, gemini-flash-latest, gemini-pro-latest."
+   },
+   {
+    "item": "n8n - GET /healthz e GET /api/v1/workflows?limit=1",
+    "status": "OK",
+    "evidence": "/healthz -> HTTP 200 {\"status\":\"ok\"}. /api/v1/workflows?limit=1 -> HTTP 200 (retornou '14 - Relatorio Semanal', active=true). Listagem completa: 52 workflows / 46 ativos vs gabarito 13/09 de 51/45 - a diferenca (+1 ativo) e o 'GIULIA - TEMP SQL Runner ck2' desta auditoria. GIULIA: 19 ativos de 19 (18 do gabarito + runner). Host: whats-n8n.ghikuu.easypanel.host, imagem n8nio/n8n:2.8.3 (via Easypanel)."
+   },
+   {
+    "item": "n8n - rotas de webhook de producao registradas (apenas GET de sondagem)",
+    "status": "OK",
+    "evidence": "GET /webhook/giulia-msg, /webhook/giulia-email, /webhook/giulia-briefing-tick e /webhook/giulia-scheduler-tick -> todos HTTP 404 {\"code\":404,\"message\":\"This webhook is not registered for GET requests. Did you mean to make a POST request?\"}. Interpretacao: a rota existe e esta ativa para POST (um webhook inexistente/inativo devolve mensagem 'not registered' generica, sem sugerir POST). Nenhum POST foi feito."
+   },
+   {
+    "item": "Easypanel - GET /api/trpc/projects.listProjects",
+    "status": "OK",
+    "evidence": "HTTP 200. Projetos: 'whats' (criado 2026-02-19) e 'post'. inspectProject('whats'): 10 servicos, todos enabled=true: n8n (n8nio/n8n:2.8.3, dominio whats-n8n.ghikuu.easypanel.host), n8n-db (postgres), chatwoot + chatwoot-db + chatwoot-redis + chatwoot-sidekiq (v4.11.1, legado), evolution-api v2.3.7 + db + redis (legado), gotenberg:8. Projeto 'post': 0 servicos. monitor.getSystemStats -> 404 (endpoint nao existe nesta versao). Observacao de higiene: inspectProject devolve o env completo dos servicos (com senhas) - nao logar essa resposta em auditorias futuras.",
+    "fix_hint": "Em futuras checagens, filtrar a resposta de inspectProject para name/type/enabled antes de qualquer log."
+   },
+   {
+    "item": "Hostinger - GET /api/vps/v1/virtual-machines",
+    "status": "WARN",
+    "evidence": "HTTP 401 {\"message\":\"Unauthenticated.\"} -> token Hostinger invalido (conforme docs/OPERACAO-ACESSOS.md ja previa). A copia em giulia_config (chave HOSTINGER_API_TOKEN, atualizado_em 2026-08-07) tem o mesmo tamanho (48 chars) da do .env, ou seja, e o mesmo token invalido. VPS_HOSTINGER_ID esta definido (.env e giulia_config). Nao e critico: Hostinger so e usado para restart manual do VPS (id 1306768).",
+    "fix_hint": "Thiago gera novo token em hpanel.hostinger.com/api marcando permissao de VPS, atualiza .env e a chave HOSTINGER_API_TOKEN na giulia_config (escrita - fora desta auditoria).",
+    "verified": true,
+    "verifier_evidence": "Chamada propria: GET https://developers.hostinger.com/api/vps/v1/virtual-machines com Bearer do .env -> HTTP 401 {\"message\":\"Unauthenticated.\"} (correlation_id a2f8f4b0-...). Token no .env tem 48 chars; giulia_config.HOSTINGER_API_TOKEN tambem len=48, atualizado_em 2026-08-07 16:36:32 (mesma geracao; nao da pra provar igualdade byte a byte sem imprimir, mas tamanho e data sao compativeis). VPS_HOSTINGER_ID=1306768 presente no .env e na giulia_config (len 7, 2026-08-07). docs/OPERACAO-ACESSOS.md ja documenta o VPS 1306768 e que Hostinger so e usado para restart manual. WARN confirmado, nao critico."
+   },
+   {
+    "item": "IMAP/SMTP - credenciais existem no n8n e sao referenciadas pelo WF18 ao vivo",
+    "status": "OK",
+    "evidence": "GET /api/v1/credentials funcionou nesta instancia (11 credenciais). imap id SPlSrP20IjwICGGH 'Email Thiago IMAP' (updatedAt 2026-08-07 16:48) e smtp id jCec0J7EjuErLvg7 'Email Thiago SMTP' (2026-08-07 16:48) existem. WF18 '18 - GIULIA Email' (active=true, updatedAt 2026-09-13 19:17Z) referencia: IMAP no no 'Email Trigger IMAP' (mailbox INBOX, postProcessAction=read, forceReconnect=60, downloadAttachments=true) e SMTP no no 'Enviar Email SMTP' (fromEmail 'Thiago Nicezio <contato@thiagonicezio.com>'); webhook 'Webhook Email' path giulia-email POST; postgres 'PostgreSQL Julian' (qSNNpS1TadimC3ND) em 5 nos. Conexao IMAP/SMTP em si nao e testavel sem escrita."
+   },
+   {
+    "item": "IMAP - recebimento real + erros do WF18 em 30 dias",
+    "status": "WARN",
+    "evidence": "Recebimento funciona: giulia_emails total 193, 29 nos ultimos 7 dias, ultimo recebido_em 2026-10-13 09:57:18 UTC; execucoes WF18 success em 13/10 09:57 e 08:52 UTC, 12/10 12:22/12:21/11:30 (saveDataSuccessExecution=all). 187/193 notificados. MAS giulia_erros_log tem 21 entradas de '18 - GIULIA Email' com node='?' e mensagem 'erro desconhecido' em 30d (primeira 17/09 07:49, ultima 13/10 11:56 UTC; 3 hoje entre 11:52 e 11:56 UTC), em geral aos pares e entre 01h-09h UTC; emails continuam chegando apos cada erro (ex.: erro 12/10 16:03 -> email 13/10 08:52; erro 30/09 09:32 -> email 30/09 11:03), padrao compativel com desconexao/reconexao do IMAP idle. n8n nao tem execucoes de erro salvas para o WF18 (0), entao a causa exata nao e recuperavel daqui. 0 erros com texto imap/smtp/ECONN/timeout.",
+    "fix_hint": "No WF15 Error Handler, gravar execution.error.message/description/stack e o nome do no mesmo quando vierem vazios (erros de trigger), para o proximo ciclo ter a causa. Se for idle timeout do provedor, reduzir forceReconnect (ex.: 30 min).",
+    "verified": true,
+    "verifier_evidence": "giulia_emails: total 193, ultimos 7d 29, ultimo recebido_em 2026-10-13 09:57:18 UTC, notificados 187/193 — identico. n8n WF18 (NNUd29aBLloX72to, active, saveDataSuccessExecution=all): 5 execucoes trigger/success em 13/10 09:57 e 08:52, 12/10 12:22, 12:21 e 11:30; execucoes de erro = 0. giulia_erros_log: 21 linhas '18 - GIULIA Email' node='?' msg='erro desconhecido', primeira 2026-09-17 07:49:11, ultima 2026-10-13 11:56:04, 3 hoje (11:52:49, 11:54:42, 11:56:04); 10 das 21 em pares (17/09, 23/09, 24/09, 28/09, 29/09) e 16/21 entre 01h-09h UTC (excecoes: 12/10 15:57 e 16:03, 13/10 11:52-11:56). Emails continuam chegando apos erros: 30/09 09:32 -> email 30/09 11:03:28; 12/10 16:03 -> email 13/10 08:52:22. Causa-raiz do 'erro desconhecido' confirmada por leitura do WF15 ('Montar Alerta'): o codigo so le j.execution.error.message / lastNodeExecuted e nunca j.trigger (payload que o n8n manda para erro de trigger como o IMAP), caindo nos defaults '?' e 'erro desconhecido'. IMAP trigger usa credencial 'Email Thiago IMAP' (SPlSrP20IjwICGGH) com forceReconnect=60. Ressalva: depois dos 3 erros de hoje (11:52-11:56) ainda nao chegou nenhum email (ultimo 09:57 UTC, agora 14:23 UTC), entao a reconexao de hoje ainda nao esta provada; tentativa de checar a caixa direto via imap.hostinger.com:993 (somente STATUS/SEARCH) deu timeout — porta bloqueada pelo proxy deste ambiente. WARN mantido."
+   },
+   {
+    "item": "SMTP - envios reais (giulia_email_pendentes)",
+    "status": "OK",
+    "evidence": "33 com status 'enviado' (ultimo 2026-09-21 16:41 UTC), 3 'cancelado' (ultimo 26/08), nenhum pendente/falho. Nenhum erro SMTP em giulia_erros_log em 30d. Ressalva: nao houve envio desde 21/09, logo a autenticacao SMTP atual nao foi exercitada nas ultimas 3 semanas; teste real exigiria envio (escrita) - nao feito."
+   },
+   {
+    "item": "Google Sheets (WF03 Sync Gastos) - placeholders nao substituidos ao vivo",
+    "status": "WARN",
+    "evidence": "Varredura dos 52 workflows ao vivo: unicos placeholders __GIULIA_*__ fora de sticky notes sao de Sheets. WF03 'GIULIA - 03 Sync Gastos Sheets' (active=true, cron 5min, updatedAt 2026-09-13 19:16Z) no 'Append Sheets' usa credential id '__GIULIA_SHEETS_CRED_ID__' (name 'Google Sheets Giulia', inexistente) e documentId '__GIULIA_SHEETS_DOC_ID__'. WF01 no 'Formatar Resposta Final' (jsCode) monta link 'https://docs.google.com/spreadsheets/d/__GIULIA_SHEETS_DOC_ID__/edit' no resumo de gastos para 5511910441709/5511964486564. Causa: .env nao tem GIULIA_SHEETS_DOC_ID/TAB/CRED_ID e o deploy-workflows.sh so substitui se definidos (linhas 70-75); docs/setup-sheets-gastos.md Passo 3 segue pendente. A credencial existente 'Google Sheets account' (id 53FftATtvTVsC89g, googleSheetsOAuth2Api, 2026-07-24) nao esta ligada ao WF03. Impacto atual zero: giulia_gastos tem 0 registros nos ultimos 30 dias, WF03 roda sem nada a sincronizar, 0 execucoes de erro; unico erro historico do WF03 foi 12/09 'Task request timed out after 60 seconds' (Formatar Linhas). Mesmo estado do gabarito 13/09 (nao e regressao). Placeholders de UAZAPI_TOKEN e GEMINI_API_KEY foram substituidos corretamente em todos os workflows.",
+    "fix_hint": "Thiago cria a planilha e a credencial 'Google Sheets Giulia' (docs/setup-sheets-gastos.md), define GIULIA_SHEETS_DOC_ID, GIULIA_SHEETS_TAB e GIULIA_SHEETS_CRED_ID no .env e redeploya WF01 e WF03. Enquanto isso, o link da planilha na resposta de gastos sai quebrado.",
+    "verified": true,
+    "verifier_evidence": "Varredura propria de GET /api/v1/workflows?limit=100: 52 workflows, 46 ativos (51/45 descontando 'GIULIA - TEMP SQL Runner ck2' = gabarito 13/09: total 51, ativos 45). Unicos placeholders __GIULIA_*__ em qualquer no (inclusive sticky): __GIULIA_SHEETS_CRED_ID__ e __GIULIA_SHEETS_DOC_ID__ — em WF03 AEVYq2LMB608RnU8 'Append Sheets' (googleSheets, credential googleSheetsOAuth2Api id '__GIULIA_SHEETS_CRED_ID__' name 'Google Sheets Giulia', documentId '__GIULIA_SHEETS_DOC_ID__', aba 'Gastos'; workflow active=true, cron 5min, updatedAt 2026-09-13T19:16:57Z, saveDataSuccessExecution=none) e em WF01 Tm1Ec80tegOqWS4N 'Formatar Resposta Final' (jsCode monta 'https://docs.google.com/spreadsheets/d/__GIULIA_SHEETS_DOC_ID__/edit' so para sender 5511910441709/5511964486564). Nenhum placeholder de UAZAPI_TOKEN/GEMINI_API_KEY restante. GET /api/v1/credentials (200): 11 credenciais, NAO existe 'Google Sheets Giulia'; existe 'Google Sheets account' id 53FftATtvTVsC89g googleSheetsOAuth2Api — createdAt 2026-05-15 (o auditor citou 2026-07-24; pequena imprecisao de data, sem impacto) e nenhum workflow a referencia. .env nao tem GIULIA_SHEETS_DOC_ID/TAB/CRED_ID; giulia_config nao tem chave SHEETS/GOOGLE/PLANILHA. scripts/deploy-workflows.sh linhas 70-75 so substituem se a env estiver definida (confirmado). docs/setup-sheets-gastos.md existe. Impacto: giulia_gastos total 21, 0 nos ultimos 30 dias, ultimo data_gasto 2026-07-25; WF03 execucoes de erro no n8n = 0. O erro historico de 12/09 nao e mais verificavel (fora da janela de 30d do erros_log e do prune de 48h do n8n) — nao material. WARN confirmado (nao e regressao: WF03 nao mudou desde 13/09)."
+   },
+   {
+    "item": "giulia_config - chaves e atualizado_em (valores nao lidos)",
+    "status": "OK",
+    "evidence": "15 chaves (colunas chave/valor/atualizado_em): CAPA_EXP_BG (2026-08-08), CAPA_EXP_LAYOUT (08/08), CARTAO_ANIV_5511910441709 (08/08), CARTAO_ANIV_5511964070127 (08/08), EASYPANEL_API_TOKEN (2026-09-13 17:57), EASYPANEL_URL (13/09), GIULIA_EMAIL_SENHA (2026-08-07), GIULIA_GEMINI_API_KEY (07/08), GIULIA_UAZAPI_TOKEN (07/08), HOSTINGER_API_TOKEN (07/08), N8N_DB_HOST (13/09), N8N_DB_PASSWORD (13/09), VOUCHER_BG (08/08), VOUCHER_LAYOUT (08/08), VPS_HOSTINGER_ID (07/08). Tamanhos dos valores de UAZAPI (36), GEMINI (53), EASYPANEL_API_TOKEN (64) e HOSTINGER (48) batem com os do .env -> copias consistentes. N8N_API_KEY nao esta na tabela (por desenho: e o bootstrap que vem do Thiago). Banco: PostgreSQL 17.11, TimeZone Etc/UTC, now()=2026-10-13 13:36 UTC."
+   },
+   {
+    "item": "Resumo giulia_erros_log 30 dias (saude das integracoes)",
+    "status": "OK",
+    "evidence": "Apenas 3 grupos: '18 - GIULIA Email' node '?' 21x (ver item IMAP), 'GIULIA - 02 Scheduler Lembretes' 'Preparar Notificacoes' 1x em 2026-10-06 13:52 UTC 'Task request timed out after 60 seconds' (task runner do n8n, nao externo), 'GIULIA - 07 Briefing Matinal' 'Enviar UAZAPI' 1x em 27/09 (ver item UAZAPI). Nenhum erro contendo uazapi/gemini/generativelanguage/imap/smtp/ECONN/ETIMEDOUT/401/403/429/quota/502/503. WF01, WF18 e WF15 sem execucoes de erro salvas no n8n."
+   }
+  ],
+  "notes": "Auditoria 100% somente leitura: nenhum POST a uazapi.com/send/*, nenhum webhook de producao disparado (apenas GET de sondagem), nenhuma escrita no banco (so SELECT via o runner temporario), nada criado/ativado/desativado no n8n ou Easypanel. Hora real da checagem: ~13:34-13:37 UTC de 2026-10-13 (10:35 BRT), um pouco depois do ~12:50 informado. Nenhum valor de token/senha foi impresso nesta saida; a chamada Easypanel projects.inspectProject devolve env de servicos com segredos, por isso recomendo filtrar essa resposta em auditorias futuras. Itens que exigiriam escrita e ficaram como nao verificaveis: login IMAP/SMTP real, envio SMTP real, contagem global de instancias UAZAPI (admin token), validade de um novo token Hostinger. Prioridade sugerida: (1) WARN Sheets - configurar GIULIA_SHEETS_* e redeployar WF01/WF03 (link quebrado na resposta de gastos); (2) WARN IMAP - enriquecer o log de erro do WF15 para descobrir a causa dos 21 'erro desconhecido'; (3) WARN UAZAPI - retry nos nos de envio dos workflows agendados (briefing de 27/09 perdido por queda transitoria); (4) WARN Hostinger - renovar token (baixa prioridade). Arquivos consultados: /home/user/thiagoteste/.env (apenas nomes), /home/user/thiagoteste/scripts/deploy-workflows.sh, /home/user/thiagoteste/docs/OPERACAO-ACESSOS.md, /home/user/thiagoteste/docs/setup-sheets-gastos.md, /home/user/thiagoteste/ops/n8n-snapshot-2026-09-13.json (so tem id/name/active/contagem de nodes - nao permite comparar placeholders)."
+ }
+]

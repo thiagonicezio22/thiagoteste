@@ -1,0 +1,416 @@
+{
+ "quando": "2026-09-13",
+ "instancia": "https://whats-n8n.ghikuu.easypanel.host",
+ "total": 51,
+ "ativos": 45,
+ "workflows": [
+  {
+   "id": "lv8s4WwetPvgmhBv",
+   "name": "01 - Inbound Chatwoot Events",
+   "active": true,
+   "nodes": 4,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "uaryK0n72qDrj6Jm",
+   "name": "02 - Conversation Debounce 15s",
+   "active": true,
+   "nodes": 7,
+   "saveSuccess": "all",
+   "errorWorkflow": null
+  },
+  {
+   "id": "3yQMS9KBiDR84f5k",
+   "name": "03 - Dedup Guard",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "Xkz4b53YdWhlX8uN",
+   "name": "04 - Pipeline Principal Julian",
+   "active": true,
+   "nodes": 16,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "9VxNYWGMVyq4I2i5",
+   "name": "05 - Audio Poller & Transcriber",
+   "active": false,
+   "nodes": 12,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "ev8Ch51FLVyfa3dC",
+   "name": "05 - Audio Poller & Transcriber",
+   "active": true,
+   "nodes": 14,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "rxpgVQ3dGuOpH24D",
+   "name": "05 - Audio Poller & Transcriber",
+   "active": false,
+   "nodes": 9,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "P300tLUY27RTIybU",
+   "name": "09 - SLA Monitor",
+   "active": true,
+   "nodes": 5,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "g7RSV3nVThiul4LJ",
+   "name": "10 - Observabilidade e Limpeza",
+   "active": true,
+   "nodes": 4,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "SH1POJeU4nQRmXZR",
+   "name": "11 - Health Alert Email",
+   "active": true,
+   "nodes": 3,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "hpzaEBQfrywiqi6k",
+   "name": "12 - Monitor Saude Julian (15min)",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "tSmnZefqMd0JMcrJ",
+   "name": "13 - Relatorio Diario Comercial",
+   "active": false,
+   "nodes": 2,
+   "saveSuccess": "all",
+   "errorWorkflow": null
+  },
+  {
+   "id": "3iY5N6uDrN3yezU7",
+   "name": "14 - Relatorio Semanal",
+   "active": true,
+   "nodes": 2,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "WzLvfN72XvUVSbIu",
+   "name": "15 - Snapshot 12h",
+   "active": false,
+   "nodes": 2,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "JwzjBl8wZaEx4FDH",
+   "name": "16 - Follow-up 24h Julian",
+   "active": false,
+   "nodes": 2,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "DkLnYavbBC5pEoPb",
+   "name": "17 - Checklist Semanal Julian",
+   "active": true,
+   "nodes": 2,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "qojjGwPdhIVwcpu3",
+   "name": "17 - GIULIA Financeiro",
+   "active": true,
+   "nodes": 25,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "NNUd29aBLloX72to",
+   "name": "18 - GIULIA Email",
+   "active": true,
+   "nodes": 19,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "ZTi7ssCfIXIYlt5N",
+   "name": "18 - Monitor Atendimento Vendedor",
+   "active": true,
+   "nodes": 5,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "Gm0ZVeY9Ak4ljk3x",
+   "name": "19 - Relatorio Diario Vendedor",
+   "active": false,
+   "nodes": 18,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "7hfLW8ufXJCylNrV",
+   "name": "19a - Relatorio Leticia",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "yuFtwg5mSjKCm9RN",
+   "name": "19b - Relatorio Thiago Bio",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "all",
+   "errorWorkflow": null
+  },
+  {
+   "id": "XJOQg0pbmN6kzTnf",
+   "name": "19c - Relatorio Beatriz",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "SMWBPPxK8SwSEDx6",
+   "name": "19d - Relatorio Elaine",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "HZ4xmLHIJwDzhNLI",
+   "name": "19e - Relatorio Felipe",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "nwsWfEEP92Ue9Nsp",
+   "name": "20 - Status Semanal Sistema",
+   "active": true,
+   "nodes": 4,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "ejFkzqEkkRg9ZVK2",
+   "name": "21 - Auditoria Noturna Pagamentos",
+   "active": true,
+   "nodes": 7,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "4lYsaEx5r3N9ZZkR",
+   "name": "21 - Follow-up Orcamentos Parados",
+   "active": true,
+   "nodes": 4,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "9ZiBryPfSrV8izxw",
+   "name": "22 - Resumo Executivo Antonio",
+   "active": true,
+   "nodes": 7,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "BWjNPNi5iAeoiu91",
+   "name": "23 - Monitor Conexao WhatsApp",
+   "active": true,
+   "nodes": 3,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "L55u50bOdQc3zrxS",
+   "name": "24 - Monitor Conexao Vendedores",
+   "active": true,
+   "nodes": 5,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "t5TaS1awbkp5fLsZ",
+   "name": "25 - ML Perguntas Lojao Aquatico",
+   "active": true,
+   "nodes": 7,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "Gaowv7td3WrPZ9TG",
+   "name": "Buscar E-mails Thiago Nicezio",
+   "active": true,
+   "nodes": 2,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "Tm1Ec80tegOqWS4N",
+   "name": "GIULIA - 01 Pipeline Assistente Pessoal",
+   "active": true,
+   "nodes": 63,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "sl6gOYuAIwvCRvOP",
+   "name": "GIULIA - 02 Scheduler Lembretes",
+   "active": true,
+   "nodes": 15,
+   "saveSuccess": "none",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "AEVYq2LMB608RnU8",
+   "name": "GIULIA - 03 Sync Gastos Sheets",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "none",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "DbNuINWG5JBEE08F",
+   "name": "GIULIA - 04 Sumarizar Memoria Antiga",
+   "active": true,
+   "nodes": 8,
+   "saveSuccess": "none",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "5kfBHcPbR0UMQxMK",
+   "name": "GIULIA - 05 Rotina Diaria",
+   "active": true,
+   "nodes": 8,
+   "saveSuccess": "none",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "5WhC5PwNoptX5lKm",
+   "name": "GIULIA - 06 Cobrar Tarefas",
+   "active": true,
+   "nodes": 7,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "ZFr4vsDTHv8TDrXE",
+   "name": "GIULIA - 07 Briefing Matinal",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "J1Sj1a3aTvcPQ391",
+   "name": "GIULIA - 08 Lembretes Reuniao Cliente",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "none",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "nqLalQVouNGgh4EQ",
+   "name": "GIULIA - 09 Lembretes Contas a Pagar",
+   "active": true,
+   "nodes": 6,
+   "saveSuccess": "none",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "q8HWnaLoiBTVXP0a",
+   "name": "GIULIA - 10 Relatorio Gastos",
+   "active": true,
+   "nodes": 11,
+   "saveSuccess": "none",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "yISL7XnwlOBkD0Dz",
+   "name": "GIULIA - 11 Fechamento do Dia (21h)",
+   "active": true,
+   "nodes": 9,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "WnNoWQX8IJKy6MgP",
+   "name": "GIULIA - 12 Orcamentos PDF",
+   "active": true,
+   "nodes": 9,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "m74g1NvcBTiu08ce",
+   "name": "GIULIA - 13 Orcamentos Followup",
+   "active": true,
+   "nodes": 7,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "wids1oU1e8EaNrHl",
+   "name": "GIULIA - 14 Trials",
+   "active": true,
+   "nodes": 7,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "ltVUUCOCDYKMmtnT",
+   "name": "GIULIA - 15 Error Handler",
+   "active": true,
+   "nodes": 3,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "BK8oAvp5Mzt4rmUs",
+   "name": "GIULIA - 16 Recebiveis",
+   "active": true,
+   "nodes": 7,
+   "saveSuccess": "all",
+   "errorWorkflow": "ltVUUCOCDYKMmtnT"
+  },
+  {
+   "id": "S5pD42nERATtSmTe",
+   "name": "HZ - Lauren Pipeline v1",
+   "active": true,
+   "nodes": 18,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  },
+  {
+   "id": "G6ZQvgAerslHqTyH",
+   "name": "MCP - Email ENG (Claude)",
+   "active": true,
+   "nodes": 2,
+   "saveSuccess": "none",
+   "errorWorkflow": null
+  }
+ ]
+}

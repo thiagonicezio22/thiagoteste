@@ -1,0 +1,184 @@
+{
+ "id": "gj0NVrClNcnEpGlt",
+ "name": "GIULIA - 21 Dados de Pagamento Horizon",
+ "nodes": [
+  {
+   "id": "n-form-pagamento",
+   "name": "Formulario Pagamento Horizon",
+   "webhookId": "38f2e64e-75f3-4d87-9507-602fb06b487b",
+   "type": "n8n-nodes-base.formTrigger",
+   "typeVersion": 2.2,
+   "position": [
+    -400,
+    300
+   ],
+   "parameters": {
+    "path": "38f2e64e-75f3-4d87-9507-602fb06b487b",
+    "formTitle": "Horizon Pottery · dados de pagamento da invoice (GIULIA)",
+    "formDescription": "Só o Thiago usa. Preencha só o que quer gravar: campo em branco mantém o valor atual; escreva um traço (-) para apagar. Nada é mostrado de volta; o texto do wire sai no PDF exatamente como gravado (em inglês).",
+    "formFields": {
+     "values": [
+      {
+       "fieldLabel": "Zelle (e-mail ou telefone cadastrado no Zelle)",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": ""
+      },
+      {
+       "fieldLabel": "Link de pagamento com cartão (começa com https://)",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": "https://horizon-pottery.myshopify.com/..."
+      },
+      {
+       "fieldLabel": "Wire · banco (nome)",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": ""
+      },
+      {
+       "fieldLabel": "Wire · endereço do banco",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": ""
+      },
+      {
+       "fieldLabel": "Wire · beneficiário (nome da conta)",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": ""
+      },
+      {
+       "fieldLabel": "Wire · endereço do beneficiário",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": ""
+      },
+      {
+       "fieldLabel": "Wire · routing number (ABA)",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": ""
+      },
+      {
+       "fieldLabel": "Wire · número da conta",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": ""
+      },
+      {
+       "fieldLabel": "Wire · SWIFT/BIC",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": ""
+      },
+      {
+       "fieldLabel": "Wire · observação (uma linha)",
+       "fieldType": "text",
+       "requiredField": false,
+       "placeholder": ""
+      }
+     ]
+    },
+    "responseMode": "responseNode",
+    "options": {
+     "buttonLabel": "Gravar no banco",
+     "appendAttribution": false
+    }
+   }
+  },
+  {
+   "id": "n64-montar-gravacao",
+   "name": "Montar Gravacao",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -160,
+    300
+   ],
+   "parameters": {
+    "jsCode": "\nconst lit = s => (s === null || s === undefined) ? 'NULL'\n  : \"convert_from(decode('\" + Buffer.from(String(s), 'utf8').toString('base64') + \"','base64'),'UTF8')\";\nconst litJson = o => lit(JSON.stringify(o)) + '::jsonb';\nconst int = v => { const n = parseInt(v, 10); if (!Number.isFinite(n) || String(n) !== String(v).trim()) throw new Error('inteiro invalido: ' + v); return n; };\nconst intOuNull = v => (v === null || v === undefined || v === '') ? 'NULL' : String(int(v));\nconst digitos = s => String(s || '').replace(/[^0-9]/g, '');\nconst litDate = s => { if (s == null || s === '') return 'NULL';\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(s))) throw new Error('data invalida'); return lit(String(s)) + '::date'; };\nconst arr = a => (Array.isArray(a) && a.length) ? 'ARRAY[' + a.map(lit).join(',') + ']::text[]' : \"'{}'::text[]\";\nconst bool = v => (v === true ? 'true' : 'false');\nconst cfgBool = v => String(v == null ? '' : v).trim().toLowerCase() === 'true';\nconst cfgInt = (v, min, max, padrao) => { const n = parseInt(String(v == null ? '' : v).trim(), 10);\n  return (Number.isFinite(n) && n >= min && n <= max) ? n : padrao; };\nconst semCifrao = sql => { if (String(sql).includes('$')) throw new Error('SQL com cifrao'); return sql; };\nconst THIAGO = '5511910441709';\n// constantes de build (lib-wf.desligarEnvios troca para false): com os envios desligados nada vai para\n// giulia_memoria / giulia_mensagens_agendadas (nenhuma mensagem saiu) e o webhook REAL recusa (so o de teste responde)\nconst ENVIOS_LIGADOS = true;\nconst MODO_REAL_LIBERADO = true;\n\nconst f = items[0].json || {};\nconst MAPA = {\"Zelle (e-mail ou telefone cadastrado no Zelle)\":\"pagamento_zelle\",\"Link de pagamento com cartão (começa com https://)\":\"pagamento_cartao_link\",\"Wire · banco (nome)\":\"pagamento_wire_banco\",\"Wire · endereço do banco\":\"pagamento_wire_endereco_banco\",\"Wire · beneficiário (nome da conta)\":\"pagamento_wire_beneficiario\",\"Wire · endereço do beneficiário\":\"pagamento_wire_endereco_beneficiario\",\"Wire · routing number (ABA)\":\"pagamento_wire_routing\",\"Wire · número da conta\":\"pagamento_wire_conta\",\"Wire · SWIFT/BIC\":\"pagamento_wire_swift\",\"Wire · observação (uma linha)\":\"pagamento_wire_observacao\"};\nconst ups = [], ignorados = []; let n = 0, apagados = 0, invalidos = 0;\nfor (const rotulo of Object.keys(MAPA)) {\n  const chave = MAPA[rotulo];\n  let v = f[rotulo];\n  if (v === undefined || v === null) continue;\n  v = String(v).replace(/\\s+/g, ' ').trim();\n  if (v === '') continue;                               // em branco: mantem o valor atual\n  if (v === '-') { v = ''; apagados++; }                 // traco: apaga\n  else {\n    if (chave === 'pagamento_cartao_link' && !/^https:\\/\\/[a-z0-9.-]+(\\/|$)/i.test(v)) { invalidos++; ignorados.push(rotulo); continue; }\n    if (/^pagamento_wire_(routing|conta)$/.test(chave) && !/^[0-9][0-9 -]{3,40}$/.test(v)) { invalidos++; ignorados.push(rotulo); continue; }\n    n++;\n  }\n  ups.push('(' + lit(chave) + ', ' + lit(v) + ')');\n}\n// so os ROTULOS dos campos ignorados voltam na pagina (nunca o valor digitado)\nconst campos_ignorados = ignorados.join('; ');\nif (!ups.length) return [{ json: { sql: 'SELECT 0 AS atualizados, 0 AS apagados, ' + invalidos + ' AS invalidos, 0 AS linhas, 0 AS wire_ok, 0 AS carimbo, ' + lit(campos_ignorados) + ' AS campos_ignorados;', atualizados: 0, apagados: 0, invalidos } }];\n// pagamento_wire recomposto no mesmo comando: as partes vem de \"up\" (valor novo desta gravacao) ou de hz_config (valor atual),\n// porque dentro de um unico comando as CTEs que escrevem nao veem as escritas umas das outras\nconst partesWire = [[1, 'Bank: ', 'pagamento_wire_banco'], [2, 'Bank address: ', 'pagamento_wire_endereco_banco'], [3, 'Beneficiary: ', 'pagamento_wire_beneficiario'],\n  [4, 'Beneficiary address: ', 'pagamento_wire_endereco_beneficiario'], [5, 'Account number: ', 'pagamento_wire_conta'], [6, 'Routing number (ABA): ', 'pagamento_wire_routing'],\n  [7, 'SWIFT/BIC: ', 'pagamento_wire_swift'], [8, 'Note: ', 'pagamento_wire_observacao']];\nconst parte = p => '(' + p[0] + ', ' + lit(p[1]) + ', COALESCE((SELECT u.valor FROM up u WHERE u.chave = ' + lit(p[2]) + '), (SELECT c.valor FROM hz_config c WHERE c.chave = ' + lit(p[2]) + ')))';\nconst sql = 'WITH up AS (UPDATE hz_config c SET valor = v.valor, atualizado_em = NOW() FROM (VALUES ' + ups.join(', ') + ') AS v(chave, valor) WHERE c.chave = v.chave RETURNING c.chave, c.valor)' +\n  ', wire AS (UPDATE hz_config SET valor = COALESCE((SELECT string_agg(t.l || t.v, chr(10) ORDER BY t.o) FROM (VALUES ' + partesWire.map(parte).join(', ') +\n  \") AS t(o, l, v) WHERE COALESCE(t.v, '') <> ''), ''), atualizado_em = NOW() WHERE chave = 'pagamento_wire' RETURNING chave)\" +\n  \", ts AS (UPDATE hz_config SET valor = to_char(NOW() AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI'), atualizado_em = NOW() WHERE chave = 'pagamento_atualizado_em' RETURNING chave)\" +\n  ' SELECT ' + n + ' AS atualizados, ' + apagados + ' AS apagados, ' + invalidos + ' AS invalidos, (SELECT count(*) FROM up)::int AS linhas, (SELECT count(*) FROM wire)::int AS wire_ok, (SELECT count(*) FROM ts)::int AS carimbo, ' + lit(campos_ignorados) + ' AS campos_ignorados;';\nreturn [{ json: { sql: semCifrao(sql), atualizados: n, apagados, invalidos } }];"
+   }
+  },
+  {
+   "id": "n65-gravar-em-hz-config",
+   "name": "Gravar em hz_config",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2,
+   "position": [
+    80,
+    300
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "={{ $json.sql }}",
+    "options": {}
+   },
+   "credentials": {
+    "postgres": {
+     "id": "qSNNpS1TadimC3ND",
+     "name": "PostgreSQL Julian"
+    }
+   }
+  },
+  {
+   "id": "n66-confirmar-gravacao",
+   "name": "Confirmar Gravacao",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.1,
+   "position": [
+    320,
+    300
+   ],
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "={{ JSON.stringify({ formSubmittedText: \"Campos gravados: \" + $json.atualizados + \" · apagados: \" + $json.apagados + \" · ignorados por formato inválido: \" + $json.invalidos + ($json.campos_ignorados ? \" (\" + $json.campos_ignorados + \")\" : \"\") + \". Nenhum valor é mostrado de volta; os dados já valem para a próxima invoice.\" }) }}",
+    "options": {}
+   }
+  }
+ ],
+ "connections": {
+  "Formulario Pagamento Horizon": {
+   "main": [
+    [
+     {
+      "node": "Montar Gravacao",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Montar Gravacao": {
+   "main": [
+    [
+     {
+      "node": "Gravar em hz_config",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Gravar em hz_config": {
+   "main": [
+    [
+     {
+      "node": "Confirmar Gravacao",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "saveExecutionProgress": false,
+  "saveManualExecutions": false,
+  "saveDataErrorExecution": "none",
+  "saveDataSuccessExecution": "none",
+  "timezone": "America/New_York",
+  "executionOrder": "v1",
+  "callerPolicy": "workflowsFromSameOwner"
+ }
+}
